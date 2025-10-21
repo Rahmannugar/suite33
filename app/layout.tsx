@@ -4,6 +4,7 @@ import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import QueryProvider from "@/lib/providers/QueryProvider";
+import { ThemeProvider } from "@/lib/providers/ThemeProvider";
 
 const interFont = Inter({
   subsets: ["latin"],
@@ -11,6 +12,7 @@ const interFont = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://suite33.vercel.app"),
   title: {
     default: "Suite 33",
     template: "%s | Suite 33",
@@ -55,10 +57,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={` ${interFont.className} antialiased`}>
-        <QueryProvider>
-          {children} <SpeedInsights />
-          <Analytics />
-        </QueryProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            {children}
+            <SpeedInsights />
+            <Analytics />
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
