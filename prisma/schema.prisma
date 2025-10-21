@@ -18,23 +18,26 @@ enum Role {
 // MODELS
 
 model User {
-  id       String    @id @default(uuid())
-  email    String    @unique
-  password String?
-  role     Role      @default(ADMIN)
-  business Business?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String?
+  role      Role      @default(ADMIN)
+  fullName  String?
+  avatarUrl String?
+  business  Business?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   Staff     Staff?
 }
 
 model Business {
-  id      String @id @default(uuid())
-  name    String
-  ownerId String @unique
-  owner   User   @relation(fields: [ownerId], references: [id])
-
+  id           String        @id @default(uuid())
+  name         String
+  industry     String?
+  location     String?
+  logoUrl      String?
+  ownerId      String        @unique
+  owner        User          @relation(fields: [ownerId], references: [id])
   departments  Department[]
   staff        Staff[]
   sales        Sale[]
@@ -42,9 +45,8 @@ model Business {
   payrolls     Payroll[]
   categories   Category[]
   inventory    Inventory[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Department {
