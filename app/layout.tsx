@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import QueryProvider from "@/lib/providers/QueryProvider";
 
 const interFont = Inter({
   subsets: ["latin"],
@@ -54,10 +55,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={` ${interFont.className} antialiased`}>
-        {children}
-
-        <SpeedInsights />
-        <Analytics />
+        <QueryProvider>
+          {children} <SpeedInsights />
+          <Analytics />
+        </QueryProvider>
       </body>
     </html>
   );
