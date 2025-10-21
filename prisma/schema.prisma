@@ -47,6 +47,7 @@ model Business {
   inventory    Inventory[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  Invite       Invite[]
 }
 
 model Department {
@@ -59,6 +60,7 @@ model Department {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  Invite    Invite[]
 }
 
 model Staff {
@@ -152,4 +154,17 @@ model Inventory {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Invite {
+  id           String      @id @default(uuid())
+  email        String
+  token        String      @unique
+  businessId   String
+  departmentId String?
+  business     Business    @relation(fields: [businessId], references: [id])
+  department   Department? @relation(fields: [departmentId], references: [id])
+  role         Role        @default(STAFF)
+  accepted     Boolean     @default(false)
+  createdAt    DateTime    @default(now())
 }

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { ThemeToggle } from "@/components/Toggler";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
+import { validateEmail, validatePassword } from "@/lib/utils/validation";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -16,14 +17,6 @@ export default function SignupPage() {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
-  function validateEmail(email: string) {
-    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email);
-  }
-
-  function validatePassword(password: string) {
-    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password);
-  }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();

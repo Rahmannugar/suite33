@@ -1,24 +1,51 @@
 "use client";
 
 import { ThemeToggle } from "@/components/Toggler";
-import { useOnboarding } from "@/lib/hooks/useOnboarding";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { useMutation } from "@tanstack/react-query";
+import { uploadAvatar } from "@/lib/utils/uploadImage";
+import axios from "axios";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function OnboardingPage() {
-  const {
-    user,
-    businessName,
-    setBusinessName,
-    industry,
-    setIndustry,
-    location,
-    setLocation,
-    fullName,
-    setFullName,
-    logoUrl,
-    setLogoUrl,
-    submitOnboarding,
-  } = useOnboarding();
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+
+  const [businessName, setBusinessName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [location, setLocation] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const submitOnboarding = useMutation({
+    mutationFn: async () => {
+      let logoUrl = "";
+      if (logoFile && user?.id) {
+        logoUrl = await uploadAvatar(logoFile, user.id);
+      }
+      const res = await axios.post("/api/onboarding", {
+        userId: user?.id,
+        fullName,
+        businessName,
+        industry,
+        location,
+        logoUrl,
+      });
+      return res.data;
+    },
+    onSuccess: () => router.push("/dashboard"),
+  });
 
   if (!user) return null;
 
@@ -115,18 +142,31 @@ export default function OnboardingPage() {
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
-              Logo URL{" "}
+              Business Logo{" "}
               <span className="text-xs text-[--muted-foreground]">
                 (optional)
               </span>
             </label>
             <input
-              type="url"
-              placeholder="Paste your logo image URL"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              className="block w-full rounded-lg border border-[--input] bg-[--background] p-3 focus:ring-2 focus:ring-[--ring] outline-none transition text-base"
+              type="file"
+              accept="image/*"
+              onChange={handleLogoChange}
+              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 text-sm cursor-pointer file:bg-[--muted] file:border-0 file:rounded-md file:px-3 file:py-2 file:mr-2"
             />
+            {logoPreview && (
+              <div className="flex justify-center mt-2">
+                <Image
+                  src={logoPreview}
+                  alt="Logo Preview"
+                  width={96}
+                  height={96}
+                  className="rounded-full object-cover border border-[--border]"
+                  style={{ width: "96px", height: "96px" }}
+                  unoptimized
+                  priority
+                />
+              </div>
+            )}
           </div>
           <button
             type="submit"

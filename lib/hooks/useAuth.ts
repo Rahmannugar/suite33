@@ -4,11 +4,16 @@ import { useMutation } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { syncUserToPrisma } from "@/lib/hooks/useSyncUser";
+import axios from "axios";
 
 type Credentials = { email: string; password: string };
 
 export function useAuth() {
   const setUser = useAuthStore((s) => s.setUser);
+
+  async function setRoleSession(role: string) {
+    await axios.post("/api/auth/session", { role });
+  }
 
   const signUp = useMutation({
     mutationFn: async ({ email, password }: Credentials) => {
@@ -29,7 +34,16 @@ export function useAuth() {
       if (!data.user)
         throw new Error("Signup succeeded but no user returned from Supabase");
 
-      return { user: data.user };
+      const user = await syncUserToPrisma({
+        id: data.user.id,
+        email: data.user.email ?? null,
+      });
+
+      // Set role session cookie
+      await setRoleSession(user.role);
+
+      setUser({ id: user.id, email: user.email, role: user.role });
+      return user;
     },
   });
 
@@ -39,11 +53,19 @@ export function useAuth() {
         email,
         password,
       });
+
       if (error) throw error;
       if (!data.user) throw new Error("Login succeeded but no user returned");
-      await syncUserToPrisma({ id: data.user.id, email: data.user.email ?? null });
-      setUser({ id: data.user.id, email: data.user.email!, role: "ADMIN" });
-      return data.user;
+
+      const user = await syncUserToPrisma({
+        id: data.user.id,
+        email: data.user.email ?? null,
+      });
+
+      await setRoleSession(user.role);
+      setUser({ id: user.id, email: user.email, role: user.role });
+
+      return user;
     },
   });
 
@@ -51,6 +73,7 @@ export function useAuth() {
     mutationFn: async () => {
       const { error } = await supabaseClient.auth.signOut();
       if (error) throw error;
+      await axios.delete("/api/auth/session");
       setUser(null);
     },
   });
