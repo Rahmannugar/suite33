@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/stores/authStore";
 import axios from "axios";
-import { validateEmail } from "../utils/validation";
+import { validateEmail } from "@/lib/utils/validation";
 
 export default function StaffInvitePage() {
   const user = useAuthStore((s) => s.user);
@@ -41,7 +41,7 @@ export default function StaffInvitePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
       <div className="w-full max-w-md rounded-2xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-sm p-8">
         <h1 className="text-2xl font-semibold text-center mb-1">
           Invite a <span className="text-[--primary]">Team Member</span>

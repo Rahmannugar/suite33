@@ -41,9 +41,21 @@ export function useInvite() {
         throw new Error("Invalid password");
       }
       setPasswordError("");
-      await signUp.mutateAsync({ email: invite.email, password });
+
+      // Sign up with Supabase
+      const { user } = await signUp.mutateAsync({
+        email: invite.email,
+        password,
+      });
+
+      // Call backend to accept invite + link user
+      await axios.post("/api/invite/accept", {
+        token,
+        userId: user.id,
+        email: user.email,
+      });
     },
-    onSuccess: () => router.push("/onboarding/staff"),
+    onSuccess: () => router.push("/dashboard"),
   });
 
   return {

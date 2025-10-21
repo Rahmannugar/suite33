@@ -52,7 +52,7 @@ export default function AcceptInvitePage() {
     );
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-2xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-sm p-8">
         <ThemeToggle />
         <div className="flex justify-center mb-6">

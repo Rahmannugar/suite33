@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { syncUserToPrisma } from "@/lib/hooks/useSyncUser";
@@ -10,6 +10,7 @@ type Credentials = { email: string; password: string };
 
 export function useAuth() {
   const setUser = useAuthStore((s) => s.setUser);
+  const queryClient = useQueryClient();
 
   async function setRoleSession(role: string) {
     await axios.post("/api/auth/session", { role });
@@ -74,6 +75,7 @@ export function useAuth() {
       const { error } = await supabaseClient.auth.signOut();
       if (error) throw error;
       await axios.delete("/api/auth/session");
+      queryClient.removeQueries({ queryKey: ["user-profile"] });
       setUser(null);
     },
   });
