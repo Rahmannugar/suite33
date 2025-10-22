@@ -39,7 +39,7 @@ export function Testimonials() {
   ];
 
   return (
-    <section className="border-t border-[--border] bg-[--muted] py-16">
+    <section id="testimonials" className="border-t border-[--border] bg-[--muted] py-16">
       <div className="mx-auto max-w-7xl px-4">
         <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-8">
           What our customers say

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     template: "%s | Suite 33",
   },
   description:
-    "Suite 33 is a simple business management platform that helps small and growing businesses track finances, staff performance, and payroll with AI insights and easy data import/export.",
+    "Suite 33 is a simple business management platform that helps small and growing businesses track finances, inventory, staff performance, and payroll with AI insights and easy data import/export.",
   twitter: {
     card: "summary_large_image",
     creator: "@NugarRahman",

@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden">
+    <section id="hero" className="relative overflow-hidden">
       {/* Subtle gradient background */}
       <div
         className="pointer-events-none absolute inset-0 opacity-40 dark:opacity-30"

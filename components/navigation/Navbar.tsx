@@ -85,31 +85,20 @@ export function Navbar() {
           }}
         >
           <div className="flex flex-col gap-2 px-6 py-4">
-            {navLinks.map((link) =>
-              link.href.startsWith("/") ? (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={
-                    link.label === "Sign Up" || link.label === "Get Started"
-                      ? "rounded-md bg-blue-600 text-white px-4 py-2 font-semibold shadow hover:bg-blue-700 active:scale-95 transition"
-                      : "px-2 py-2 hover:text-blue-600 font-medium transition"
-                  }
-                  onClick={() => setOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              ) : (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="px-2 py-2 hover:text-blue-600 font-medium transition"
-                  onClick={() => setOpen(false)}
-                >
-                  {link.label}
-                </a>
-              )
-            )}
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={
+                  link.label === "Sign Up" || link.label === "Get Started"
+                    ? "rounded-md bg-blue-600 text-white px-4 py-2 font-semibold shadow hover:bg-blue-700 active:scale-95 transition"
+                    : "px-2 py-2 hover:text-blue-600 font-medium transition"
+                }
+                onClick={() => setOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
         </nav>
       )}

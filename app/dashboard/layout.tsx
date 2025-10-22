@@ -1,6 +1,3 @@
-import { Header } from "@/components/dashboard/Header";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { AuthGuard } from "@/lib/providers/AuthGuard";
 import { ReactNode } from "react";
 
 export const generateMetadata = () => {

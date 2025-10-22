@@ -7,6 +7,7 @@ import {
   Upload,
   BrainCircuit,
   Mail,
+  Boxes,
 } from "lucide-react";
 
 const items = [
@@ -26,9 +27,9 @@ const items = [
     desc: "Create departments and manage staff profiles with roles.",
   },
   {
-    icon: BarChart3,
-    title: "KPI Tracking",
-    desc: "Track KPIs per staff and per department with charts.",
+    icon: Boxes,
+    title: "Inventory",
+    desc: "Track stock levels, manage products, and prevent shortages.",
   },
   {
     icon: FileDown,

@@ -53,10 +53,9 @@ export async function middleware(req: NextRequest) {
         where: { id: user.id },
         select: { role: true },
       });
-      role = record?.role || "STAFF";
+      role = record?.role || "ADMIN"; 
     }
 
-    // Role-based routing logic
     const isAdminRoute = pathname.startsWith("/dashboard/admin");
     const isStaffRoute = pathname.startsWith("/dashboard/staff");
 

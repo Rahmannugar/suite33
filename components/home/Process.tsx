@@ -25,7 +25,10 @@ const steps = [
 
 export function Process() {
   return (
-    <section className="border-t border-[--border] bg-[--muted] py-16">
+    <section
+      id="process"
+      className="border-t border-[--border] bg-[--muted] py-16"
+    >
       <div className="mx-auto max-w-7xl px-4">
         <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-8">
           How Suite33 Works
