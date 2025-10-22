@@ -8,10 +8,16 @@ export function Footer() {
           © {new Date().getFullYear()} Suite33. All rights reserved.
         </p>
         <div className="flex items-center gap-4 text-[--muted-foreground]">
-          <Link href="/privacy-policy" className="hover:opacity-80">
+          <Link
+            href="/privacy-policy"
+            className="hover:text-blue-600 transition"
+          >
             Privacy Policy
           </Link>
-          <Link href="/terms-of-service" className="hover:opacity-80">
+          <Link
+            href="/terms-of-service"
+            className="hover:text-blue-600 transition"
+          >
             Terms of Service
           </Link>
         </div>

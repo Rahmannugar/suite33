@@ -50,8 +50,8 @@ export default function OnboardingPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-lg rounded-2xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-lg p-8 relative">
+    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background">
+      <div className="w-full max-w-lg rounded-xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-lg p-8 relative">
         {/*Suite33 Logo */}
         <ThemeToggle />
         <div className="flex justify-center mb-6">

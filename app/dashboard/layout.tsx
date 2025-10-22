@@ -11,15 +11,5 @@ export const generateMetadata = () => {
 };
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  return (
-    <AuthGuard>
-      <div className="min-h-screen flex flex-col md:flex-row">
-        <Sidebar />
-        <main className="flex-1 bg-[--background] text-[--foreground] p-6 overflow-auto">
-          <Header />
-          {children}
-        </main>
-      </div>
-    </AuthGuard>
-  );
+  return <main>{children}</main>;
 }

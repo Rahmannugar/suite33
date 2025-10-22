@@ -66,17 +66,17 @@ export function Features() {
           </p>
         </div>
 
-        <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {items.map(({ icon: Icon, title, desc }) => (
             <div
               key={title}
-              className="rounded-xl border border-[--border] bg-[--card] p-4 hover:shadow-sm transition"
+              className="rounded-xl border border-[--border] bg-[--card] p-5 hover:shadow-lg hover:-translate-y-1 active:scale-95 transition-all cursor-pointer flex flex-col gap-2"
             >
               <div className="flex items-center gap-3">
-                <div className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-[--muted]">
-                  <Icon size={18} />
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-900/40">
+                  <Icon size={20} className="text-blue-600" />
                 </div>
-                <h3 className="font-medium">{title}</h3>
+                <h3 className="font-medium text-base">{title}</h3>
               </div>
               <p className="mt-2 text-sm text-[--muted-foreground]">{desc}</p>
             </div>
