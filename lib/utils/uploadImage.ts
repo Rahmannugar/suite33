@@ -3,7 +3,7 @@ import { supabaseClient } from "@/lib/supabase/client";
 export async function uploadAvatar(file: File, userId: string) {
   const fileExt = file.name.split(".").pop();
   const fileName = `${userId}-${Date.now()}.${fileExt}`;
-  const filePath = `avatars/${fileName}`;
+  const filePath = `${fileName}`;
 
   const { error: uploadError } = await supabaseClient.storage
     .from("avatars")

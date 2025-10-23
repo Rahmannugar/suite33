@@ -9,7 +9,7 @@ import { validateEmail } from "@/lib/utils/validation";
 export default function StaffInvitePage() {
   const user = useAuthStore((s) => s.user);
   const [email, setEmail] = useState("");
-  const [departmentId, setDepartmentId] = useState("");
+  const [departmentName, setDepartmentName] = useState("");
   const [emailError, setEmailError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -17,7 +17,7 @@ export default function StaffInvitePage() {
     mutationFn: async () => {
       const res = await axios.post("/api/invite", {
         email,
-        departmentId,
+        departmentName,
         businessId: user?.businessId,
       });
       return res.data;
@@ -25,7 +25,7 @@ export default function StaffInvitePage() {
     onSuccess: () => {
       setSuccessMsg("Invite sent successfully! Check your email.");
       setEmail("");
-      setDepartmentId("");
+      setDepartmentName("");
     },
   });
 
@@ -47,7 +47,7 @@ export default function StaffInvitePage() {
           Invite a <span className="text-[--primary]">Team Member</span>
         </h1>
         <p className="text-sm text-[--muted-foreground] text-center mb-8">
-          Enter their email and (optionally) department ID.
+          Enter their email and (optionally) department name.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
@@ -63,9 +63,9 @@ export default function StaffInvitePage() {
           )}
           <input
             type="text"
-            placeholder="Department ID (optional)"
-            value={departmentId}
-            onChange={(e) => setDepartmentId(e.target.value)}
+            placeholder="Department (optional)"
+            value={departmentName}
+            onChange={(e) => setDepartmentName(e.target.value)}
             className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-[--ring] outline-none transition"
           />
 

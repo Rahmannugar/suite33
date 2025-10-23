@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 export function Hero() {
   return (
-    <section id="hero" className="relative overflow-hidden">
+    <section className="relative overflow-hidden">
       {/* Subtle gradient background */}
       <div
         className="pointer-events-none absolute inset-0 opacity-40 dark:opacity-30"
@@ -58,16 +58,15 @@ export function Hero() {
                   whileHover={{
                     scale: 1.08,
                     boxShadow: "0 4px 24px rgba(37,99,235,0.10)",
-                    backgroundColor: "#eff6ff",
                   }}
                   className="rounded-lg bg-blue-50 dark:bg-blue-900/40 p-3 flex items-center gap-2 shadow-sm transition"
                 >
                   <TrendingUp size={18} className="text-blue-600" />
                   <div>
-                    <div className="text-xs text-blue-900 dark:text-blue-100">
+                    <div className="text-xs text-blue-900 dark:text-white">
                       Sales
                     </div>
-                    <div className="font-bold text-sm text-blue-900 dark:text-blue-100">
+                    <div className="font-bold text-sm text-blue-900 dark:text-white">
                       ₦1.2M
                     </div>
                   </div>
@@ -76,16 +75,15 @@ export function Hero() {
                   whileHover={{
                     scale: 1.08,
                     boxShadow: "0 4px 24px rgba(37,99,235,0.10)",
-                    backgroundColor: "#eff6ff",
                   }}
                   className="rounded-lg bg-blue-50 dark:bg-blue-900/40 p-3 flex items-center gap-2 shadow-sm transition"
                 >
                   <Wallet size={18} className="text-blue-600" />
                   <div>
-                    <div className="text-xs text-blue-900 dark:text-blue-100">
+                    <div className="text-xs text-blue-900 dark:text-white">
                       Expenses
                     </div>
-                    <div className="font-bold text-sm text-blue-900 dark:text-blue-100">
+                    <div className="font-bold text-sm text-blue-900 dark:text-white">
                       ₦450K
                     </div>
                   </div>
@@ -105,7 +103,7 @@ export function Hero() {
                     />
                   ))}
                 </div>
-                <div className="mt-2 text-xs text-blue-900 dark:text-blue-100">
+                <div className="mt-2 text-xs text-blue-900 dark:text-white">
                   Monthly Sales
                 </div>
               </div>
@@ -115,16 +113,15 @@ export function Hero() {
                   whileHover={{
                     scale: 1.08,
                     boxShadow: "0 4px 24px rgba(37,99,235,0.10)",
-                    backgroundColor: "#eff6ff",
                   }}
                   className="rounded-lg bg-blue-50 dark:bg-blue-900/40 p-3 flex items-center gap-2 shadow-sm transition"
                 >
                   <Users2 size={18} className="text-blue-600" />
                   <div>
-                    <div className="text-xs text-blue-900 dark:text-blue-100">
+                    <div className="text-xs text-blue-900 dark:text-white">
                       Staff
                     </div>
-                    <div className="font-bold text-sm text-blue-900 dark:text-blue-100">
+                    <div className="font-bold text-sm text-blue-900 dark:text-white">
                       12 Active
                     </div>
                   </div>
@@ -133,16 +130,15 @@ export function Hero() {
                   whileHover={{
                     scale: 1.08,
                     boxShadow: "0 4px 24px rgba(37,99,235,0.10)",
-                    backgroundColor: "#eff6ff",
                   }}
-                  className="rounded-lg bg-blue-50 dark:bg-blue-900/40 p-3 flex items-center gap-2 shadow-sm transition"
+                  className="rounded-lg bg-blue-50 dark dark:bg-blue-900/40 p-3 flex items-center gap-2 shadow-sm transition"
                 >
                   <BarChart3 size={18} className="text-blue-600" />
                   <div>
-                    <div className="text-xs text-blue-900 dark:text-blue-100">
+                    <div className="text-xs text-blue-900 dark:text-white">
                       KPIs
                     </div>
-                    <div className="font-bold text-sm text-blue-900 dark:text-blue-100">
+                    <div className="font-bold text-sm text-blue-900 dark:text-white">
                       7 Tracked
                     </div>
                   </div>

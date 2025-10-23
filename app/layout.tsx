@@ -5,6 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import QueryProvider from "@/lib/providers/QueryProvider";
 import { ThemeProvider } from "@/lib/providers/ThemeProvider";
+import { Toaster } from "sonner";
 
 const interFont = Inter({
   subsets: ["latin"],
@@ -60,6 +61,12 @@ export default function RootLayout({
         <ThemeProvider>
           <QueryProvider>
             {children}
+            <Toaster
+              richColors
+              position="top-right"
+              duration={3000}
+              closeButton
+            />
             <SpeedInsights />
             <Analytics />
           </QueryProvider>

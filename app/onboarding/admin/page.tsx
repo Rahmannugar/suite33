@@ -1,17 +1,25 @@
 "use client";
 
-import { ThemeToggle } from "@/components/Toggler";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useMutation } from "@tanstack/react-query";
 import { uploadAvatar } from "@/lib/utils/uploadImage";
-import axios from "axios";
+import { ThemeToggle } from "@/components/Toggler";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import axios from "axios";
+import { toast } from "sonner";
+import { Upload, RefreshCw } from "lucide-react";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    if (user?.role === "ADMIN" && user?.businessId) {
+      router.replace("/dashboard/admin");
+    }
+  }, [user, router]);
 
   const [businessName, setBusinessName] = useState("");
   const [industry, setIndustry] = useState("");
@@ -20,7 +28,7 @@ export default function OnboardingPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setLogoFile(file);
@@ -32,19 +40,41 @@ export default function OnboardingPage() {
     mutationFn: async () => {
       let logoUrl = "";
       if (logoFile && user?.id) {
-        logoUrl = await uploadAvatar(logoFile, user.id);
+        logoUrl = await toast.promise(
+          uploadAvatar(logoFile, user.id),
+          {
+            loading: "Uploading logo...",
+            success: "Logo uploaded successfully!",
+            error: "Failed to upload logo.",
+          },
+          { duration: 1500 }
+        );
       }
-      const res = await axios.post("/api/onboarding", {
-        userId: user?.id,
-        fullName,
-        businessName,
-        industry,
-        location,
-        logoUrl,
-      });
-      return res.data;
+      return await toast.promise(
+        axios.post("/api/onboarding", {
+          userId: user?.id,
+          fullName,
+          businessName,
+          industry,
+          location,
+          logoUrl,
+        }),
+        {
+          loading: "Setting up your business...",
+          success: "Business profile created!",
+          error: "Failed to complete onboarding",
+        },
+        { duration: 3000 }
+      );
     },
-    onSuccess: () => router.push("/dashboard"),
+    onSuccess: () => {
+      router.push("/dashboard/admin");
+    },
+    onError: (err: any) => {
+      toast.error(
+        err?.response?.data?.error || "Failed to complete onboarding"
+      );
+    },
   });
 
   if (!user) return null;
@@ -143,30 +173,37 @@ export default function OnboardingPage() {
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
               Business Logo{" "}
-              <span className="text-xs text-[--muted-foreground]">
-                (optional)
-              </span>
+              <span className="text-[--muted-foreground]">(optional)</span>
             </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleLogoChange}
-              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 text-sm cursor-pointer file:bg-[--muted] file:border-0 file:rounded-md file:px-3 file:py-2 file:mr-2"
-            />
-            {logoPreview && (
-              <div className="flex justify-center mt-2">
+            <div className="flex items-center gap-3">
+              <input
+                id="logo-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => document.getElementById("logo-upload")?.click()}
+                className="p-2 rounded-full border border-[--input] bg-[--card] hover:bg-[--muted] transition"
+                aria-label={logoPreview ? "Replace logo" : "Upload logo"}
+              >
+                {logoPreview ? <RefreshCw size={20} /> : <Upload size={20} />}
+              </button>
+              {logoPreview && (
                 <Image
                   src={logoPreview}
                   alt="Logo Preview"
-                  width={96}
-                  height={96}
+                  width={48}
+                  height={48}
                   className="rounded-full object-cover border border-[--border]"
-                  style={{ width: "96px", height: "96px" }}
+                  style={{ width: "48px", height: "48px" }}
                   unoptimized
                   priority
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <button
             type="submit"

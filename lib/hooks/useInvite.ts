@@ -55,7 +55,7 @@ export function useInvite() {
         email: user.email,
       });
     },
-    onSuccess: () => router.push("/dashboard"),
+    onSuccess: () => router.push("/onboarding/staff"),
   });
 
   return {

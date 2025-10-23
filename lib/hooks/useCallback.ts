@@ -23,7 +23,7 @@ export function useAuthCallback() {
       setUser({ id: data.user.id, email: data.user.email!, role: "ADMIN" });
     },
     onSuccess: () => {
-      router.replace("/onboarding");
+      router.replace("/onboarding/admin");
     },
     onError: () => {
       router.replace("/auth/login");

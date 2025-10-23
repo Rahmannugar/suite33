@@ -1,12 +1,41 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { PrismaClient } from "@/lib/generated/prisma";
 
-const prisma = new PrismaClient();
+const supabase = createServerClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    cookies: {
+      get(name: string) {
+        return req.cookies.get(name)?.value;
+      },
+    },
+  }
+);
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Check if user is authenticated
+  const { data } = await supabase.auth.getUser();
+  const user = data?.user;
+  const role = req.cookies.get("user_role")?.value;
+
+  // Redirect authenticated users away from auth pages
+  if (
+    (pathname === "/auth/login" || pathname === "/auth/signup") &&
+    user &&
+    role
+  ) {
+    const dashboard =
+      role === "ADMIN"
+        ? "/dashboard/admin"
+        : role === "STAFF"
+        ? "/dashboard/staff"
+        : "/dashboard";
+    return NextResponse.redirect(new URL(dashboard, req.url));
+  }
 
   // Allow public routes
   if (
@@ -19,57 +48,23 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protect all dashboard routes
+  // Protect dashboard routes
   if (pathname.startsWith("/dashboard")) {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return req.cookies.get(name)?.value;
-          },
-        },
-      }
-    );
-
-    const { data } = await supabase.auth.getUser();
-    const user = data?.user;
-
     if (!user) {
       const redirectUrl = new URL("/auth/login", req.url);
       redirectUrl.searchParams.set("redirectedFrom", pathname);
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Read cached role from cookie
-    const cookieRole = req.cookies.get("user_role")?.value;
-
-    let role = cookieRole;
-
-    // Fallback: If cookie missing, fetch from Prisma
-    if (!role) {
-      const record = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { role: true },
-      });
-      role = record?.role || "ADMIN"; 
+    // Role-based dashboard access
+    if (pathname.startsWith("/dashboard/admin") && role !== "ADMIN") {
+      return NextResponse.redirect(new URL("/dashboard/unauthorized", req.url));
+    }
+    if (pathname.startsWith("/dashboard/staff") && role !== "STAFF") {
+      return NextResponse.redirect(new URL("/dashboard/unauthorized", req.url));
     }
 
-    const isAdminRoute = pathname.startsWith("/dashboard/admin");
-    const isStaffRoute = pathname.startsWith("/dashboard/staff");
-
-    if (isAdminRoute && role !== "ADMIN") {
-      const unauthorizedUrl = new URL("/dashboard/unauthorized", req.url);
-      return NextResponse.redirect(unauthorizedUrl);
-    }
-
-    if (isStaffRoute && role !== "STAFF") {
-      const unauthorizedUrl = new URL("/dashboard/unauthorized", req.url);
-      return NextResponse.redirect(unauthorizedUrl);
-    }
-
-    // If authenticated and authorized, allow access
+    // Set/update role cookie for session continuity
     const res = NextResponse.next();
     res.cookies.set("user_role", role, {
       path: "/",
@@ -84,5 +79,13 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: [
+    "/auth/login",
+    "/auth/signup",
+    "/dashboard/:path*",
+    "/api/:path*",
+    "/",
+    "/images/:path*",
+    "/icons/:path*",
+  ],
 };

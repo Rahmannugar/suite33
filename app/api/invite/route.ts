@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@/lib/generated/prisma";
 import { Resend } from "resend";
-import { v4 as uuidv4 } from "uuid"; 
+import { v4 as uuidv4 } from "uuid";
 
 const prisma = new PrismaClient();
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export async function POST(req: Request) {
   try {
-    const { email, businessId, departmentId } = await req.json();
+    const { email, businessId, departmentName } = await req.json();
 
     if (!email || !businessId) {
       return NextResponse.json(
@@ -17,7 +17,24 @@ export async function POST(req: Request) {
       );
     }
 
-    const token = uuidv4(); 
+    let departmentId: string | undefined = undefined;
+
+    // If departmentName is provided, find or create department for this business
+    if (departmentName) {
+      let department = await prisma.department.findFirst({
+        where: { name: departmentName, businessId },
+      });
+
+      if (!department) {
+        department = await prisma.department.create({
+          data: { name: departmentName, businessId },
+        });
+      }
+
+      departmentId = department.id;
+    }
+
+    const token = uuidv4();
 
     const invite = await prisma.invite.create({
       data: { email, businessId, departmentId, token },
