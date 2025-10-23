@@ -22,9 +22,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const synced = await syncUser(user.id, user.email);
+    const syncedUser = await syncUser(user.id, user.email);
 
-    return NextResponse.json({ user: synced }, { status: 200 });
+    return NextResponse.json(syncedUser, { status: 200 });
   } catch (err) {
     console.error("Sync error:", err);
     return NextResponse.json({ error: "Failed to sync user" }, { status: 500 });

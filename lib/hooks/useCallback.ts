@@ -4,11 +4,16 @@ import { syncUserToPrisma } from "@/lib/hooks/useSyncUser";
 import { useMutation } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
+import axios from "axios";
 
 export function useAuthCallback() {
   const router = useRouter();
   const triggered = useRef(false);
   const setUser = useAuthStore((s) => s.setUser);
+
+  async function setRoleSession(role: string) {
+    await axios.post("/api/auth/session", { role });
+  }
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -16,14 +21,39 @@ export function useAuthCallback() {
       if (error || !data?.user) {
         throw new Error("Callback error");
       }
-      await syncUserToPrisma({
+      const userRecord = await syncUserToPrisma({
         id: data.user.id,
         email: data.user.email ?? "",
       });
-      setUser({ id: data.user.id, email: data.user.email!, role: "ADMIN" });
+
+      await setRoleSession(userRecord.role);
+      setUser({
+        id: userRecord.id,
+        email: userRecord.email,
+        role: userRecord.role,
+      });
+
+      // Fetch full profile to check onboarding status
+      const { data: profile } = await axios.get("/api/user/profile");
+      return profile;
     },
-    onSuccess: () => {
-      router.replace("/onboarding/admin");
+    onSuccess: (profile) => {
+      // Redirect based on role and onboarding status
+      if (profile.role === "ADMIN") {
+        if (profile.businessId && profile.fullName) {
+          router.replace("/dashboard/admin");
+        } else {
+          router.replace("/onboarding/admin");
+        }
+      } else if (profile.role === "STAFF") {
+        if (profile.fullName) {
+          router.replace("/dashboard/staff");
+        } else {
+          router.replace("/onboarding/staff");
+        }
+      } else {
+        router.replace("/dashboard");
+      }
     },
     onError: () => {
       router.replace("/auth/login");

@@ -40,41 +40,33 @@ export default function OnboardingPage() {
     mutationFn: async () => {
       let logoUrl = "";
       if (logoFile && user?.id) {
-        logoUrl = await toast.promise(
-          uploadAvatar(logoFile, user.id),
-          {
-            loading: "Uploading logo...",
-            success: "Logo uploaded successfully!",
-            error: "Failed to upload logo.",
-          },
-          { duration: 1500 }
-        );
+        try {
+          logoUrl = await uploadAvatar(logoFile, user.id);
+        } catch (err) {
+          toast.error("Failed to upload logo.");
+        }
       }
-      return await toast.promise(
-        axios.post("/api/onboarding", {
+      try {
+        await axios.post("/api/onboarding", {
           userId: user?.id,
           fullName,
           businessName,
           industry,
           location,
           logoUrl,
-        }),
-        {
-          loading: "Setting up your business...",
-          success: "Business profile created!",
-          error: "Failed to complete onboarding",
-        },
-        { duration: 3000 }
-      );
+        });
+        toast.success("Business profile created!");
+      } catch (err: any) {
+        toast.error(
+          err?.response?.data?.error || "Failed to complete onboarding"
+        );
+        throw err;
+      }
     },
     onSuccess: () => {
       router.push("/dashboard/admin");
     },
-    onError: (err: any) => {
-      toast.error(
-        err?.response?.data?.error || "Failed to complete onboarding"
-      );
-    },
+   
   });
 
   if (!user) return null;
@@ -145,7 +137,7 @@ export default function OnboardingPage() {
           <div className="flex gap-4">
             <div className="flex-1 space-y-2">
               <label className="block text-sm font-medium text-[--muted-foreground]">
-                Industry <span className="text-red-500">*</span>
+                Industry{" "}
               </label>
               <input
                 type="text"
@@ -158,7 +150,7 @@ export default function OnboardingPage() {
             </div>
             <div className="flex-1 space-y-2">
               <label className="block text-sm font-medium text-[--muted-foreground]">
-                Location <span className="text-red-500">*</span>
+                Location{" "}
               </label>
               <input
                 type="text"

@@ -11,6 +11,7 @@ export async function syncUserToPrisma(user: {
       user: { id: user.id, email: user.email },
     });
 
+    // Use response data directly
     return res.data;
   } catch (err: any) {
     throw new Error(
