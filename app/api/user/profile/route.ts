@@ -31,7 +31,8 @@ export async function GET(req: Request) {
       }
     );
 
-    const { data } = await supabase.auth.getUser();
+    const { data, error } = await supabase.auth.getUser();
+    console.log("Supabase getUser:", { data, error });
     const user = data?.user;
 
     if (!user) {

@@ -87,7 +87,7 @@ export default function StaffInvitePage() {
             </p>
             <Link
               href="/onboarding/admin"
-              className="inline-block rounded-lg bg-blue-600 text-white px-5 py-2 font-medium shadow hover:bg-blue-700 transition"
+              className="text-blue-500 text-sm underline"
             >
               Go to Business Onboarding
             </Link>

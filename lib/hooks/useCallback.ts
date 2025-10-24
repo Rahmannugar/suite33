@@ -21,24 +21,34 @@ export function useAuthCallback() {
       if (error || !data?.user) {
         throw new Error("Callback error");
       }
-      const userRecord = await syncUserToPrisma({
+
+      // Always sync user to Prisma
+      await syncUserToPrisma({
         id: data.user.id,
         email: data.user.email ?? "",
       });
 
-      await setRoleSession(userRecord.role);
+      // Fetch full profile
+      const { data: profile } = await axios.get("/api/user/profile");
+
+      // Set role cookie and Zustand from profile
+      await setRoleSession(profile.role);
       setUser({
-        id: userRecord.id,
-        email: userRecord.email,
-        role: userRecord.role,
+        id: profile.id,
+        email: profile.email,
+        role: profile.role,
+        fullName: profile.fullName,
+        businessId: profile.businessId,
+        businessName: profile.businessName,
+        avatarUrl: profile.avatarUrl,
+        departmentId: profile.departmentId,
+        departmentName: profile.departmentName,
       });
 
-      // Fetch full profile to check onboarding status
-      const { data: profile } = await axios.get("/api/user/profile");
       return profile;
     },
     onSuccess: (profile) => {
-      // Redirect based on role and onboarding status
+      // Use role for routing, not businessId
       if (profile.role === "ADMIN") {
         if (profile.businessId && profile.fullName) {
           router.replace("/dashboard/admin");

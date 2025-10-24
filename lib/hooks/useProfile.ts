@@ -17,7 +17,7 @@ export function useProfile() {
     },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
-    enabled: !!user?.id,
+    enabled: true,
   });
 
   useEffect(() => {

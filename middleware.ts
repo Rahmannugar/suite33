@@ -58,10 +58,30 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protect dashboard routes
+  // Protect dashboard and onboarding routes
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding")) {
+    if (!user || !role) {
+      return NextResponse.redirect(new URL("/auth/login", req.url));
+    }
+    // Role-based onboarding protection
+    if (pathname.startsWith("/onboarding/admin") && role !== "ADMIN") {
+      return NextResponse.redirect(new URL("/unathorized", req.url));
+    }
+    if (pathname.startsWith("/onboarding/staff") && role !== "STAFF") {
+      return NextResponse.redirect(new URL("/unathorized", req.url));
+    }
+    // Role-based dashboard protection
+    if (pathname.startsWith("/dashboard/admin") && role !== "ADMIN") {
+      return NextResponse.redirect(new URL("/unathorized", req.url));
+    }
+    if (pathname.startsWith("/dashboard/staff") && role !== "STAFF") {
+      return NextResponse.redirect(new URL("/unathorized", req.url));
+    }
+  }
+
+  // Protect /dashboard root route
   if (pathname === "/dashboard") {
     if (!user || !role) {
-      // Redirect to login if cookie/session missing
       return NextResponse.redirect(new URL("/auth/login", req.url));
     }
     if (role === "ADMIN") {
@@ -70,7 +90,7 @@ export async function middleware(req: NextRequest) {
     if (role === "STAFF") {
       return NextResponse.redirect(new URL("/dashboard/staff", req.url));
     }
-    return NextResponse.redirect(new URL("/dashboard/unathorized", req.url));
+    return NextResponse.redirect(new URL("/unathorized", req.url));
   }
 
   return NextResponse.next();
@@ -81,6 +101,7 @@ export const config = {
     "/auth/login",
     "/auth/signup",
     "/dashboard/:path*",
+    "/onboarding/:path*",
     "/api/:path*",
     "/",
     "/images/:path*",

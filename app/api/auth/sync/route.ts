@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       await supabaseAdmin.auth.admin.getUserById(user.id);
     if (error || !supaUser.user) {
       return NextResponse.json(
-        { error: "User not found in Supabase" },
+        { error: error?.message || "Failed to create account" },
         { status: 404 }
       );
     }

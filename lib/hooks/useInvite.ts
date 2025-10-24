@@ -64,9 +64,11 @@ export function useInvite() {
     },
     onSuccess: (result) => {
       if (result.needsConfirmation) {
+        // Show email confirmation message
         router.replace("/auth/invite?success=confirm");
       } else {
-        router.push("/onboarding/staff");
+        // Redirect to callback with action=invite
+        router.replace("/auth/callback?action=invite");
       }
     },
   });
