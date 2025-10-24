@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
 import { useInvite } from "@/lib/hooks/useInvite";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function AcceptInvitePage() {
   const {
@@ -18,6 +19,8 @@ export default function AcceptInvitePage() {
     passwordError,
     signupMutation,
   } = useInvite();
+  const searchParams = useSearchParams();
+  const success = searchParams.get("success");
 
   const [dots, setDots] = useState(1);
 
@@ -50,6 +53,19 @@ export default function AcceptInvitePage() {
         <p className="text-red-500">Invalid or expired invitation link.</p>
       </div>
     );
+
+  if (success === "confirm") {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-center">
+        <h1 className="text-lg font-semibold mb-2">
+          Check your email
+        </h1>
+        <p className="text-sm text-[--muted-foreground]">
+          We've sent a confirmation link to <b>{invite?.email}</b>. Click it to verify your account and continue.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -99,7 +115,7 @@ export default function AcceptInvitePage() {
               value={password}
               required
               onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-[--ring] outline-none transition pr-10 text-base"
+              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
             />
             <button
               type="button"
@@ -114,6 +130,7 @@ export default function AcceptInvitePage() {
           {passwordError && (
             <p className="text-xs text-red-500 mt-1">{passwordError}</p>
           )}
+        
           {signupMutation.isError && (
             <p className="text-sm text-red-500">
               {(signupMutation.error as Error)?.message ?? "Signup failed"}

@@ -6,9 +6,9 @@ const prisma = new PrismaClient();
 
 export async function GET(
   request: NextRequest,
-  context: { params: { token: string } }
+  context: { params: Promise<{ token: string }> }
 ) {
-  const { token } = context.params;
+  const { token } = await context.params;
 
   try {
     const invite = await prisma.invite.findUnique({

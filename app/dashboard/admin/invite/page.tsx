@@ -7,6 +7,7 @@ import axios from "axios";
 import { validateEmail } from "@/lib/utils/validation";
 import { toast } from "sonner";
 import Link from "next/link";
+import emailjs from "@emailjs/browser";
 
 export default function StaffInvitePage() {
   const user = useAuthStore((s) => s.user);
@@ -22,7 +23,21 @@ export default function StaffInvitePage() {
         businessId: user?.businessId,
         adminId: user?.id,
       });
-      return res.data;
+      const { invite } = res.data;
+
+      await emailjs.send(
+        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
+        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
+        {
+          to_email: email,
+          invite_url: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/invite?token=${invite.token}`,
+          business_name: user?.businessName ?? "",
+          department_name: departmentName ?? "",
+        },
+        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
+      );
+
+      return invite;
     },
     onSuccess: () => {
       toast.success("Invite sent successfully!");
@@ -30,7 +45,17 @@ export default function StaffInvitePage() {
       setDepartmentName("");
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.error || "Failed to send invite");
+      // Show quota error
+      if (
+        err?.response?.data?.error &&
+        err.response.data.error.toLowerCase().includes("invite limit")
+      ) {
+        toast.error(
+          "Monthly quota of 10 invites reached. Please try again next month."
+        );
+      } else {
+        toast.error(err?.response?.data?.error || "Failed to send invite");
+      }
     },
   });
 
