@@ -5,13 +5,14 @@ import { useMutation } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/stores/authStore";
 import axios from "axios";
 import { validateEmail } from "@/lib/utils/validation";
+import { toast } from "sonner";
+import Link from "next/link";
 
 export default function StaffInvitePage() {
   const user = useAuthStore((s) => s.user);
   const [email, setEmail] = useState("");
   const [departmentName, setDepartmentName] = useState("");
   const [emailError, setEmailError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
 
   const sendInvite = useMutation({
     mutationFn: async () => {
@@ -23,15 +24,17 @@ export default function StaffInvitePage() {
       return res.data;
     },
     onSuccess: () => {
-      setSuccessMsg("Invite sent successfully! Check your email.");
+      toast.success("Invite sent successfully!");
       setEmail("");
       setDepartmentName("");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error || "Failed to send invite");
     },
   });
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSuccessMsg("");
     if (!validateEmail(email)) {
       setEmailError("Enter a valid email address.");
       return;
@@ -40,6 +43,8 @@ export default function StaffInvitePage() {
     sendInvite.mutate();
   }
 
+  const canInvite = !!user?.businessId;
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background">
       <div className="w-full max-w-md rounded-2xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-sm p-8">
@@ -47,16 +52,30 @@ export default function StaffInvitePage() {
           Invite a <span className="text-[--primary]">Team Member</span>
         </h1>
         <p className="text-sm text-[--muted-foreground] text-center mb-8">
-          Enter their email and (optionally) department name.
+          Enter their email and department.
         </p>
+        {!canInvite && (
+          <div className="mb-4 flex flex-col items-center gap-2">
+            <p className="text-sm text-red-500 text-center">
+              Complete your business setup before inviting staff.
+            </p>
+            <Link
+              href="/onboarding/admin"
+              className="inline-block rounded-lg bg-blue-600 text-white px-5 py-2 font-medium shadow hover:bg-blue-700 transition"
+            >
+              Go to Business Onboarding
+            </Link>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="email"
-            placeholder="Staff email address"
+            placeholder="Staff email address *"
             value={email}
             required
             onChange={(e) => setEmail(e.target.value)}
-            className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-[--ring] outline-none transition"
+            className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
+            disabled={!canInvite}
           />
           {emailError && (
             <p className="text-xs text-red-500 mt-1">{emailError}</p>
@@ -66,30 +85,21 @@ export default function StaffInvitePage() {
             placeholder="Department (optional)"
             value={departmentName}
             onChange={(e) => setDepartmentName(e.target.value)}
-            className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-[--ring] outline-none transition"
+            className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
+            disabled={!canInvite}
           />
 
           <button
             type="submit"
             className={`w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition ${
-              sendInvite.isPending
+              sendInvite.isPending || !canInvite
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer"
             }`}
-            disabled={sendInvite.isPending}
+            disabled={sendInvite.isPending || !canInvite}
           >
             {sendInvite.isPending ? "Sending..." : "Send Invite"}
           </button>
-
-          {successMsg && (
-            <p className="text-sm text-green-500 text-center">{successMsg}</p>
-          )}
-
-          {sendInvite.isError && (
-            <p className="text-sm text-red-500 text-center">
-              {(sendInvite.error as Error).message}
-            </p>
-          )}
         </form>
       </div>
     </div>

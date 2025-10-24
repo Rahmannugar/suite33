@@ -31,6 +31,8 @@ export function useProfile() {
         businessId: profile.businessId,
         businessName: profile.businessName,
         avatarUrl: profile.avatarUrl,
+        departmentId: profile.departmentId,
+        departmentName: profile.departmentName,
       });
     }
   }, [query.data, setUser]);

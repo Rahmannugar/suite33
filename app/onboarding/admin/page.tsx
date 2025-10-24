@@ -118,7 +118,7 @@ export default function OnboardingPage() {
               value={fullName}
               required
               onChange={(e) => setFullName(e.target.value)}
-              className="block w-full rounded-lg border border-[--input] bg-[--background] p-3 focus:ring-2 focus:ring-[--ring] outline-none transition text-base"
+              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
             />
           </div>
           <div className="space-y-2">
@@ -131,13 +131,13 @@ export default function OnboardingPage() {
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
               required
-              className="block w-full rounded-lg border border-[--input] bg-[--background] p-3 focus:ring-2 focus:ring-[--ring] outline-none transition text-base"
+              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
             />
           </div>
           <div className="flex gap-4">
             <div className="flex-1 space-y-2">
               <label className="block text-sm font-medium text-[--muted-foreground]">
-                Industry{" "}
+                Industry <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -145,12 +145,12 @@ export default function OnboardingPage() {
                 value={industry}
                 required
                 onChange={(e) => setIndustry(e.target.value)}
-                className="block w-full rounded-lg border border-[--input] bg-[--background] p-3 focus:ring-2 focus:ring-[--ring] outline-none transition text-base"
+                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
               />
             </div>
             <div className="flex-1 space-y-2">
               <label className="block text-sm font-medium text-[--muted-foreground]">
-                Location{" "}
+                Location <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -158,7 +158,7 @@ export default function OnboardingPage() {
                 value={location}
                 required
                 onChange={(e) => setLocation(e.target.value)}
-                className="block w-full rounded-lg border border-[--input] bg-[--background] p-3 focus:ring-2 focus:ring-[--ring] outline-none transition text-base"
+                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
               />
             </div>
           </div>

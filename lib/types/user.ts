@@ -6,4 +6,6 @@ export interface User {
   fullName?: string | null;
   businessId?: string | null;
   businessName?: string | null;
+  departmentId?: string | null;
+  departmentName?: string | null;
 }

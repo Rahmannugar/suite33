@@ -88,14 +88,14 @@ export default function StaffOnboardingPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
-              className="block w-full rounded-lg border border-[--input] bg-[--background] p-3 focus:ring-2 focus:ring-[--ring] outline-none transition text-base"
+              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
             />
           </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
               Profile Picture{" "}
-              <span className="text-xs text-[--muted-foreground]">
+              <span className="text-[--muted-foreground]">
                 (optional)
               </span>
             </label>
