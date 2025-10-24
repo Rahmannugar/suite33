@@ -18,16 +18,18 @@ enum Role {
 // MODELS
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String?
-  role      Role      @default(ADMIN)
-  fullName  String?
-  avatarUrl String?
-  business  Business?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  Staff     Staff?
+  id          String    @id @default(uuid())
+  email       String    @unique
+  password    String?
+  role        Role      @default(ADMIN)
+  fullName    String?
+  avatarUrl   String?
+  business    Business?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Staff       Staff?
+  inviteCount Int       @default(0)
+  inviteMonth String?
 }
 
 model Business {

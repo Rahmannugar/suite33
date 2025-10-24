@@ -5,7 +5,6 @@ import { createServerClient } from "@supabase/ssr";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Create Supabase client inside the middleware so req is defined
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -18,7 +17,6 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  // Check if user is authenticated
   const { data } = await supabase.auth.getUser();
   const user = data?.user;
   const role = req.cookies.get("user_role")?.value;
@@ -51,8 +49,9 @@ export async function middleware(req: NextRequest) {
 
   // Protect dashboard routes
   if (pathname === "/dashboard") {
-    if (!user) {
-      return NextResponse.redirect(new URL("/", req.url));
+    if (!user || !role) {
+      // Redirect to login if cookie/session missing
+      return NextResponse.redirect(new URL("/auth/login", req.url));
     }
     if (role === "ADMIN") {
       return NextResponse.redirect(new URL("/dashboard/admin", req.url));

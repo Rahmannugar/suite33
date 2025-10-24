@@ -20,6 +20,7 @@ export default function StaffInvitePage() {
         email,
         departmentName,
         businessId: user?.businessId,
+        adminId: user?.id,
       });
       return res.data;
     },
