@@ -57,11 +57,22 @@ export default function AcceptInvitePage() {
   if (success === "confirm") {
     return (
       <div className="min-h-screen flex items-center justify-center text-center">
-        <h1 className="text-lg font-semibold mb-2">
-          Check your email
-        </h1>
+        <h1 className="text-lg font-semibold mb-2">Check your email</h1>
         <p className="text-sm text-[--muted-foreground]">
-          We've sent a confirmation link to <b>{invite?.email}</b>. Click it to verify your account and continue.
+          We've sent a confirmation link to <b>{invite?.email}</b>. Click it to
+          verify your account and continue.
+        </p>
+      </div>
+    );
+  }
+
+  if (signupMutation.data?.needsConfirmation) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-center">
+        <h1 className="text-lg font-semibold mb-2">Check your email</h1>
+        <p className="text-sm text-[--muted-foreground]">
+          We've sent a confirmation link to <b>{invite?.email}</b>. Click it to
+          verify your account and continue.
         </p>
       </div>
     );
@@ -130,7 +141,7 @@ export default function AcceptInvitePage() {
           {passwordError && (
             <p className="text-xs text-red-500 mt-1">{passwordError}</p>
           )}
-        
+
           {signupMutation.isError && (
             <p className="text-sm text-red-500">
               {(signupMutation.error as Error)?.message ?? "Signup failed"}

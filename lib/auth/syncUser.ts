@@ -13,7 +13,7 @@ export async function syncUser(userId: string, email: string) {
       where: { id: userId },
     });
 
-    if (existing) return existing;
+    if (existing) return existing; 
 
     // Only set role to ADMIN for new users
     const newUser = await prisma.user.create({

@@ -138,7 +138,7 @@ export default function SignupPage() {
               </button>
             </form>
             <button
-              onClick={() => signInWithGoogle.mutate()}
+              onClick={() => signInWithGoogle.mutate({})}
               disabled={signInWithGoogle.isPending}
               className={`mt-4 w-full flex items-center justify-center gap-2 rounded-lg border border-[--input] py-3 hover:bg-blue-50 dark:hover:bg-blue-900 transition ${
                 signInWithGoogle.isPending

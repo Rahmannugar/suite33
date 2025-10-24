@@ -43,32 +43,31 @@ export function useInvite() {
       setPasswordError("");
 
       // Sign up with Supabase
-      const { data, error } = await signUp.mutateAsync({
+      const user = await signUp.mutateAsync({
         email: invite.email,
         password,
       });
 
-      if (error) throw error;
-      if (!data?.user) {
+      if (!user || !user.id) {
+        // Needs email confirmation
         return { needsConfirmation: true };
       }
 
       // Call backend to accept invite + link user
       await axios.post("/api/invite/accept", {
         token,
-        userId: data.user.id,
-        email: data.user.email,
+        userId: user.id,
+        email: user.email,
       });
 
       return { needsConfirmation: false };
     },
     onSuccess: (result) => {
       if (result.needsConfirmation) {
-        // Show email confirmation message
-        router.replace("/auth/invite?success=confirm");
+        //  page shows the confirmation message
       } else {
-        // Redirect to callback with action=invite
-        router.replace("/auth/callback?action=invite");
+        // Go directly to staff onboarding
+        router.replace("/onboarding/staff");
       }
     },
   });

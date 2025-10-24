@@ -5,20 +5,56 @@ import { supabaseClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { syncUserToPrisma } from "@/lib/hooks/useSyncUser";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 
 type Credentials = { email: string; password: string };
 
 export function useAuth() {
   const setUser = useAuthStore((s) => s.setUser);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   async function setRoleSession(role: string) {
     await axios.post("/api/auth/session", { role });
   }
 
+  // Helper: fetch profile, set Zustand, set cookie, and route
+  async function handleProfileAndRoute(userId: string, email: string) {
+    await syncUserToPrisma({ id: userId, email });
+    const { data: profile } = await axios.get("/api/user/profile");
+    await setRoleSession(profile.role);
+    setUser({
+      id: profile.id,
+      email: profile.email,
+      role: profile.role,
+      fullName: profile.fullName,
+      businessId: profile.businessId,
+      businessName: profile.businessName,
+      avatarUrl: profile.avatarUrl,
+      departmentId: profile.departmentId,
+      departmentName: profile.departmentName,
+    });
+
+    // Route based on role
+    if (profile.role === "ADMIN") {
+      if (profile.businessId && profile.fullName) {
+        router.push("/dashboard/admin");
+      } else {
+        router.push("/onboarding/admin");
+      }
+    } else if (profile.role === "STAFF") {
+      if (profile.fullName) {
+        router.push("/dashboard/staff");
+      } else {
+        router.push("/onboarding/staff");
+      }
+    } else {
+      router.push("/dashboard");
+    }
+  }
+
   const signUp = useMutation({
     mutationFn: async ({ email, password }: Credentials) => {
-      // Check if user exists and provider
       const checkRes = await axios.post("/api/auth/check-user", { email });
       if (checkRes.data.exists && checkRes.data.provider === "google") {
         return Promise.reject(
@@ -37,7 +73,7 @@ export function useAuth() {
         email,
         password,
         options: {
-          emailRedirectTo: `${origin}/auth/callback?action=signup`,
+          emailRedirectTo: `${origin}/onboarding/admin`,
         },
       });
 
@@ -59,20 +95,7 @@ export function useAuth() {
           new Error("Signup succeeded but no user returned from Supabase")
         );
 
-      try {
-        const user = await syncUserToPrisma({
-          id: data.user.id,
-          email: data.user.email ?? null,
-        });
-
-        await setRoleSession(user.role);
-        setUser({ id: user.id, email: user.email, role: user.role });
-        return user;
-      } catch (err) {
-        return Promise.reject(
-          new Error("Could not finish account setup. Please try again.")
-        );
-      }
+      return data.user;
     },
   });
 
@@ -125,21 +148,8 @@ export function useAuth() {
           new Error("Login succeeded but no user returned")
         );
 
-      try {
-        const user = await syncUserToPrisma({
-          id: data.user.id,
-          email: data.user.email ?? null,
-        });
-
-        await setRoleSession(user.role);
-        setUser({ id: user.id, email: user.email, role: user.role });
-
-        return user;
-      } catch (err) {
-        return Promise.reject(
-          new Error("Could not finish login. Please try again.")
-        );
-      }
+      await handleProfileAndRoute(data.user.id, data.user.email ?? "");
+      return data.user;
     },
   });
 
@@ -155,7 +165,7 @@ export function useAuth() {
 
   const signInWithGoogle = useMutation({
     mutationFn: async ({ email }: { email?: string }) => {
-        // Check if user exists and provider
+      // Check if user exists and provider
       if (email) {
         const checkRes = await axios.post("/api/auth/check-user", { email });
         if (checkRes.data.exists && checkRes.data.provider === "email") {
@@ -172,6 +182,7 @@ export function useAuth() {
           ? window.location.origin
           : process.env.NEXT_PUBLIC_SITE_URL;
 
+      // Redirect to dashboard after Google login
       const { data, error } = await supabaseClient.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: `${origin}/auth/callback` },
@@ -182,5 +193,22 @@ export function useAuth() {
     },
   });
 
-  return { signUp, signIn, signOut, signInWithGoogle };
+  async function handleGooglePostRedirect() {
+    const { data, error } = await supabaseClient.auth.getUser();
+    if (error || !data?.user) return;
+
+    // sync user to Prisma before fetching profile
+    await syncUserToPrisma({ id: data.user.id, email: data.user.email ?? "" });
+
+    // fetch profile and set Zustand/cookie/route
+    await handleProfileAndRoute(data.user.id, data.user.email ?? "");
+  }
+
+  return {
+    signUp,
+    signIn,
+    signOut,
+    signInWithGoogle,
+    handleGooglePostRedirect,
+  };
 }

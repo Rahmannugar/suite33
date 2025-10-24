@@ -15,12 +15,10 @@ export async function GET(req: Request) {
         cookies: {
           getAll: async () => {
             const allCookies = cookieStore.getAll();
-            return Array.from(allCookies.entries()).map(
-              ([name, cookie]: [string, { value: string }]) => ({
-                name,
-                value: cookie.value,
-              })
-            );
+            return allCookies.map((cookie) => ({
+              name: cookie.name,
+              value: cookie.value,
+            }));
           },
           setAll: async (cookies: { name: string; value: string }[]) => {
             cookies.forEach(({ name, value }) => {

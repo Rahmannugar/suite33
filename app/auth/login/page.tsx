@@ -11,7 +11,7 @@ import { validateEmail, validatePassword } from "@/lib/utils/validation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, handleGooglePostRedirect } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -132,7 +132,7 @@ export default function LoginPage() {
         </form>
 
         <button
-          onClick={() => signInWithGoogle.mutate()}
+          onClick={() => signInWithGoogle.mutate({})}
           disabled={signInWithGoogle.isPending}
           className={`mt-4 w-full flex items-center justify-center gap-2 rounded-lg border border-[--input] py-3 hover:bg-blue-50 dark:hover:bg-blue-900 transition ${
             signInWithGoogle.isPending

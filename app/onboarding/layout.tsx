@@ -1,15 +1,9 @@
 import type { ReactNode } from "react";
-import DashboardClientProvider from "./DashboardClientProvider";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { PrismaClient } from "@/lib/generated/prisma";
 
-export const generateMetadata = () => ({
-  title: "Dashboard",
-  description: "Suite33 Business Management Dashboard",
-});
-
-export default async function DashboardLayout({
+export default async function OnboardingLayout({
   children,
 }: {
   children: ReactNode;
@@ -28,19 +22,14 @@ export default async function DashboardLayout({
     include: { business: true },
   });
 
-  if (
-    profile?.role === "ADMIN" &&
-    (!profile.business?.id || !profile.fullName)
-  ) {
-    redirect("/onboarding/admin");
+  // If admin and onboarding complete, redirect to dashboard
+  if (profile?.role === "ADMIN" && profile.business?.id && profile.fullName) {
+    redirect("/dashboard/admin");
   }
-  if (profile?.role === "STAFF" && !profile.fullName) {
-    redirect("/onboarding/staff");
+  // If staff and onboarding complete, redirect to dashboard
+  if (profile?.role === "STAFF" && profile.fullName) {
+    redirect("/dashboard/staff");
   }
 
-  return (
-    <main>
-      <DashboardClientProvider>{children}</DashboardClientProvider>
-    </main>
-  );
+  return <>{children}</>;
 }

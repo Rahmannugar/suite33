@@ -1,26 +1,46 @@
 "use client";
 
-import { useAuthCallback } from "@/lib/hooks/useCallback";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/hooks/useAuth";
 
-export default function AuthCallback() {
-  const { mutation, dots } = useAuthCallback();
-  const searchParams = useSearchParams();
-  const action = searchParams.get("action");
+function useAuthCallback() {
+  const { handleGooglePostRedirect } = useAuth();
+  const [dots, setDots] = useState(1);
+  const [isError, setIsError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const triggered = useRef(false);
 
-  let heading = "Verifying your account";
-  let subtext = "Please wait a moment while we finish setting up your profile.";
+  useEffect(() => {
+    if (!triggered.current) {
+      triggered.current = true;
+      handleGooglePostRedirect().catch((err) => {
+        setIsError(true);
+        setErrorMsg(err?.message || "Something went wrong");
+      });
+    }
+    // eslint-disable-next-line
+  }, []);
 
-  if (action === "login") {
-    heading = "Signing you in";
-    subtext = "Welcome back! We're logging you in.";
-  } else if (action === "signup") {
-    heading = "Setting up your account";
-    subtext = "Thanks for signing up! We're creating your profile.";
-  } else if (action === "invite") {
-    heading = "Accepting your invitation";
-    subtext = "We're linking you to your team and business.";
-  }
+  useEffect(() => {
+    if (!isError) {
+      const interval = setInterval(() => {
+        setDots((d) => (d === 3 ? 1 : d + 1));
+      }, 400);
+      return () => clearInterval(interval);
+    } else {
+      setDots(1);
+    }
+  }, [isError]);
+
+  return { dots, isError, errorMsg };
+}
+
+export default function AuthCallbackPage() {
+  const { dots, isError, errorMsg } = useAuthCallback();
+  const heading = "Signing you in";
+  const subtext =
+    "Please wait a moment while we finish setting up your profile.";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
@@ -31,9 +51,9 @@ export default function AuthCallback() {
         </span>
       </h1>
       <p className="text-sm text-[--muted-foreground]">{subtext}</p>
-      {mutation.isError && (
+      {isError && (
         <p className="text-xs text-red-500 mt-2">
-          {(mutation.error as Error)?.message ?? "Something went wrong"}
+          {errorMsg ?? "Something went wrong"}
         </p>
       )}
     </div>
