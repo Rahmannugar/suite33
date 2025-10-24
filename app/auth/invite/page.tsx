@@ -2,7 +2,7 @@
 
 import { ThemeToggle } from "@/components/Toggler";
 import Image from "next/image";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useInvite } from "@/lib/hooks/useInvite";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -156,7 +156,11 @@ export default function AcceptInvitePage() {
             }`}
             disabled={signupMutation.isPending}
           >
-            {signupMutation.isPending ? "Joining..." : "Join Business"}
+            {signupMutation.isPending ? (
+              <Loader2 className="animate-spin mx-auto" size={18} />
+            ) : (
+              "Join Business"
+            )}
           </button>
         </form>
       </div>

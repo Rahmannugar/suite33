@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { ThemeToggle } from "@/components/Toggler";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { validateEmail, validatePassword } from "@/lib/utils/validation";
 
 export default function SignupPage() {
@@ -134,7 +134,11 @@ export default function SignupPage() {
                 }`}
                 disabled={signUp.isPending}
               >
-                {signUp.isPending ? "Creating..." : "Sign Up"}
+                {signUp.isPending ? (
+                  <Loader2 className="animate-spin mx-auto" size={18} />
+                ) : (
+                  "Sign Up"
+                )}
               </button>
             </form>
             <button

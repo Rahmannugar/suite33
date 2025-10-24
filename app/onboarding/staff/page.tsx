@@ -1,22 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useMutation } from "@tanstack/react-query";
 import { uploadAvatar } from "@/lib/utils/uploadImage";
 import { ThemeToggle } from "@/components/Toggler";
 import Image from "next/image";
 import axios from "axios";
+import { Upload, RefreshCw, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function StaffOnboardingPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+
   const [fullName, setFullName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [isRouting, setIsRouting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setFile(file);
@@ -31,16 +35,20 @@ export default function StaffOnboardingPage() {
         avatarUrl = await uploadAvatar(file, user.id);
       }
 
-      const res = await axios.post("/api/onboarding/staff", {
+      await axios.post("/api/onboarding/staff", {
         userId: user?.id,
         fullName,
         avatarUrl,
       });
-
-      return res.data;
     },
-    onSuccess: () => router.push("/dashboard"),
+    onSuccess: () => {
+      toast.success("Onboarding complete!");
+      setIsRouting(true);
+      router.push("/dashboard/staff");
+    },
   });
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background">
@@ -95,30 +103,39 @@ export default function StaffOnboardingPage() {
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
               Profile Picture{" "}
-              <span className="text-[--muted-foreground]">
-                (optional)
-              </span>
+              <span className="text-[--muted-foreground]">(optional)</span>
             </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleChange}
-              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 text-sm cursor-pointer file:bg-[--muted] file:border-0 file:rounded-md file:px-3 file:py-2 file:mr-2"
-            />
-            {preview && (
-              <div className="flex justify-center mt-2">
+            <div className="flex items-center gap-3">
+              <input
+                id="logo-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => document.getElementById("logo-upload")?.click()}
+                className="p-2 rounded-full border border-[--input] bg-[--card] hover:bg-[--muted] transition"
+                aria-label={
+                  preview ? "Replace profile picture" : "Upload profile picture"
+                }
+              >
+                {preview ? <RefreshCw size={20} /> : <Upload size={20} />}
+              </button>
+              {preview && (
                 <Image
                   src={preview}
                   alt="Preview"
-                  width={96}
-                  height={96}
+                  width={48}
+                  height={48}
                   className="rounded-full object-cover border border-[--border]"
-                  style={{ width: "96px", height: "96px" }}
+                  style={{ width: "48px", height: "48px" }}
                   unoptimized
                   priority
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {completeOnboarding.isError && (
@@ -131,15 +148,17 @@ export default function StaffOnboardingPage() {
           <button
             type="submit"
             className={`w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition ${
-              completeOnboarding.isPending
+              completeOnboarding.isPending || isRouting
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer"
             }`}
-            disabled={completeOnboarding.isPending}
+            disabled={completeOnboarding.isPending || isRouting}
           >
-            {completeOnboarding.isPending
-              ? "Saving..."
-              : "Continue to Dashboard"}
+            {completeOnboarding.isPending || isRouting ? (
+              <Loader2 className="animate-spin mx-auto" size={18} />
+            ) : (
+              "Continue to Dashboard"
+            )}
           </button>
         </form>
       </div>

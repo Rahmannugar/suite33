@@ -1,79 +1,64 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useMutation } from "@tanstack/react-query";
 import { uploadAvatar } from "@/lib/utils/uploadImage";
 import { ThemeToggle } from "@/components/Toggler";
 import Image from "next/image";
 import axios from "axios";
+import { Upload, RefreshCw, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Upload, RefreshCw } from "lucide-react";
 
-export default function OnboardingPage() {
+export default function AdminOnboardingPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
-  useEffect(() => {
-    if (user?.role === "ADMIN" && user?.businessId) {
-      router.replace("/dashboard/admin");
-    }
-  }, [user, router]);
-
   const [businessName, setBusinessName] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [location, setLocation] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [isRouting, setIsRouting] = useState(false);
 
-  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setLogoFile(file);
-      setLogoPreview(URL.createObjectURL(file));
+      setFile(file);
+      setPreview(URL.createObjectURL(file));
     }
   };
 
-  const submitOnboarding = useMutation({
+  const completeOnboarding = useMutation({
     mutationFn: async () => {
-      let logoUrl = "";
-      if (logoFile && user?.id) {
-        try {
-          logoUrl = await uploadAvatar(logoFile, user.id);
-        } catch (err) {
-          toast.error("Failed to upload logo.");
-        }
+      let logoUrl = null;
+      if (file && user?.id) {
+        logoUrl = await uploadAvatar(file, user.id);
       }
-      try {
-        await axios.post("/api/onboarding", {
-          userId: user?.id,
-          fullName,
-          businessName,
-          industry,
-          location,
-          logoUrl,
-        });
-        toast.success("Business profile created!");
-      } catch (err: any) {
-        toast.error(
-          err?.response?.data?.error || "Failed to complete onboarding"
-        );
-        throw err;
-      }
+
+      await axios.post("/api/onboarding/admin", {
+        userId: user?.id,
+        businessName,
+        logoUrl,
+      });
     },
     onSuccess: () => {
+      toast.success("Onboarding complete!");
+      setIsRouting(true);
       router.push("/dashboard/admin");
     },
-   
   });
+
+  useEffect(() => {
+    if (user?.role === "ADMIN" && user?.businessId) {
+      window.location.href = "/dashboard/admin";
+    }
+  }, [user]);
 
   if (!user) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background">
-      <div className="w-full max-w-lg rounded-xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-lg p-8 relative">
+      <div className="w-full max-w-md rounded-2xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-sm p-8">
         {/*Suite33 Logo */}
         <ThemeToggle />
         <div className="flex justify-center mb-6">
@@ -94,33 +79,20 @@ export default function OnboardingPage() {
             priority
           />
         </div>
-        <h1 className="text-2xl font-bold text-center mb-2">
-          Welcome, <span className="text-[--primary]">{user.email}</span>
+        <h1 className="text-2xl font-semibold text-center mb-1">
+          Welcome to <span className="text-[--primary]">Suite33</span>
         </h1>
         <p className="text-sm text-[--muted-foreground] text-center mb-8">
-          Let’s set up your business profile.
+          Let’s set up your business.
         </p>
 
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            submitOnboarding.mutate();
+            completeOnboarding.mutate();
           }}
           className="space-y-5"
         >
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-[--muted-foreground]">
-              Your Full Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Jane Doe"
-              value={fullName}
-              required
-              onChange={(e) => setFullName(e.target.value)}
-              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
-            />
-          </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
               Business Name <span className="text-red-500">*</span>
@@ -134,34 +106,7 @@ export default function OnboardingPage() {
               className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
             />
           </div>
-          <div className="flex gap-4">
-            <div className="flex-1 space-y-2">
-              <label className="block text-sm font-medium text-[--muted-foreground]">
-                Industry <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Retail"
-                value={industry}
-                required
-                onChange={(e) => setIndustry(e.target.value)}
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
-              />
-            </div>
-            <div className="flex-1 space-y-2">
-              <label className="block text-sm font-medium text-[--muted-foreground]">
-                Location <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Lagos, Nigeria"
-                value={location}
-                required
-                onChange={(e) => setLocation(e.target.value)}
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
-              />
-            </div>
-          </div>
+
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
               Business Logo{" "}
@@ -179,14 +124,16 @@ export default function OnboardingPage() {
                 type="button"
                 onClick={() => document.getElementById("logo-upload")?.click()}
                 className="p-2 rounded-full border border-[--input] bg-[--card] hover:bg-[--muted] transition"
-                aria-label={logoPreview ? "Replace logo" : "Upload logo"}
+                aria-label={
+                  preview ? "Replace business logo" : "Upload business logo"
+                }
               >
-                {logoPreview ? <RefreshCw size={20} /> : <Upload size={20} />}
+                {preview ? <RefreshCw size={20} /> : <Upload size={20} />}
               </button>
-              {logoPreview && (
+              {preview && (
                 <Image
-                  src={logoPreview}
-                  alt="Logo Preview"
+                  src={preview}
+                  alt="Preview"
                   width={48}
                   height={48}
                   className="rounded-full object-cover border border-[--border]"
@@ -197,16 +144,28 @@ export default function OnboardingPage() {
               )}
             </div>
           </div>
+
+          {completeOnboarding.isError && (
+            <p className="text-sm text-red-500 text-center">
+              {(completeOnboarding.error as Error)?.message ??
+                "Failed to complete onboarding"}
+            </p>
+          )}
+
           <button
             type="submit"
             className={`w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition ${
-              submitOnboarding.isPending
+              completeOnboarding.isPending || isRouting
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer"
             }`}
-            disabled={submitOnboarding.isPending}
+            disabled={completeOnboarding.isPending || isRouting}
           >
-            {submitOnboarding.isPending ? "Setting up..." : "Finish Setup"}
+            {completeOnboarding.isPending || isRouting ? (
+              <Loader2 className="animate-spin mx-auto" size={18} />
+            ) : (
+              "Continue to Dashboard"
+            )}
           </button>
         </form>
       </div>

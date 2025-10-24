@@ -5,17 +5,19 @@ import Image from "next/image";
 import { ThemeToggle } from "@/components/Toggler";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 const navLinks = [
   { href: "/#features", label: "Features" },
   { href: "/#process", label: "How it works" },
   { href: "/#testimonials", label: "Testimonials" },
-  { href: "/auth/login", label: "Sign In" },
-  { href: "/auth/signup", label: "Sign Up" },
 ];
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const { signOut } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b-2 border-[--border] backdrop-blur">
@@ -44,11 +46,7 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={
-                  link.label === "Sign Up" || link.label === "Get Started"
-                    ? "rounded-md bg-blue-600 text-white px-4 py-2 font-semibold shadow hover:bg-blue-700 active:scale-95 transition"
-                    : "px-2 py-2 hover:text-blue-600 font-medium transition"
-                }
+                className="px-2 py-2 hover:text-blue-600 font-medium transition"
               >
                 {link.label}
               </Link>
@@ -61,6 +59,29 @@ export function Navbar() {
                 {link.label}
               </a>
             )
+          )}
+          {user ? (
+            <button
+              onClick={() => signOut.mutate()}
+              className="rounded-md bg-red-600 text-white px-4 py-2 font-semibold shadow hover:bg-red-700 active:scale-95 transition"
+            >
+              Logout
+            </button>
+          ) : (
+            <>
+              <Link
+                href="/auth/login"
+                className="px-2 py-2 hover:text-blue-600 font-medium transition"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold shadow hover:bg-blue-700 active:scale-95 transition"
+              >
+                Join
+              </Link>
+            </>
           )}
           <ThemeToggle />
         </nav>
@@ -89,16 +110,40 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={
-                  link.label === "Sign Up" || link.label === "Get Started"
-                    ? "rounded-md bg-blue-600 text-white px-4 py-2 font-semibold shadow hover:bg-blue-700 active:scale-95 transition"
-                    : "px-2 py-2 hover:text-blue-600 font-medium transition"
-                }
+                className="px-2 py-2 hover:text-blue-600 font-medium transition"
                 onClick={() => setOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
+            {user ? (
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  signOut.mutate();
+                }}
+                className="rounded-md bg-red-600 text-white px-4 py-2 font-semibold shadow hover:bg-red-700 active:scale-95 transition"
+              >
+                Logout
+              </button>
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  className="px-2 py-2 hover:text-blue-600 font-medium transition"
+                  onClick={() => setOpen(false)}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold shadow hover:bg-blue-700 active:scale-95 transition"
+                  onClick={() => setOpen(false)}
+                >
+                  Join
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       )}

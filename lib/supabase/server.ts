@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-export const supabaseServer = async () => {
+export const supabaseServer = async (withSetAll = false) => {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -16,11 +16,13 @@ export const supabaseServer = async () => {
             value: cookie.value,
           }));
         },
-        setAll: async (cookies: { name: string; value: string }[]) => {
-          cookies.forEach(({ name, value }) => {
-            cookieStore.set({ name, value });
-          });
-        },
+        ...(withSetAll && {
+          setAll: async (cookies: { name: string; value: string }[]) => {
+            cookies.forEach(({ name, value }) => {
+              cookieStore.set({ name, value });
+            });
+          },
+        }),
       },
     }
   );

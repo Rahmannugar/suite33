@@ -1,0 +1,31 @@
+import { NextResponse } from "next/server";
+import { PrismaClient } from "@/lib/generated/prisma";
+
+const prisma = new PrismaClient();
+
+export async function POST(req: Request) {
+  try {
+    const { userId, fullName, avatarUrl } = await req.json();
+
+    if (!userId || !fullName) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // Update user profile
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { fullName, avatarUrl },
+    });
+
+    return NextResponse.json({ user });
+  } catch (error) {
+    console.error("Staff Onboarding Error:", error);
+    return NextResponse.json(
+      { error: "Failed to complete staff onboarding" },
+      { status: 500 }
+    );
+  }
+}

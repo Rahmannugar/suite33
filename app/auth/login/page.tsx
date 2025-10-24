@@ -6,8 +6,9 @@ import Image from "next/image";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { ThemeToggle } from "@/components/Toggler";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { validateEmail, validatePassword } from "@/lib/utils/validation";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,7 +43,12 @@ export default function LoginPage() {
 
     signIn.mutate(
       { email, password },
-      { onSuccess: () => router.push("/dashboard") }
+      {
+        onSuccess: () => {
+          toast.success("Sign in successful!");
+          router.push("/dashboard");
+        },
+      }
     );
   }
 
@@ -127,7 +133,11 @@ export default function LoginPage() {
             }`}
             disabled={signIn.isPending}
           >
-            {signIn.isPending ? "Signing in..." : "Sign In"}
+            {signIn.isPending ? (
+              <Loader2 className="animate-spin mx-auto" size={18} />
+            ) : (
+              "Sign In"
+            )}
           </button>
         </form>
 

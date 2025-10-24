@@ -1,33 +1,12 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@/lib/generated/prisma";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { supabaseServer } from "@/lib/supabase/server";
 
 const prisma = new PrismaClient();
 
 export async function GET(req: Request) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: async () => {
-            const allCookies = cookieStore.getAll();
-            return allCookies.map((cookie) => ({
-              name: cookie.name,
-              value: cookie.value,
-            }));
-          },
-          setAll: async (cookies: { name: string; value: string }[]) => {
-            cookies.forEach(({ name, value }) => {
-              cookieStore.set({ name, value });
-            });
-          },
-        },
-      }
-    );
+    const supabase = await supabaseServer(true);
 
     const { data, error } = await supabase.auth.getUser();
     console.log("Supabase getUser:", { data, error });
