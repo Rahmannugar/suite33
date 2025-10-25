@@ -16,6 +16,12 @@ export function useStaff() {
     },
   });
 
+  const demoteStaff = useMutation({
+    mutationFn: async ({ staffId }: { staffId: string }) => {
+      await axios.post("/api/staff/promote", { staffId, role: "STAFF" });
+    },
+  });
+
   const moveStaff = useMutation({
     mutationFn: async ({
       staffId,
@@ -38,6 +44,7 @@ export function useStaff() {
     staff: query.data,
     isLoading: query.isLoading,
     promoteStaff,
+    demoteStaff,
     moveStaff,
     removeStaff,
     refetch: query.refetch,

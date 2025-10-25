@@ -51,6 +51,7 @@ model Business {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   Invite       Invite[]
+  Insight      Insight[]
 }
 
 model Department {
@@ -170,4 +171,15 @@ model Invite {
   role         Role        @default(STAFF)
   accepted     Boolean     @default(false)
   createdAt    DateTime    @default(now())
+}
+
+model Insight {
+  id         String   @id @default(uuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  type       String
+  year       Int
+  month      Int?
+  text       String
+  createdAt  DateTime @default(now())
 }

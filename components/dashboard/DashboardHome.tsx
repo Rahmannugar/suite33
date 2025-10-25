@@ -1,14 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  TrendingUp,
-  Wallet,
-  Users2,
-  Boxes,
-  BadgeDollarSign,
-} from "lucide-react";
-import { useAuthStore } from "@/lib/stores/authStore";
 import {
   BarChart,
   Bar,
@@ -18,6 +9,15 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  TrendingUp,
+  Wallet,
+  Users2,
+  Boxes,
+  BadgeDollarSign,
+} from "lucide-react";
+import { useAuthStore } from "@/lib/stores/authStore";
 import { useSales } from "@/lib/hooks/useSales";
 import { useExpenditures } from "@/lib/hooks/useExpenditures";
 import { useStaff } from "@/lib/hooks/useStaff";
@@ -33,7 +33,6 @@ function getEmptyText(feature: string, role: string) {
 
 export default function DashboardHome() {
   const user = useAuthStore((s) => s.user);
-
   const { sales, isLoading: salesLoading } = useSales();
   const { expenditures, isLoading: expLoading } = useExpenditures();
   const { staff, isLoading: staffLoading } = useStaff();
@@ -41,29 +40,40 @@ export default function DashboardHome() {
   const { payroll, isLoading: payrollLoading } = usePayroll();
 
   const role = user?.role ?? "STAFF";
+  const currentYear = new Date().getFullYear();
 
   const salesChartData = sales?.length
-    ? sales.reduce((acc: any[], item) => {
-        const month = new Date(item.date).toLocaleString("default", {
+    ? Array.from({ length: 12 }, (_, i) => {
+        const monthName = new Date(2000, i).toLocaleString("default", {
           month: "short",
         });
-        const found = acc.find((a) => a.name === month);
-        if (found) found.sales += item.amount;
-        else acc.push({ name: month, sales: item.amount });
-        return acc;
-      }, [])
+        const monthSales = sales.filter(
+          (s: any) =>
+            new Date(s.date).getFullYear() === currentYear &&
+            new Date(s.date).getMonth() === i
+        );
+        return {
+          name: monthName,
+          sales: monthSales.reduce((sum, s) => sum + s.amount, 0),
+        };
+      })
     : [];
 
   const expChartData = expenditures?.length
-    ? expenditures.reduce((acc: any[], item) => {
-        const month = new Date(item.date).toLocaleString("default", {
+    ? Array.from({ length: 12 }, (_, i) => {
+        const monthName = new Date(2000, i).toLocaleString("default", {
           month: "short",
         });
-        const found = acc.find((a) => a.name === month);
-        if (found) found.exp += item.amount;
-        else acc.push({ name: month, exp: item.amount });
-        return acc;
-      }, [])
+        const monthExp = expenditures.filter(
+          (e: any) =>
+            new Date(e.date).getFullYear() === currentYear &&
+            new Date(e.date).getMonth() === i
+        );
+        return {
+          name: monthName,
+          exp: monthExp.reduce((sum, e) => sum + e.amount, 0),
+        };
+      })
     : [];
 
   return (
@@ -81,7 +91,13 @@ export default function DashboardHome() {
           ) : salesChartData.length ? (
             <>
               <div className="font-bold text-2xl">
-                ₦{sales.reduce((sum, s) => sum + s.amount, 0).toLocaleString()}
+                ₦
+                {sales
+                  .filter(
+                    (s: any) => new Date(s.date).getFullYear() === currentYear
+                  )
+                  .reduce((sum, s) => sum + s.amount, 0)
+                  .toLocaleString()}
               </div>
               <ResponsiveContainer width="100%" height={80}>
                 <BarChart data={salesChartData}>
@@ -115,6 +131,9 @@ export default function DashboardHome() {
               <div className="font-bold text-2xl">
                 ₦
                 {expenditures
+                  .filter(
+                    (e: any) => new Date(e.date).getFullYear() === currentYear
+                  )
                   .reduce((sum, e) => sum + e.amount, 0)
                   .toLocaleString()}
               </div>
