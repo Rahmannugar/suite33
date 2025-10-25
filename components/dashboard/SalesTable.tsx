@@ -107,12 +107,13 @@ export function SalesTable() {
   async function handleAddSale(e: React.FormEvent) {
     e.preventDefault();
     if (!amount || !date) return;
+    if (!user?.businessId) return;
     setAdding(true);
     try {
       await addSale.mutateAsync({
         amount: parseFloat(amount),
         description: desc,
-        businessId: user?.businessId,
+        businessId: user.businessId,
         date,
       });
       toast.success("Sale added!");

@@ -52,7 +52,10 @@ export function PayrollTable() {
   }, [payroll, user, staff, year, month]);
 
   // Total payroll for the month
-  const totalPayroll = filteredPayroll.reduce((sum, p) => sum + p.amount, 0);
+  const totalPayroll = filteredPayroll.reduce(
+    (sum: number, p: { amount: number }) => sum + p.amount,
+    0
+  );
 
   const deptName =
     user?.role === "SUB_ADMIN" && user?.departmentName

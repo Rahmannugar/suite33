@@ -16,7 +16,11 @@ export default function StaffInvitePage() {
     emailError,
     handleSubmit,
     sendInvite,
-  } = useStaffInvite(user?.businessId, user?.id, user?.businessName);
+  } = useStaffInvite(
+    user?.businessId ?? undefined,
+    user?.id ?? undefined,
+    user?.businessName ?? undefined
+  );
 
   const canInvite = !!user?.businessId;
 

@@ -28,11 +28,13 @@ export function DepartmentManager() {
   async function handleCreateDepartment(e: React.FormEvent) {
     e.preventDefault();
     if (!newDeptName.trim()) return;
+    if (!user?.businessId) return;
+  
     setCreating(true);
     try {
       await axios.post("/api/departments/create", {
         name: newDeptName,
-        businessId: user?.businessId,
+        businessId: user.businessId,
       });
       toast.success("Department created!");
       setNewDeptName("");

@@ -107,12 +107,13 @@ export function ExpenditureTable() {
   async function handleAddExpenditure(e: React.FormEvent) {
     e.preventDefault();
     if (!amount || !date) return;
+    if (!user?.businessId) return;
     setAdding(true);
     try {
       await addExpenditure.mutateAsync({
         amount: parseFloat(amount),
         description: desc,
-        businessId: user?.businessId,
+        businessId: user.businessId,
         date,
       });
       toast.success("Expenditure added!");
@@ -164,14 +165,15 @@ export function ExpenditureTable() {
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!user?.businessId) return;
     setImporting(true);
     try {
       if (file.name.endsWith(".csv")) {
-        await importCSV.mutateAsync({ file, businessId: user?.businessId });
+        await importCSV.mutateAsync({ file, businessId: user.businessId });
       } else if (file.name.endsWith(".xlsx")) {
-        await importExcel.mutateAsync({ file, businessId: user?.businessId });
+        await importExcel.mutateAsync({ file, businessId: user.businessId });
       } else {
-        toast.error("Unsupported file type");
+        throw new Error("Unsupported file type");
       }
       toast.success("Expenditures imported!");
       refetch();

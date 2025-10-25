@@ -53,13 +53,14 @@ export function InventoryTable({ categories }: { categories: any[] }) {
   async function handleAddItem(e: React.FormEvent) {
     e.preventDefault();
     if (!name || !categoryId) return;
+    if (!user?.businessId) return;
     setAdding(true);
     try {
       await addItem.mutateAsync({
         name,
         quantity: parseInt(quantity) || 0,
         categoryId,
-        businessId: user?.businessId,
+        businessId: user.businessId,
       });
       toast.success("Item added!");
       setName("");

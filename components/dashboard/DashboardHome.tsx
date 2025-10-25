@@ -92,8 +92,14 @@ export default function DashboardHome() {
             new Date(e.date).getFullYear() === currentYear &&
             new Date(e.date).getMonth() === i
         ) ?? [];
-      const salesTotal = monthSales.reduce((sum, s) => sum + s.amount, 0);
-      const expTotal = monthExp.reduce((sum, e) => sum + e.amount, 0);
+      const salesTotal = monthSales.reduce(
+        (sum: number, s: { amount: number }) => sum + s.amount,
+        0
+      );
+      const expTotal = monthExp.reduce(
+        (sum: number, e: { amount: number }) => sum + e.amount,
+        0
+      );
       return {
         month: new Date(2000, i).toLocaleString("default", { month: "long" }),
         sales: salesTotal,
@@ -103,8 +109,14 @@ export default function DashboardHome() {
     });
   }, [sales, expenditures, currentYear]);
 
-  const yearSales = pnlTable.reduce((sum, row) => sum + row.sales, 0);
-  const yearExp = pnlTable.reduce((sum, row) => sum + row.expenditures, 0);
+  const yearSales = pnlTable.reduce(
+    (sum: number, row: { sales: number }) => sum + row.sales,
+    0
+  );
+  const yearExp = pnlTable.reduce(
+    (sum: number, row: { expenditures: number }) => sum + row.expenditures,
+    0
+  );
   const yearPnl = yearSales - yearExp;
 
   return (
