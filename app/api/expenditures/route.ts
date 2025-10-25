@@ -5,11 +5,11 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    const sales = await prisma.sale.findMany();
-    return NextResponse.json({ sales });
+    const expenditures = await prisma.expenditure.findMany();
+    return NextResponse.json({ expenditures });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch sales" },
+      { error: "Failed to fetch expenditures" },
       { status: 500 }
     );
   }
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     if (!amount || !businessId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
-    const sale = await prisma.sale.create({
+    const expenditure = await prisma.expenditure.create({
       data: {
         amount,
         description,
@@ -29,8 +29,11 @@ export async function POST(request: NextRequest) {
         date: date ? new Date(date) : new Date(),
       },
     });
-    return NextResponse.json({ sale });
+    return NextResponse.json({ expenditure });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to add sale" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to add expenditure" },
+      { status: 500 }
+    );
   }
 }

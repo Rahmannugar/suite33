@@ -5,25 +5,25 @@ const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const { sales, businessId } = await request.json();
-    if (!Array.isArray(sales) || !businessId) {
+    const { items, businessId } = await request.json();
+    if (!Array.isArray(items) || !businessId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
-    for (const s of sales) {
-      if (!s.amount) continue;
-      await prisma.sale.create({
+    for (const item of items) {
+      if (!item.name || !item.categoryId) continue;
+      await prisma.inventory.create({
         data: {
-          amount: parseFloat(s.amount),
-          description: s.description,
+          name: item.name,
+          quantity: item.quantity ? parseInt(item.quantity) : 0,
+          categoryId: item.categoryId,
           businessId,
-          date: s.date ? new Date(s.date) : undefined,
         },
       });
     }
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to import sales" },
+      { error: "Failed to import inventory" },
       { status: 500 }
     );
   }

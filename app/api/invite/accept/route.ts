@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@/lib/generated/prisma";
 
 const prisma = new PrismaClient();
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { token, userId, email } = await req.json();
+    const { token, userId, email } = await request.json();
 
     if (!token || !userId || !email) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const user = await prisma.user.upsert({
       where: { id: userId },
       update: {
-        role: invite.role, // Use role from invite (STAFF or SUB_ADMIN)
+        role: invite.role,
         business: { connect: { id: invite.businessId } },
       },
       create: {

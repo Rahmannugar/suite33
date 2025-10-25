@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@/lib/generated/prisma";
 import { v4 as uuidv4 } from "uuid";
 
 const prisma = new PrismaClient();
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
     const { email, businessId, departmentName, adminId, role } =
-      await req.json();
+      await request.json();
 
     if (!email || !businessId || !adminId || !role) {
       return NextResponse.json(

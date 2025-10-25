@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: Request) {
-  const { role } = await req.json();
+export async function POST(request: NextRequest) {
+  const { role } = await request.json();
   if (!role)
     return NextResponse.json({ error: "Missing role" }, { status: 400 });
 

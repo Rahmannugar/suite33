@@ -39,7 +39,7 @@ const items = [
   {
     icon: Upload,
     title: "Data Export",
-    desc: "Export your records as CSV for sharing and backups.",
+    desc: "Export your records as CSV and Excel for sharing and backups.",
   },
   {
     icon: BrainCircuit,

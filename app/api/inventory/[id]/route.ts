@@ -8,15 +8,15 @@ export async function PUT(
   context: { params: { id: string } }
 ) {
   try {
-    const { amount, description, date } = await request.json();
-    const sale = await prisma.sale.update({
+    const { name, quantity, categoryId } = await request.json();
+    const item = await prisma.inventory.update({
       where: { id: context.params.id },
-      data: { amount, description, date: date ? new Date(date) : undefined },
+      data: { name, quantity, categoryId },
     });
-    return NextResponse.json({ sale });
+    return NextResponse.json({ item });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update sale" },
+      { error: "Failed to update inventory" },
       { status: 500 }
     );
   }
@@ -27,11 +27,11 @@ export async function DELETE(
   context: { params: { id: string } }
 ) {
   try {
-    await prisma.sale.delete({ where: { id: context.params.id } });
+    await prisma.inventory.delete({ where: { id: context.params.id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete sale" },
+      { error: "Failed to delete inventory" },
       { status: 500 }
     );
   }

@@ -5,25 +5,25 @@ const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const { sales, businessId } = await request.json();
-    if (!Array.isArray(sales) || !businessId) {
+    const { expenditures, businessId } = await request.json();
+    if (!Array.isArray(expenditures) || !businessId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
-    for (const s of sales) {
-      if (!s.amount) continue;
-      await prisma.sale.create({
+    for (const e of expenditures) {
+      if (!e.amount) continue;
+      await prisma.expenditure.create({
         data: {
-          amount: parseFloat(s.amount),
-          description: s.description,
+          amount: parseFloat(e.amount),
+          description: e.description,
           businessId,
-          date: s.date ? new Date(s.date) : undefined,
+          date: e.date ? new Date(e.date) : new Date(),
         },
       });
     }
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to import sales" },
+      { error: "Failed to import expenditures" },
       { status: 500 }
     );
   }

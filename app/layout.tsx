@@ -57,6 +57,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Google Analytics script */}
+        <script
+          async
+          src={`https://www.googletagmanager.com/gtag/js?id=G-JLYME333L9`}
+        />
+        <script>
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);
+            gtag('js', new Date());
+            gtag('config', 'G-JLYME333L9');
+          `}
+        </script>
+      </head>
       <body className={` ${interFont.className} antialiased`}>
         <ThemeProvider>
           <QueryProvider>

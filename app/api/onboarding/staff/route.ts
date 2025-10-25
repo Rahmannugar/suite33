@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@/lib/generated/prisma";
 
 const prisma = new PrismaClient();
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { userId, fullName, avatarUrl } = await req.json();
+    const { userId, fullName, avatarUrl } = await request.json();
 
     if (!userId || !fullName) {
       return NextResponse.json(

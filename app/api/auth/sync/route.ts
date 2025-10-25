@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { syncUser } from "@/lib/auth/syncUser";
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { user } = await req.json();
+    const { user } = await request.json();
 
     if (!user?.id || !user?.email) {
       return NextResponse.json(

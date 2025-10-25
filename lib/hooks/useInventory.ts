@@ -1,0 +1,156 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import axios from "axios";
+import Papa from "papaparse";
+import ExcelJS from "exceljs";
+
+export function useInventory() {
+  const query = useQuery({
+    queryKey: ["inventory"],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/inventory");
+      return data.inventory;
+    },
+  });
+
+  const addItem = useMutation({
+    mutationFn: async (payload: {
+      name: string;
+      quantity: number;
+      categoryId: string;
+      businessId: string;
+    }) => {
+      await axios.post("/api/inventory", payload);
+    },
+  });
+
+  const editItem = useMutation({
+    mutationFn: async (payload: {
+      id: string;
+      name: string;
+      quantity: number;
+      categoryId: string;
+    }) => {
+      await axios.put(`/api/inventory/${payload.id}`, payload);
+    },
+  });
+
+  const deleteItem = useMutation({
+    mutationFn: async (id: string) => {
+      await axios.delete(`/api/inventory/${id}`);
+    },
+  });
+
+  const importCSV = useMutation({
+    mutationFn: async ({
+      file,
+      businessId,
+    }: {
+      file: File;
+      businessId: string;
+    }) => {
+      return new Promise<void>((resolve, reject) => {
+        Papa.parse(file, {
+          header: true,
+          complete: async (results) => {
+            const validRows = results.data.filter(
+              (row: any) => row.name && row.categoryId
+            );
+            if (!validRows.length)
+              return reject(new Error("No valid inventory data found in CSV"));
+            validRows.forEach((row: any) => {
+              if (!row.quantity) row.quantity = 0;
+            });
+            await axios.post("/api/inventory/import", {
+              items: validRows,
+              businessId,
+            });
+            resolve();
+          },
+        });
+      });
+    },
+  });
+
+  const importExcel = useMutation({
+    mutationFn: async ({
+      file,
+      businessId,
+    }: {
+      file: File;
+      businessId: string;
+    }) => {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await file.arrayBuffer());
+      const worksheet = workbook.worksheets[0];
+      const items: any[] = [];
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; 
+        const [name, quantity, categoryId] = row.values.slice(1);
+        if (name && categoryId) {
+          items.push({
+            name,
+            quantity: quantity ? parseInt(quantity) : 0,
+            categoryId,
+          });
+        }
+      });
+      if (!items.length)
+        throw new Error("No valid inventory data found in Excel");
+      await axios.post("/api/inventory/import", { items, businessId });
+    },
+  });
+
+  function exportCSV(items: any[]) {
+    const csv = Papa.unparse(items);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "inventory.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function exportExcel(items: any[]) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Inventory");
+    worksheet.addRow(["Name", "Quantity", "CategoryId"]);
+    items.forEach((item) => {
+      worksheet.addRow([item.name, item.quantity, item.categoryId]);
+    });
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "inventory.xlsx";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const lowStock = useQuery({
+    queryKey: ["inventory-low-stock"],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/inventory/low-stock");
+      return data.lowStock;
+    },
+  });
+
+  return {
+    inventory: query.data,
+    isLoading: query.isLoading,
+    refetch: query.refetch,
+    addItem,
+    editItem,
+    deleteItem,
+    importCSV,
+    importExcel,
+    exportCSV,
+    exportExcel,
+    lowStock: lowStock.data,
+    isLowStockLoading: lowStock.isLoading,
+    refetchLowStock: lowStock.refetch,
+  };
+}

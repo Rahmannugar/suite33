@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@/lib/generated/prisma";
 
 const prisma = new PrismaClient();
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { name, businessId, headUserId } = await req.json();
+    const { name, businessId, headUserId } = await request.json();
     if (!name || !businessId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
