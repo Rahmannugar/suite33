@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 const navLinks = [
   { href: "/#features", label: "Features" },
@@ -18,6 +19,12 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
   const { signOut } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut.mutateAsync();
+    router.push("/auth/login");
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full border-b-2 border-[--border] backdrop-blur">
@@ -62,7 +69,7 @@ export function Navbar() {
           )}
           {user ? (
             <button
-              onClick={() => signOut.mutate()}
+              onClick={handleLogout}
               className="rounded-md bg-red-600 text-white px-4 py-2 font-semibold shadow hover:bg-red-700 active:scale-95 transition"
             >
               Logout
@@ -120,7 +127,7 @@ export function Navbar() {
               <button
                 onClick={() => {
                   setOpen(false);
-                  signOut.mutate();
+                  handleLogout();
                 }}
                 className="rounded-md bg-red-600 text-white px-4 py-2 font-semibold shadow hover:bg-red-700 active:scale-95 transition"
               >

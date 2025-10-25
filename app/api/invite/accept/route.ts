@@ -31,13 +31,13 @@ export async function POST(req: Request) {
     const user = await prisma.user.upsert({
       where: { id: userId },
       update: {
-        role: "STAFF",
+        role: invite.role, // Use role from invite (STAFF or SUB_ADMIN)
         business: { connect: { id: invite.businessId } },
       },
       create: {
         id: userId,
         email,
-        role: "STAFF",
+        role: invite.role,
         business: { connect: { id: invite.businessId } },
       },
       include: { business: true },
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
 
     // Set secure role cookie
     const res = NextResponse.json({ success: true, user });
-    res.cookies.set("user_role", "STAFF", {
+    res.cookies.set("user_role", invite.role, {
       path: "/",
       httpOnly: true,
       sameSite: "lax",

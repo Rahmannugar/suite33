@@ -9,7 +9,7 @@ export async function GET(req: Request) {
     const supabase = await supabaseServer(true);
 
     const { data, error } = await supabase.auth.getUser();
-    console.log("Supabase getUser:", { data, error });
+    //console.log("Supabase getUser:", { data, error });
     const user = data?.user;
 
     if (!user) {

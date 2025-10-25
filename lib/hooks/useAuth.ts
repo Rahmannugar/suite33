@@ -42,7 +42,7 @@ export function useAuth() {
       } else {
         router.push("/onboarding/admin");
       }
-    } else if (profile.role === "STAFF") {
+    } else if (profile.role === "STAFF" || profile.role === "SUB_ADMIN") {
       if (profile.fullName) {
         router.push("/dashboard/staff");
       } else {

@@ -39,7 +39,7 @@ export async function middleware(req: NextRequest) {
     const dashboard =
       role === "ADMIN"
         ? "/dashboard/admin"
-        : role === "STAFF"
+        : role === "STAFF" || role === "SUB_ADMIN"
         ? "/dashboard/staff"
         : "/dashboard";
     return NextResponse.redirect(new URL(dashboard, req.url));
@@ -65,14 +65,22 @@ export async function middleware(req: NextRequest) {
     if (pathname.startsWith("/onboarding/admin") && role !== "ADMIN") {
       return NextResponse.redirect(new URL("/unathorized", req.url));
     }
-    if (pathname.startsWith("/onboarding/staff") && role !== "STAFF") {
+    if (
+      pathname.startsWith("/onboarding/staff") &&
+      role !== "STAFF" &&
+      role !== "SUB_ADMIN"
+    ) {
       return NextResponse.redirect(new URL("/unathorized", req.url));
     }
     // Role-based dashboard protection
     if (pathname.startsWith("/dashboard/admin") && role !== "ADMIN") {
       return NextResponse.redirect(new URL("/unathorized", req.url));
     }
-    if (pathname.startsWith("/dashboard/staff") && role !== "STAFF") {
+    if (
+      pathname.startsWith("/dashboard/staff") &&
+      role !== "STAFF" &&
+      role !== "SUB_ADMIN"
+    ) {
       return NextResponse.redirect(new URL("/unathorized", req.url));
     }
   }
@@ -85,7 +93,7 @@ export async function middleware(req: NextRequest) {
     if (role === "ADMIN") {
       return NextResponse.redirect(new URL("/dashboard/admin", req.url));
     }
-    if (role === "STAFF") {
+    if (role === "STAFF" || role === "SUB_ADMIN") {
       return NextResponse.redirect(new URL("/dashboard/staff", req.url));
     }
     return NextResponse.redirect(new URL("/unathorized", req.url));

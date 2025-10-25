@@ -6,9 +6,10 @@ const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
-    const { email, businessId, departmentName, adminId } = await req.json();
+    const { email, businessId, departmentName, adminId, role } =
+      await req.json();
 
-    if (!email || !businessId || !adminId) {
+    if (!email || !businessId || !adminId || !role) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
     const token = uuidv4();
 
     const invite = await prisma.invite.create({
-      data: { email, businessId, departmentId, token },
+      data: { email, businessId, departmentId, token, role },
       include: { business: true, department: true },
     });
 

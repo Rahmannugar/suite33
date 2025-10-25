@@ -26,8 +26,11 @@ export default async function OnboardingLayout({
   if (profile?.role === "ADMIN" && profile.business?.id && profile.fullName) {
     redirect("/dashboard/admin");
   }
-  // If staff and onboarding complete, redirect to dashboard
-  if (profile?.role === "STAFF" && profile.fullName) {
+  // If staff/subadmin and onboarding complete, redirect to dashboard
+  if (
+    (profile?.role === "STAFF" || profile?.role === "SUB_ADMIN") &&
+    profile.fullName
+  ) {
     redirect("/dashboard/staff");
   }
 

@@ -14,7 +14,7 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const supabase = await supabaseServer(); 
+  const supabase = await supabaseServer();
   const { data } = await supabase.auth.getUser();
   const user = data?.user;
 
@@ -34,7 +34,10 @@ export default async function DashboardLayout({
   ) {
     redirect("/onboarding/admin");
   }
-  if (profile?.role === "STAFF" && !profile.fullName) {
+  if (
+    (profile?.role === "STAFF" || profile?.role === "SUB_ADMIN") &&
+    !profile.fullName
+  ) {
     redirect("/onboarding/staff");
   }
 

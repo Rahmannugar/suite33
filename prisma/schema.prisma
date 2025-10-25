@@ -12,6 +12,7 @@ datasource db {
 // ENUMS
 enum Role {
   ADMIN
+  SUB_ADMIN
   STAFF
 }
 

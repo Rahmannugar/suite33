@@ -1,73 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/stores/authStore";
-import axios from "axios";
-import { validateEmail } from "@/lib/utils/validation";
-import { toast } from "sonner";
+import { useStaffInvite } from "@/lib/hooks/useStaffInvite";
 import Link from "next/link";
-import emailjs from "@emailjs/browser";
 
 export default function StaffInvitePage() {
   const user = useAuthStore((s) => s.user);
-  const [email, setEmail] = useState("");
-  const [departmentName, setDepartmentName] = useState("");
-  const [emailError, setEmailError] = useState("");
-
-  const sendInvite = useMutation({
-    mutationFn: async () => {
-      const res = await axios.post("/api/invite", {
-        email,
-        departmentName,
-        businessId: user?.businessId,
-        adminId: user?.id,
-      });
-      const { invite } = res.data;
-
-      await emailjs.send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-        {
-          to_email: email,
-          invite_url: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/invite?token=${invite.token}`,
-          business_name: user?.businessName ?? "",
-          department_name: departmentName ?? "",
-        },
-        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
-      );
-
-      return invite;
-    },
-    onSuccess: () => {
-      toast.success("Invite sent successfully!");
-      setEmail("");
-      setDepartmentName("");
-    },
-    onError: (err: any) => {
-      // Show quota error
-      if (
-        err?.response?.data?.error &&
-        err.response.data.error.toLowerCase().includes("invite limit")
-      ) {
-        toast.error(
-          "Monthly quota of 10 invites reached. Please try again next month."
-        );
-      } else {
-        toast.error(err?.response?.data?.error || "Failed to send invite");
-      }
-    },
-  });
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!validateEmail(email)) {
-      setEmailError("Enter a valid email address.");
-      return;
-    }
-    setEmailError("");
-    sendInvite.mutate();
-  }
+  const {
+    email,
+    setEmail,
+    departmentName,
+    setDepartmentName,
+    role,
+    setRole,
+    emailError,
+    handleSubmit,
+    sendInvite,
+  } = useStaffInvite(user?.businessId, user?.id, user?.businessName);
 
   const canInvite = !!user?.businessId;
 
@@ -78,7 +27,7 @@ export default function StaffInvitePage() {
           Invite a <span className="text-[--primary]">Team Member</span>
         </h1>
         <p className="text-sm text-[--muted-foreground] text-center mb-8">
-          Enter their email and department.
+          Enter their email, department, and role.
         </p>
         {!canInvite && (
           <div className="mb-4 flex flex-col items-center gap-2">
@@ -114,6 +63,15 @@ export default function StaffInvitePage() {
             className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
             disabled={!canInvite}
           />
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as "STAFF" | "SUB_ADMIN")}
+            className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            disabled={!canInvite}
+          >
+            <option value="STAFF">Staff</option>
+            <option value="SUB_ADMIN">Assistant Admin</option>
+          </select>
 
           <button
             type="submit"
