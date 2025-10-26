@@ -1,8 +1,8 @@
 "use client";
 
-import { useAuthStore } from "@/lib/stores/authStore";
 import { useInventory } from "@/lib/hooks/useInventory";
-import { useState } from "react";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
 interface Inventory {
@@ -14,11 +14,7 @@ interface Inventory {
   category?: { id: string; name: string };
 }
 
-export function InventoryTable({
-  categories,
-}: {
-  categories: Inventory["category"][];
-}) {
+export function InventoryTable() {
   const user = useAuthStore((s) => s.user);
   const {
     inventory,
@@ -36,9 +32,19 @@ export function InventoryTable({
     refetchLowStock,
   } = useInventory();
 
+  // Extract unique categories from inventory data
+  const categories = useMemo(() => {
+    if (!inventory) return [];
+    const map = new Map<string, { id: string; name: string }>();
+    inventory.forEach((item: Inventory) => {
+      if (item.category) map.set(item.category.id, item.category);
+    });
+    return Array.from(map.values());
+  }, [inventory]);
+
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
-  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState("");
   const [adding, setAdding] = useState(false);
 
   // Edit modal state
@@ -50,18 +56,14 @@ export function InventoryTable({
 
   // Filter by category
   const [filterCategory, setFilterCategory] = useState<string>("all");
-
-  // Import
-  const [importing, setImporting] = useState(false);
-
-  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
-
   const filteredInventory =
     filterCategory === "all"
-      ? ((inventory ?? []) as Inventory[])
-      : ((inventory ?? []) as Inventory[]).filter(
+      ? inventory ?? []
+      : (inventory ?? []).filter(
           (item: Inventory) => item.categoryId === filterCategory
         );
+
+  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
 
   async function handleAddItem(e: React.FormEvent) {
     e.preventDefault();
@@ -78,7 +80,7 @@ export function InventoryTable({
       toast.success("Item added!");
       setName("");
       setQuantity("");
-      setCategoryId(categories[0]?.id ?? "");
+      setCategoryId("");
       refetch();
       refetchLowStock();
     } catch {
@@ -124,109 +126,28 @@ export function InventoryTable({
     }
   }
 
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!user?.businessId) return;
-    setImporting(true);
-    try {
-      if (file.name.endsWith(".csv")) {
-        await importCSV.mutateAsync({
-          file,
-          businessId: user.businessId,
-        });
-      } else if (file.name.endsWith(".xlsx")) {
-        await importExcel.mutateAsync({
-          file,
-          businessId: user.businessId,
-        });
-      } else {
-        throw new Error("Unsupported file type");
-      }
-      toast.success("Inventory imported!");
-      refetch();
-      refetchLowStock();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to import inventory");
-    } finally {
-      setImporting(false);
-    }
-  }
-
-  function handleExportCSV() {
-    exportCSV(filteredInventory);
-  }
-
-  async function handleExportExcel() {
-    await exportExcel(filteredInventory);
-  }
-
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Inventory</h2>
-      {/* Low stock alert */}
-      {isLowStockLoading ? (
-        <div>Checking for low stock...</div>
-      ) : lowStock?.length ? (
-        <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded text-yellow-900">
-          {lowStock.map((item: Inventory) => (
-            <div key={item.id} className="flex items-center gap-2">
-              <span className="font-semibold">{item.name}</span>
-              <span>
-                ({item.quantity} left in{" "}
-                {item.category?.name ?? "Unknown Category"})
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-      {/* Filter controls */}
       <div className="flex gap-2 mb-4 items-center">
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
-          className="border rounded px-2 py-1"
+          className="max-w-xs w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition font-medium"
         >
           <option value="all">All Categories</option>
-          {categories.map((cat) =>
-            cat ? (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ) : null
-          )}
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
         </select>
-        <button
-          type="button"
-          className="bg-blue-600 text-white px-3 py-1 rounded"
-          onClick={handleExportCSV}
-        >
-          Export CSV
-        </button>
-        <button
-          type="button"
-          className="bg-blue-600 text-white px-3 py-1 rounded"
-          onClick={handleExportExcel}
-        >
-          Export Excel
-        </button>
-        <label className="bg-blue-600 text-white px-3 py-1 rounded cursor-pointer">
-          {importing ? "Importing..." : "Import"}
-          <input
-            type="file"
-            accept=".csv,.xlsx"
-            onChange={handleImport}
-            className="hidden"
-            disabled={importing}
-          />
-        </label>
       </div>
-      {/* Add item */}
       {canMutate && (
-        <form onSubmit={handleAddItem} className="flex gap-2 mb-6 flex-wrap">
+        <form onSubmit={handleAddItem} className="flex gap-2 mb-4">
           <input
             type="text"
-            placeholder="Item Name"
+            placeholder="Item name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="border rounded px-3 py-2"
@@ -246,13 +167,12 @@ export function InventoryTable({
             className="border rounded px-3 py-2"
             required
           >
-            {categories.map((cat) =>
-              cat ? (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ) : null
-            )}
+            <option value="">Select category</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
           </select>
           <button
             type="submit"
@@ -263,31 +183,28 @@ export function InventoryTable({
           </button>
         </form>
       )}
-      {/* Table */}
       {isLoading ? (
         <div>Loading inventory...</div>
       ) : filteredInventory.length ? (
         <table className="w-full border rounded">
           <thead>
-            <tr className="bg-blue-50 dark:bg-blue-900/40">
-              <th className="p-2 text-left">Name</th>
-              <th className="p-2 text-left">Quantity</th>
-              <th className="p-2 text-left">Category</th>
-              {canMutate && <th className="p-2 text-left">Actions</th>}
+            <tr>
+              <th>Name</th>
+              <th>Quantity</th>
+              <th>Category</th>
+              {canMutate && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {filteredInventory.map((item: Inventory) => (
-              <tr key={item.id} className="border-t">
-                <td className="p-2">{item.name}</td>
-                <td className="p-2">{item.quantity}</td>
-                <td className="p-2">
-                  {item.category?.name ?? "Unknown Category"}
-                </td>
+              <tr key={item.id}>
+                <td>{item.name}</td>
+                <td>{item.quantity}</td>
+                <td>{item.category?.name ?? "-"}</td>
                 {canMutate && (
-                  <td className="p-2 flex gap-2">
+                  <td>
                     <button
-                      className="text-blue-600 text-xs"
+                      className="text-blue-600 mr-2"
                       onClick={() => {
                         setEditId(item.id);
                         setEditName(item.name);
@@ -298,7 +215,7 @@ export function InventoryTable({
                       Edit
                     </button>
                     <button
-                      className="text-red-600 text-xs"
+                      className="text-red-600"
                       onClick={() => handleDeleteItem(item.id)}
                     >
                       Delete
@@ -311,52 +228,47 @@ export function InventoryTable({
         </table>
       ) : (
         <div className="text-sm text-[--muted-foreground] mt-4">
-          {canMutate
-            ? "Inventory is empty, start adding."
-            : "Inventory is empty, please contact admin."}
+          Inventory is empty.
         </div>
       )}
       {/* Edit Modal */}
       {editId && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-blue-900/40 rounded-lg p-6 shadow-lg w-full max-w-sm">
-            <h3 className="font-semibold mb-4">Edit Item</h3>
             <form onSubmit={handleEditItem} className="space-y-4">
+              <label className="block text-sm font-medium">Edit Item</label>
               <input
                 type="text"
-                placeholder="Item Name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="border rounded px-3 py-2 w-full"
                 required
+                className="border rounded px-3 py-2 w-full"
               />
               <input
                 type="number"
-                placeholder="Quantity"
                 value={editQuantity}
                 onChange={(e) => setEditQuantity(e.target.value)}
-                className="border rounded px-3 py-2 w-full"
                 required
+                className="border rounded px-3 py-2 w-full"
               />
               <select
                 value={editCategoryId}
                 onChange={(e) => setEditCategoryId(e.target.value)}
-                className="border rounded px-3 py-2 w-full"
                 required
+                className="border rounded px-3 py-2 w-full"
               >
-                {categories.map((cat) =>
-                  cat ? (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ) : null
-                )}
+                <option value="">Select category</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
               </select>
               <div className="flex gap-2 justify-end">
                 <button
                   type="button"
-                  className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700"
                   onClick={() => setEditId(null)}
+                  className="px-4 py-2 rounded bg-gray-200"
                   disabled={editing}
                 >
                   Cancel

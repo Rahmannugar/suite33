@@ -11,8 +11,9 @@ import {
   TrendingUp,
   Boxes,
   Users2,
-  Settings,
   BadgeDollarSign,
+  Target,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 import type { User } from "@/lib/types/user";
@@ -34,6 +35,7 @@ const adminLinks: SidebarLink[] = [
   { href: "/dashboard/admin/inventory", label: "Inventory", icon: Boxes },
   { href: "/dashboard/admin/management", label: "Management", icon: Users2 },
   { href: "/dashboard/admin/payroll", label: "Payroll", icon: BadgeDollarSign },
+  { href: "/dashboard/admin/kpi", label: "KPIs", icon: Target },
   { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -52,6 +54,7 @@ const staffLinks: SidebarLink[] = [
   { href: "/dashboard/staff/inventory", label: "Inventory", icon: Boxes },
   { href: "/dashboard/staff/department", label: "Department", icon: Users2 },
   { href: "/dashboard/staff/payroll", label: "Payroll", icon: BadgeDollarSign },
+  { href: "/dashboard/staff/kpi", label: "KPIs", icon: Target },
 ];
 
 function getLinksByRole(role: User["role"] | undefined): SidebarLink[] {
