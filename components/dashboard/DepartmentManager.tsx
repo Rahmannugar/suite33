@@ -1,3 +1,5 @@
+"use client"
+
 import { useDepartments } from "@/lib/hooks/useDepartments";
 import { useStaff } from "@/lib/hooks/useStaff";
 import { useAuthStore } from "@/lib/stores/authStore";
