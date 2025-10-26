@@ -236,76 +236,37 @@ export function ExpenditureTable() {
         >
           {Array.from(
             new Set(
-              expenditures?.map((e: Expenditure) =>
+              (expenditures ?? []).map((e: Expenditure) =>
                 new Date(e.date).getFullYear()
-              ) ?? []
+              )
             )
           )
-            .sort((a, b) => (b as number) - (a as number))
+            .sort((a, b) => Number(b) - Number(a))
             .map((y) => (
-              <option key={String(y)} value={y as number}>
-                {y}
+              <option key={String(y)} value={String(y)}>
+                {String(y)}
               </option>
             ))}
+        </select>
+        <select
+          value={month}
+          onChange={(e) => setMonth(Number(e.target.value))}
+          className="border rounded px-2 py-1"
+        >
+          {Array.from({ length: 12 }, (_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {new Date(2000, i).toLocaleString("default", { month: "long" })}
+            </option>
+          ))}
         </select>
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value as "month" | "week")}
           className="border rounded px-2 py-1"
         >
-          <option value="month">Month</option>
-          <option value="week">Week</option>
+          <option value="month">Monthly</option>
+          <option value="week">Weekly</option>
         </select>
-        {period === "month" && (
-          <select
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            className="border rounded px-2 py-1"
-          >
-            {Array.from({ length: 12 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>
-                {new Date(2000, i).toLocaleString("default", { month: "long" })}
-              </option>
-            ))}
-          </select>
-        )}
-        <button
-          type="button"
-          className={`bg-blue-600 text-white px-3 py-1 rounded ${
-            !canGenerateInsight ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-          onClick={handleAIInsights}
-          disabled={!canGenerateInsight || insightLoading}
-        >
-          {insightLoading ? "Generating..." : "AI Insights"}
-        </button>
-        {canMutate && (
-          <>
-            <label className="bg-blue-50 border border-blue-600 px-3 py-1 rounded cursor-pointer">
-              {importing ? "Importing..." : "Import CSV/Excel"}
-              <input
-                type="file"
-                accept=".csv,.xlsx"
-                onChange={handleImport}
-                className="hidden"
-              />
-            </label>
-            <button
-              type="button"
-              className="bg-blue-50 border border-blue-600 px-3 py-1 rounded cursor-pointer"
-              onClick={handleExportCSV}
-            >
-              Export CSV
-            </button>
-            <button
-              type="button"
-              className="bg-blue-50 border border-blue-600 px-3 py-1 rounded cursor-pointer"
-              onClick={handleExportExcel}
-            >
-              Export Excel
-            </button>
-          </>
-        )}
       </div>
       {/* Add expenditure */}
       {canMutate && (
@@ -381,7 +342,7 @@ export function ExpenditureTable() {
             </tr>
           </thead>
           <tbody>
-            {filteredExpenditures.map((exp) => (
+            {filteredExpenditures.map((exp: Expenditure) => (
               <tr key={exp.id} className="border-t">
                 <td className="p-2">₦{exp.amount.toLocaleString()}</td>
                 <td className="p-2">{exp.description || "-"}</td>

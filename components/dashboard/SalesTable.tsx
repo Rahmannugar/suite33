@@ -16,6 +16,14 @@ import {
   CartesianGrid,
 } from "recharts";
 
+interface Sale {
+  id: string;
+  amount: number;
+  description?: string;
+  date: string;
+  businessId?: string;
+}
+
 export function SalesTable() {
   const user = useAuthStore((s) => s.user);
   const {
@@ -68,7 +76,7 @@ export function SalesTable() {
 
   // Filter sales by year/month/week
   const filteredSales =
-    sales?.filter((s: any) => {
+    sales?.filter((s: Sale) => {
       const d = new Date(s.date);
       if (d.getFullYear() !== year) return false;
       if (period === "month" && d.getMonth() + 1 !== month) return false;
@@ -80,19 +88,22 @@ export function SalesTable() {
     period === "month"
       ? Array.from({ length: 4 }, (_, i) => {
           // 4 weeks in month
-          const weekSales = filteredSales.filter((s: any) => {
+          const weekSales = filteredSales.filter((s: Sale) => {
             const d = new Date(s.date);
             const week = Math.ceil(d.getDate() / 7);
             return week === i + 1;
           });
           return {
             name: `Week ${i + 1}`,
-            sales: weekSales.reduce((sum, s) => sum + s.amount, 0),
+            sales: weekSales.reduce(
+              (sum: number, s: Sale) => sum + s.amount,
+              0
+            ),
           };
         })
       : Array.from({ length: 12 }, (_, i) => {
           // 12 months in year
-          const monthSales = filteredSales.filter((s: any) => {
+          const monthSales = filteredSales.filter((s: Sale) => {
             const d = new Date(s.date);
             return d.getMonth() === i;
           });
@@ -100,7 +111,10 @@ export function SalesTable() {
             name: new Date(2000, i).toLocaleString("default", {
               month: "short",
             }),
-            sales: monthSales.reduce((sum, s) => sum + s.amount, 0),
+            sales: monthSales.reduce(
+              (sum: number, s: Sale) => sum + s.amount,
+              0
+            ),
           };
         });
 
@@ -168,11 +182,17 @@ export function SalesTable() {
     setImporting(true);
     try {
       if (file.name.endsWith(".csv")) {
-        await importCSV.mutateAsync({ file, businessId: user?.businessId });
+        await importCSV.mutateAsync({
+          file,
+          businessId: user?.businessId ?? "",
+        });
       } else if (file.name.endsWith(".xlsx")) {
-        await importExcel.mutateAsync({ file, businessId: user?.businessId });
+        await importExcel.mutateAsync({
+          file,
+          businessId: user?.businessId ?? "",
+        });
       } else {
-        toast.error("Unsupported file type");
+        throw new Error("Unsupported file type");
       }
       toast.success("Sales imported!");
       refetch();
@@ -197,7 +217,7 @@ export function SalesTable() {
       const res = await getInsight.mutateAsync({
         year,
         month: period === "month" ? month : undefined,
-        businessId: user?.businessId,
+        businessId: user?.businessId ?? "",
       });
       setInsight(res.insight || "No insight available.");
       if (!res.cached) setLastInsightDate(new Date());
@@ -220,12 +240,14 @@ export function SalesTable() {
           className="border rounded px-2 py-1"
         >
           {Array.from(
-            new Set(sales?.map((s: any) => new Date(s.date).getFullYear()))
+            new Set(
+              (sales ?? []).map((s: Sale) => new Date(s.date).getFullYear())
+            )
           )
-            .sort((a, b) => b - a)
+            .sort((a, b) => Number(b) - Number(a))
             .map((y) => (
-              <option key={y} value={y}>
-                {y}
+              <option key={String(y)} value={String(y)}>
+                {String(y)}
               </option>
             ))}
         </select>

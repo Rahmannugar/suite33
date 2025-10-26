@@ -84,8 +84,9 @@ export function useInventory() {
       const worksheet = workbook.worksheets[0];
       const items: any[] = [];
       worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; 
-        const [name, quantity, categoryId] = row.values.slice(1);
+        if (rowNumber === 1) return;
+        if (!row.values || !Array.isArray(row.values)) return;
+        const [name, quantity, categoryId] = (row.values as any[]).slice(1);
         if (name && categoryId) {
           items.push({
             name,

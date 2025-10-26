@@ -104,7 +104,7 @@ export function DepartmentManager() {
                             onClick={() =>
                               promoteStaff.mutate(
                                 { staffId: s.id },
-                                { onSuccess: refetchStaff }
+                                { onSuccess: () => refetchStaff() }
                               )
                             }
                           >
@@ -117,7 +117,7 @@ export function DepartmentManager() {
                             onClick={() =>
                               demoteStaff.mutate(
                                 { staffId: s.id },
-                                { onSuccess: refetchStaff }
+                                { onSuccess: () => refetchStaff() }
                               )
                             }
                           >
@@ -129,7 +129,7 @@ export function DepartmentManager() {
                           onClick={() =>
                             removeStaff.mutate(
                               { staffId: s.id },
-                              { onSuccess: refetchStaff }
+                              { onSuccess: () => refetchStaff() }
                             )
                           }
                         >
@@ -163,7 +163,7 @@ export function DepartmentManager() {
                         onClick={() =>
                           promoteStaff.mutate(
                             { staffId: s.id },
-                            { onSuccess: refetchStaff }
+                            { onSuccess: () => refetchStaff() }
                           )
                         }
                       >
@@ -177,7 +177,7 @@ export function DepartmentManager() {
                               staffId: s.id,
                               departmentId: e.target.value,
                             },
-                            { onSuccess: refetchStaff }
+                            { onSuccess: () => refetchStaff() }
                           )
                         }
                       >

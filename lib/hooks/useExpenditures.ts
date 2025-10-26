@@ -87,7 +87,8 @@ export function useExpenditures() {
       const expenditures: any[] = [];
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return; // skip header
-        const [amount, description, date] = row.values.slice(1);
+        if (!row.values || !Array.isArray(row.values)) return;
+        const [amount, description, date] = (row.values as any[]).slice(1);
         if (amount && !isNaN(Number(amount))) {
           expenditures.push({
             amount,

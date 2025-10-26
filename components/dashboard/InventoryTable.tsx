@@ -2,10 +2,23 @@
 
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useInventory } from "@/lib/hooks/useInventory";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
-export function InventoryTable({ categories }: { categories: any[] }) {
+interface Inventory {
+  id: string;
+  name: string;
+  quantity: number;
+  categoryId: string;
+  businessId?: string;
+  category?: { id: string; name: string };
+}
+
+export function InventoryTable({
+  categories,
+}: {
+  categories: Inventory["category"][];
+}) {
   const user = useAuthStore((s) => s.user);
   const {
     inventory,
@@ -45,9 +58,9 @@ export function InventoryTable({ categories }: { categories: any[] }) {
 
   const filteredInventory =
     filterCategory === "all"
-      ? inventory ?? []
-      : (inventory ?? []).filter(
-          (item: any) => item.categoryId === filterCategory
+      ? ((inventory ?? []) as Inventory[])
+      : ((inventory ?? []) as Inventory[]).filter(
+          (item: Inventory) => item.categoryId === filterCategory
         );
 
   async function handleAddItem(e: React.FormEvent) {
@@ -120,15 +133,15 @@ export function InventoryTable({ categories }: { categories: any[] }) {
       if (file.name.endsWith(".csv")) {
         await importCSV.mutateAsync({
           file,
-          businessId: user.businessId as string,
+          businessId: user.businessId,
         });
       } else if (file.name.endsWith(".xlsx")) {
         await importExcel.mutateAsync({
           file,
-          businessId: user.businessId as string,
+          businessId: user.businessId,
         });
       } else {
-        toast.error("Unsupported file type");
+        throw new Error("Unsupported file type");
       }
       toast.success("Inventory imported!");
       refetch();
@@ -153,14 +166,17 @@ export function InventoryTable({ categories }: { categories: any[] }) {
       <h2 className="text-xl font-bold mb-4">Inventory</h2>
       {/* Low stock alert */}
       {isLowStockLoading ? (
-        <div>Checking low stock...</div>
+        <div>Checking for low stock...</div>
       ) : lowStock?.length ? (
         <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded text-yellow-900">
-          <strong>Low Stock Alert:</strong>{" "}
-          {lowStock.map((item: any) => (
-            <span key={item.id} className="mr-3">
-              {item.name} ({item.quantity} left)
-            </span>
+          {lowStock.map((item: Inventory) => (
+            <div key={item.id} className="flex items-center gap-2">
+              <span className="font-semibold">{item.name}</span>
+              <span>
+                ({item.quantity} left in{" "}
+                {item.category?.name ?? "Unknown Category"})
+              </span>
+            </div>
           ))}
         </div>
       ) : null}
@@ -172,46 +188,45 @@ export function InventoryTable({ categories }: { categories: any[] }) {
           className="border rounded px-2 py-1"
         >
           <option value="all">All Categories</option>
-          {categories.map((cat: any) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
+          {categories.map((cat) =>
+            cat ? (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ) : null
+          )}
         </select>
-        {canMutate && (
-          <>
-            <label className="bg-blue-50 border border-blue-600 px-3 py-1 rounded cursor-pointer">
-              {importing ? "Importing..." : "Import CSV/Excel"}
-              <input
-                type="file"
-                accept=".csv,.xlsx"
-                onChange={handleImport}
-                className="hidden"
-              />
-            </label>
-            <button
-              type="button"
-              className="bg-blue-50 border border-blue-600 px-3 py-1 rounded cursor-pointer"
-              onClick={handleExportCSV}
-            >
-              Export CSV
-            </button>
-            <button
-              type="button"
-              className="bg-blue-50 border border-blue-600 px-3 py-1 rounded cursor-pointer"
-              onClick={handleExportExcel}
-            >
-              Export Excel
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className="bg-blue-600 text-white px-3 py-1 rounded"
+          onClick={handleExportCSV}
+        >
+          Export CSV
+        </button>
+        <button
+          type="button"
+          className="bg-blue-600 text-white px-3 py-1 rounded"
+          onClick={handleExportExcel}
+        >
+          Export Excel
+        </button>
+        <label className="bg-blue-600 text-white px-3 py-1 rounded cursor-pointer">
+          {importing ? "Importing..." : "Import"}
+          <input
+            type="file"
+            accept=".csv,.xlsx"
+            onChange={handleImport}
+            className="hidden"
+            disabled={importing}
+          />
+        </label>
       </div>
       {/* Add item */}
       {canMutate && (
         <form onSubmit={handleAddItem} className="flex gap-2 mb-6 flex-wrap">
           <input
             type="text"
-            placeholder="Item name"
+            placeholder="Item Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="border rounded px-3 py-2"
@@ -223,7 +238,6 @@ export function InventoryTable({ categories }: { categories: any[] }) {
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             className="border rounded px-3 py-2"
-            min={0}
             required
           />
           <select
@@ -232,11 +246,13 @@ export function InventoryTable({ categories }: { categories: any[] }) {
             className="border rounded px-3 py-2"
             required
           >
-            {categories.map((cat: any) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
+            {categories.map((cat) =>
+              cat ? (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ) : null
+            )}
           </select>
           <button
             type="submit"
@@ -261,17 +277,13 @@ export function InventoryTable({ categories }: { categories: any[] }) {
             </tr>
           </thead>
           <tbody>
-            {filteredInventory.map((item: any) => (
+            {filteredInventory.map((item: Inventory) => (
               <tr key={item.id} className="border-t">
                 <td className="p-2">{item.name}</td>
-                <td
-                  className={`p-2 ${
-                    item.quantity < 5 ? "text-red-600 font-bold" : ""
-                  }`}
-                >
-                  {item.quantity}
+                <td className="p-2">{item.quantity}</td>
+                <td className="p-2">
+                  {item.category?.name ?? "Unknown Category"}
                 </td>
-                <td className="p-2">{item.category?.name || "-"}</td>
                 {canMutate && (
                   <td className="p-2 flex gap-2">
                     <button
@@ -312,7 +324,7 @@ export function InventoryTable({ categories }: { categories: any[] }) {
             <form onSubmit={handleEditItem} className="space-y-4">
               <input
                 type="text"
-                placeholder="Item name"
+                placeholder="Item Name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 className="border rounded px-3 py-2 w-full"
@@ -324,7 +336,6 @@ export function InventoryTable({ categories }: { categories: any[] }) {
                 value={editQuantity}
                 onChange={(e) => setEditQuantity(e.target.value)}
                 className="border rounded px-3 py-2 w-full"
-                min={0}
                 required
               />
               <select
@@ -333,11 +344,13 @@ export function InventoryTable({ categories }: { categories: any[] }) {
                 className="border rounded px-3 py-2 w-full"
                 required
               >
-                {categories.map((cat: any) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
+                {categories.map((cat) =>
+                  cat ? (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ) : null
+                )}
               </select>
               <div className="flex gap-2 justify-end">
                 <button
