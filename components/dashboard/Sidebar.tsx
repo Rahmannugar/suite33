@@ -15,8 +15,15 @@ import {
   BadgeDollarSign,
 } from "lucide-react";
 import { useState } from "react";
+import type { User } from "@/lib/types/user";
 
-const adminLinks = [
+type SidebarLink = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number }>;
+};
+
+const adminLinks: SidebarLink[] = [
   { href: "/dashboard/admin", label: "Dashboard", icon: Home },
   { href: "/dashboard/admin/sales", label: "Sales", icon: TrendingUp },
   {
@@ -30,9 +37,11 @@ const adminLinks = [
   { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
 ];
 
-const subAdminLinks = adminLinks.filter((l) => l.label !== "Settings");
+const subAdminLinks: SidebarLink[] = adminLinks.filter(
+  (l) => l.label !== "Settings"
+);
 
-const staffLinks = [
+const staffLinks: SidebarLink[] = [
   { href: "/dashboard/staff", label: "Overview", icon: Home },
   { href: "/dashboard/staff/sales", label: "Sales", icon: TrendingUp },
   {
@@ -45,14 +54,18 @@ const staffLinks = [
   { href: "/dashboard/staff/payroll", label: "Payroll", icon: BadgeDollarSign },
 ];
 
+function getLinksByRole(role: User["role"] | undefined): SidebarLink[] {
+  if (role === "ADMIN") return adminLinks;
+  if (role === "SUB_ADMIN") return subAdminLinks;
+  return staffLinks;
+}
+
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  let links = staffLinks;
-  if (user?.role === "ADMIN") links = adminLinks;
-  else if (user?.role === "SUB_ADMIN") links = subAdminLinks;
+  const links = getLinksByRole(user?.role);
 
   return (
     <>
