@@ -24,6 +24,8 @@ import { useStaff } from "@/lib/hooks/useStaff";
 import { useInventory } from "@/lib/hooks/useInventory";
 import { usePayroll } from "@/lib/hooks/usePayroll";
 import { useMemo } from "react";
+import Image from "next/image";
+import { useProfile } from "@/lib/hooks/useProfile";
 
 interface Sale {
   date: string;
@@ -54,6 +56,7 @@ export default function DashboardHome() {
   const { staff, isLoading: staffLoading } = useStaff();
   const { inventory, isLoading: invLoading } = useInventory();
   const { payroll, isLoading: payrollLoading } = usePayroll();
+  const { profile } = useProfile();
 
   const role = user?.role ?? "STAFF";
   const currentYear = new Date().getFullYear();
@@ -139,25 +142,40 @@ export default function DashboardHome() {
   );
   const yearPnl = yearSales - yearExp;
 
+  const businessLogo =
+    profile?.businessId && profile?.businessName && profile?.avatarUrl
+      ? profile.avatarUrl
+      : null;
+
   return (
     <div>
       {/* User Info Card */}
       <div className="mb-6">
         <div className="rounded-xl border border-[--border] bg-[--card] p-4 flex flex-col sm:flex-row items-center gap-4">
-          <div>
-            <div className="text-lg font-bold text-blue-900 dark:text-blue-100 mb-1">
-              {user?.businessName || "Business"}
+          {/* Business Logo */}
+          {businessLogo ? (
+            <Image
+              src={businessLogo}
+              alt="Business Logo"
+              width={56}
+              height={56}
+              className="rounded-full object-cover"
+            />
+          ) : (
+            <div className="rounded-full w-14 h-14 bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-600">
+              {profile?.businessName?.[0] ?? "?"}
             </div>
-            <div className="font-semibold text-blue-700">
-              Role:{" "}
-              {user?.role === "ADMIN"
-                ? "Admin"
-                : user?.role === "SUB_ADMIN"
-                ? "Assistant Admin"
-                : "Staff"}
+          )}
+          <div>
+            <div className="font-bold text-lg">
+              {profile?.businessName ?? "Business"}
             </div>
             <div className="text-sm text-[--muted-foreground]">
-              Department: {user?.departmentName || "No department"}
+              {user?.role === "ADMIN"
+                ? `Admin: ${user?.fullName ?? ""}`
+                : user?.role === "SUB_ADMIN"
+                ? `Assistant Admin: ${user?.fullName ?? ""}`
+                : `Staff: ${user?.fullName ?? ""}`}
             </div>
           </div>
         </div>

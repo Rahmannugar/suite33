@@ -8,6 +8,7 @@ import { uploadAvatar } from "@/lib/utils/uploadImage";
 import axios from "axios";
 import { toast } from "sonner";
 import Image from "next/image";
+import { useProfile } from "@/lib/hooks/useProfile";
 
 function getInitials(name?: string | null) {
   if (!name) return "?";
@@ -22,11 +23,14 @@ export default function EditProfilePage() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const router = useRouter();
+  const { profile, refetch } = useProfile();
 
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(
-    user?.avatarUrl ?? null
+    user?.role === "ADMIN"
+      ? profile?.avatarUrl ?? null
+      : user?.avatarUrl ?? null
   );
   const [saving, setSaving] = useState(false);
 
@@ -47,14 +51,26 @@ export default function EditProfilePage() {
       if (file) {
         avatarUrl = await uploadAvatar(file, user.id);
       }
-      await axios.post("/api/onboarding/staff", {
-        userId: user.id,
-        fullName,
-        avatarUrl,
-      });
-      setUser({ ...user, fullName, avatarUrl });
+      if (user.role === "ADMIN") {
+        await axios.put("/api/profile/admin", {
+          userId: user.id,
+          fullName,
+          logoUrl: avatarUrl,
+        });
+        setUser({ ...user, fullName });
+        await refetch();
+      } else {
+        await axios.put("/api/profile/staff", {
+          userId: user.id,
+          fullName,
+          avatarUrl,
+        });
+        setUser({ ...user, fullName, avatarUrl });
+      }
       toast.success("Profile updated!");
-      router.push("/dashboard/staff");
+      router.push(
+        user.role === "ADMIN" ? "/dashboard/admin" : "/dashboard/staff"
+      );
     } catch (err: any) {
       toast.error(err?.message || "Failed to update profile");
     } finally {
@@ -70,14 +86,18 @@ export default function EditProfilePage() {
           {preview ? (
             <Image
               src={preview}
-              alt="Profile Picture"
+              alt={user?.role === "ADMIN" ? "Business Logo" : "Profile Picture"}
               width={64}
               height={64}
               className="rounded-full object-cover"
             />
           ) : (
             <div className="rounded-full w-16 h-16 bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600">
-              {getInitials(user?.fullName ?? user?.email)}
+              {getInitials(
+                user?.role === "ADMIN"
+                  ? profile?.businessName
+                  : user?.fullName ?? user?.email
+              )}
             </div>
           )}
         </div>
@@ -87,7 +107,7 @@ export default function EditProfilePage() {
         <form onSubmit={handleSave} className="space-y-5">
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
-              Full Name
+              {user?.role === "ADMIN" ? "Your Full Name" : "Full Name"}
             </label>
             <input
               type="text"
@@ -99,7 +119,7 @@ export default function EditProfilePage() {
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
-              Profile Picture
+              {user?.role === "ADMIN" ? "Business Logo" : "Profile Picture"}
             </label>
             <div className="flex items-center gap-3">
               <input

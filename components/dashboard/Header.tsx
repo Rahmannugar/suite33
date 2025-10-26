@@ -32,7 +32,7 @@ export default function Header() {
   };
 
   const handleEditProfile = () => {
-    router.push("/dashboard/staff/edit-profile");
+    router.push("/dashboard/edit-profile");
     setDropdownOpen(false);
   };
 
@@ -91,20 +91,20 @@ export default function Header() {
           {dropdownOpen && (
             <div className="absolute right-0 mt-2 w-44 rounded-lg border border-[--border] bg-[--card] shadow-lg z-10">
               <ul className="py-2">
-                {(user?.role === "STAFF" || user?.role === "SUB_ADMIN") && (
-                  <li>
-                    <button
-                      className="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-900 transition"
-                      onClick={handleEditProfile}
-                    >
-                      Edit Profile
-                    </button>
-                  </li>
-                )}
+                <li>
+                  <button
+                    className="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-900 transition"
+                    onClick={handleEditProfile}
+                    type="button"
+                  >
+                    Edit Profile
+                  </button>
+                </li>
                 <li>
                   <button
                     className="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-900 text-red-600 transition"
                     onClick={handleLogout}
+                    type="button"
                   >
                     Logout
                   </button>
