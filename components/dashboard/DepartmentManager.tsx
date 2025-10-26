@@ -5,7 +5,7 @@ import axios from "axios";
 import { useState } from "react";
 import { toast } from "sonner";
 
-export function DepartmentManager() {
+export default function DepartmentManager() {
   const {
     departments,
     isLoading: loadingDepts,

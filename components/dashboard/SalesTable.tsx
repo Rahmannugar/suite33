@@ -24,7 +24,7 @@ interface Sale {
   businessId?: string;
 }
 
-export function SalesTable() {
+export default function SalesTable() {
   const user = useAuthStore((s) => s.user);
   const {
     sales,

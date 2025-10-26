@@ -14,7 +14,7 @@ interface Inventory {
   category?: { id: string; name: string };
 }
 
-export function InventoryTable() {
+export default function InventoryTable() {
   const user = useAuthStore((s) => s.user);
   const {
     inventory,

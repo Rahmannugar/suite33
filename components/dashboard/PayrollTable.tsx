@@ -7,7 +7,7 @@ import ByteDatePicker from "byte-datepicker";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
-export function PayrollTable() {
+export default function PayrollTable() {
   const user = useAuthStore((s) => s.user);
   const {
     payroll,

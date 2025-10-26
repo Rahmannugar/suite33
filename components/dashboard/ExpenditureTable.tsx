@@ -24,7 +24,7 @@ interface Expenditure {
   businessId?: string;
 }
 
-export function ExpenditureTable() {
+export default function ExpenditureTable() {
   const user = useAuthStore((s) => s.user);
   const {
     expenditures,
