@@ -6,6 +6,14 @@ import { useStaff } from "@/lib/hooks/useStaff";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
+interface PayrollItem {
+  id: string;
+  staffId: string;
+  period: string;
+  amount: number;
+  paid: boolean;
+}
+
 export function PayrollTable() {
   const user = useAuthStore((s) => s.user);
   const { payroll, isLoading, refetch, markPaid, editSalary } = usePayroll();
@@ -24,7 +32,7 @@ export function PayrollTable() {
   const filteredPayroll = useMemo(() => {
     if (!payroll) return [];
     if (user?.role === "ADMIN") {
-      return payroll.filter((p: any) => {
+      return payroll.filter((p: PayrollItem) => {
         const d = new Date(p.period);
         return d.getFullYear() === year && d.getMonth() + 1 === month;
       });
@@ -34,7 +42,7 @@ export function PayrollTable() {
         ?.filter((s: any) => s.departmentId === user.departmentId)
         .map((s: any) => s.id);
       return payroll.filter(
-        (p: any) =>
+        (p: PayrollItem) =>
           deptStaffIds?.includes(p.staffId) &&
           new Date(p.period).getFullYear() === year &&
           new Date(p.period).getMonth() + 1 === month
@@ -42,7 +50,7 @@ export function PayrollTable() {
     }
     if (user?.role === "STAFF") {
       return payroll.filter(
-        (p: any) =>
+        (p: PayrollItem) =>
           p.staffId === user.id &&
           new Date(p.period).getFullYear() === year &&
           new Date(p.period).getMonth() + 1 === month
@@ -53,7 +61,7 @@ export function PayrollTable() {
 
   // Total payroll for the month
   const totalPayroll = filteredPayroll.reduce(
-    (sum: number, p: { amount: number }) => sum + p.amount,
+    (sum: number, p: PayrollItem) => sum + p.amount,
     0
   );
 
@@ -108,11 +116,15 @@ export function PayrollTable() {
           className="border rounded px-2 py-1"
         >
           {Array.from(
-            new Set(payroll?.map((p: any) => new Date(p.period).getFullYear()))
+            new Set(
+              (payroll ?? []).map((p: PayrollItem) =>
+                new Date(p.period).getFullYear()
+              )
+            )
           )
-            .sort((a, b) => b - a)
+            .sort((a, b) => (b as number) - (a as number))
             .map((y) => (
-              <option key={y} value={y}>
+              <option key={String(y)} value={y as number}>
                 {y}
               </option>
             ))}
@@ -147,7 +159,7 @@ export function PayrollTable() {
             </tr>
           </thead>
           <tbody>
-            {filteredPayroll.map((p: any) => {
+            {filteredPayroll.map((p: PayrollItem) => {
               const staffMember = staff?.find((s: any) => s.id === p.staffId);
               return (
                 <tr key={p.id} className="border-t">

@@ -60,7 +60,7 @@ export function InventoryTable({ categories }: { categories: any[] }) {
         name,
         quantity: parseInt(quantity) || 0,
         categoryId,
-        businessId: user.businessId,
+        businessId: user.businessId as string,
       });
       toast.success("Item added!");
       setName("");
@@ -114,12 +114,19 @@ export function InventoryTable({ categories }: { categories: any[] }) {
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!user?.businessId) return;
     setImporting(true);
     try {
       if (file.name.endsWith(".csv")) {
-        await importCSV.mutateAsync({ file, businessId: user?.businessId });
+        await importCSV.mutateAsync({
+          file,
+          businessId: user.businessId as string,
+        });
       } else if (file.name.endsWith(".xlsx")) {
-        await importExcel.mutateAsync({ file, businessId: user?.businessId });
+        await importExcel.mutateAsync({
+          file,
+          businessId: user.businessId as string,
+        });
       } else {
         toast.error("Unsupported file type");
       }

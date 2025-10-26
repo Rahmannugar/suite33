@@ -25,6 +25,21 @@ import { useInventory } from "@/lib/hooks/useInventory";
 import { usePayroll } from "@/lib/hooks/usePayroll";
 import { useMemo } from "react";
 
+interface Sale {
+  date: string;
+  amount: number;
+}
+
+interface Expenditure {
+  date: string;
+  amount: number;
+}
+
+interface PayrollItem {
+  amount: number;
+  status: string;
+}
+
 function getEmptyText(feature: string, role: string) {
   if (role === "ADMIN" || role === "SUB_ADMIN") {
     return `${feature} is empty, start adding.`;
@@ -43,61 +58,66 @@ export default function DashboardHome() {
   const role = user?.role ?? "STAFF";
   const currentYear = new Date().getFullYear();
 
+  // Sales chart
   const salesChartData = sales?.length
     ? Array.from({ length: 12 }, (_, i) => {
         const monthName = new Date(2000, i).toLocaleString("default", {
           month: "short",
         });
         const monthSales = sales.filter(
-          (s: any) =>
+          (s: Sale) =>
             new Date(s.date).getFullYear() === currentYear &&
             new Date(s.date).getMonth() === i
         );
         return {
           name: monthName,
-          sales: monthSales.reduce((sum, s) => sum + s.amount, 0),
+          sales: monthSales.reduce((sum: number, s: Sale) => sum + s.amount, 0),
         };
       })
     : [];
 
+  // Expenditure chart
   const expChartData = expenditures?.length
     ? Array.from({ length: 12 }, (_, i) => {
         const monthName = new Date(2000, i).toLocaleString("default", {
           month: "short",
         });
         const monthExp = expenditures.filter(
-          (e: any) =>
+          (e: Expenditure) =>
             new Date(e.date).getFullYear() === currentYear &&
             new Date(e.date).getMonth() === i
         );
         return {
           name: monthName,
-          exp: monthExp.reduce((sum, e) => sum + e.amount, 0),
+          exp: monthExp.reduce(
+            (sum: number, e: Expenditure) => sum + e.amount,
+            0
+          ),
         };
       })
     : [];
 
-  // Calculate P&L table data
+  // Profit & Loss Table
   const pnlTable = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const monthSales =
         sales?.filter(
-          (s: any) =>
+          (s: Sale) =>
             new Date(s.date).getFullYear() === currentYear &&
             new Date(s.date).getMonth() === i
         ) ?? [];
       const monthExp =
         expenditures?.filter(
-          (e: any) =>
+          (e: Expenditure) =>
             new Date(e.date).getFullYear() === currentYear &&
             new Date(e.date).getMonth() === i
         ) ?? [];
       const salesTotal = monthSales.reduce(
-        (sum: number, s: { amount: number }) => sum + s.amount,
+        (sum: number, s: Sale) => sum + s.amount,
         0
       );
       const expTotal = monthExp.reduce(
-        (sum: number, e: { amount: number }) => sum + e.amount,
+        (sum: number, e: Expenditure) => sum + e.amount,
         0
       );
       return {
@@ -144,6 +164,7 @@ export default function DashboardHome() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        {/* Sales */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -162,9 +183,10 @@ export default function DashboardHome() {
                   ₦
                   {sales
                     .filter(
-                      (s: any) => new Date(s.date).getFullYear() === currentYear
+                      (s: Sale) =>
+                        new Date(s.date).getFullYear() === currentYear
                     )
-                    .reduce((sum, s) => sum + s.amount, 0)
+                    .reduce((sum: number, s: Sale) => sum + s.amount, 0)
                     .toLocaleString()}
                 </div>
                 <ResponsiveContainer width="100%" height={80}>
@@ -184,6 +206,8 @@ export default function DashboardHome() {
             )}
           </CardContent>
         </Card>
+
+        {/* Expenditures */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -202,9 +226,10 @@ export default function DashboardHome() {
                   ₦
                   {expenditures
                     .filter(
-                      (e: any) => new Date(e.date).getFullYear() === currentYear
+                      (e: Expenditure) =>
+                        new Date(e.date).getFullYear() === currentYear
                     )
-                    .reduce((sum, e) => sum + e.amount, 0)
+                    .reduce((sum: number, e: Expenditure) => sum + e.amount, 0)
                     .toLocaleString()}
                 </div>
                 <ResponsiveContainer width="100%" height={80}>
@@ -224,6 +249,8 @@ export default function DashboardHome() {
             )}
           </CardContent>
         </Card>
+
+        {/* Staff */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -250,6 +277,8 @@ export default function DashboardHome() {
             )}
           </CardContent>
         </Card>
+
+        {/* Inventory */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -276,6 +305,8 @@ export default function DashboardHome() {
             )}
           </CardContent>
         </Card>
+
+        {/* Payroll Summary */}
         <div className="col-span-1 md:col-span-2 xl:col-span-4 mt-8">
           <Card>
             <CardHeader>
@@ -295,8 +326,11 @@ export default function DashboardHome() {
                     <div className="font-bold text-xl">
                       ₦
                       {payroll
-                        .filter((p) => p.status === "Paid")
-                        .reduce((sum, p) => sum + p.amount, 0)
+                        .filter((p: PayrollItem) => p.status === "Paid")
+                        .reduce(
+                          (sum: number, p: PayrollItem) => sum + p.amount,
+                          0
+                        )
                         .toLocaleString()}
                     </div>
                     <div className="text-sm text-[--muted-foreground]">
@@ -307,8 +341,11 @@ export default function DashboardHome() {
                     <div className="font-bold text-xl">
                       ₦
                       {payroll
-                        .filter((p) => p.status !== "Paid")
-                        .reduce((sum, p) => sum + p.amount, 0)
+                        .filter((p: PayrollItem) => p.status !== "Paid")
+                        .reduce(
+                          (sum: number, p: PayrollItem) => sum + p.amount,
+                          0
+                        )
                         .toLocaleString()}
                     </div>
                     <div className="text-sm text-[--muted-foreground]">

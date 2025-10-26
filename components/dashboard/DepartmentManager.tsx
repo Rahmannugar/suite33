@@ -16,6 +16,7 @@ export function DepartmentManager() {
     staff,
     isLoading: loadingStaff,
     promoteStaff,
+    demoteStaff,
     moveStaff,
     removeStaff,
     refetch: refetchStaff,
@@ -29,7 +30,7 @@ export function DepartmentManager() {
     e.preventDefault();
     if (!newDeptName.trim()) return;
     if (!user?.businessId) return;
-  
+
     setCreating(true);
     try {
       await axios.post("/api/departments/create", {
@@ -101,7 +102,10 @@ export function DepartmentManager() {
                           <button
                             className="text-blue-600 text-xs"
                             onClick={() =>
-                              promoteStaff.mutate({ staffId: s.id })
+                              promoteStaff.mutate(
+                                { staffId: s.id },
+                                { onSuccess: refetchStaff }
+                              )
                             }
                           >
                             Promote to Assistant Admin
@@ -111,7 +115,10 @@ export function DepartmentManager() {
                           <button
                             className="text-purple-600 text-xs"
                             onClick={() =>
-                              demoteStaff.mutate({ staffId: s.id })
+                              demoteStaff.mutate(
+                                { staffId: s.id },
+                                { onSuccess: refetchStaff }
+                              )
                             }
                           >
                             Demote to Staff
@@ -119,7 +126,12 @@ export function DepartmentManager() {
                         )}
                         <button
                           className="text-yellow-600 text-xs"
-                          onClick={() => removeStaff.mutate({ staffId: s.id })}
+                          onClick={() =>
+                            removeStaff.mutate(
+                              { staffId: s.id },
+                              { onSuccess: refetchStaff }
+                            )
+                          }
                         >
                           Remove from Department
                         </button>
@@ -148,17 +160,25 @@ export function DepartmentManager() {
                     <>
                       <button
                         className="text-blue-600 text-xs"
-                        onClick={() => promoteStaff.mutate({ staffId: s.id })}
+                        onClick={() =>
+                          promoteStaff.mutate(
+                            { staffId: s.id },
+                            { onSuccess: refetchStaff }
+                          )
+                        }
                       >
                         Promote to Assistant Admin
                       </button>
                       <select
                         className="border rounded px-2 py-1 text-xs"
                         onChange={(e) =>
-                          moveStaff.mutate({
-                            staffId: s.id,
-                            departmentId: e.target.value,
-                          })
+                          moveStaff.mutate(
+                            {
+                              staffId: s.id,
+                              departmentId: e.target.value,
+                            },
+                            { onSuccess: refetchStaff }
+                          )
                         }
                       >
                         <option value="">Move to department...</option>

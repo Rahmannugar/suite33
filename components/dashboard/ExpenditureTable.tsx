@@ -16,6 +16,14 @@ import {
   CartesianGrid,
 } from "recharts";
 
+interface Expenditure {
+  id: string;
+  amount: number;
+  description?: string;
+  date: string;
+  businessId?: string;
+}
+
 export function ExpenditureTable() {
   const user = useAuthStore((s) => s.user);
   const {
@@ -68,7 +76,7 @@ export function ExpenditureTable() {
 
   // Filter expenditures by year/month/week
   const filteredExpenditures =
-    expenditures?.filter((e: any) => {
+    expenditures?.filter((e: Expenditure) => {
       const d = new Date(e.date);
       if (d.getFullYear() !== year) return false;
       if (period === "month" && d.getMonth() + 1 !== month) return false;
@@ -80,19 +88,22 @@ export function ExpenditureTable() {
     period === "month"
       ? Array.from({ length: 4 }, (_, i) => {
           // 4 weeks in month
-          const weekExps = filteredExpenditures.filter((e: any) => {
+          const weekExps = filteredExpenditures.filter((e: Expenditure) => {
             const d = new Date(e.date);
             const week = Math.ceil(d.getDate() / 7);
             return week === i + 1;
           });
           return {
             name: `Week ${i + 1}`,
-            exp: weekExps.reduce((sum, e) => sum + e.amount, 0),
+            exp: weekExps.reduce(
+              (sum: number, e: Expenditure) => sum + e.amount,
+              0
+            ),
           };
         })
       : Array.from({ length: 12 }, (_, i) => {
           // 12 months in year
-          const monthExps = filteredExpenditures.filter((e: any) => {
+          const monthExps = filteredExpenditures.filter((e: Expenditure) => {
             const d = new Date(e.date);
             return d.getMonth() === i;
           });
@@ -100,7 +111,10 @@ export function ExpenditureTable() {
             name: new Date(2000, i).toLocaleString("default", {
               month: "short",
             }),
-            exp: monthExps.reduce((sum, e) => sum + e.amount, 0),
+            exp: monthExps.reduce(
+              (sum: number, e: Expenditure) => sum + e.amount,
+              0
+            ),
           };
         });
 
@@ -113,7 +127,7 @@ export function ExpenditureTable() {
       await addExpenditure.mutateAsync({
         amount: parseFloat(amount),
         description: desc,
-        businessId: user.businessId,
+        businessId: user.businessId as string,
         date,
       });
       toast.success("Expenditure added!");
@@ -195,16 +209,16 @@ export function ExpenditureTable() {
   async function handleAIInsights() {
     setInsightLoading(true);
     try {
-      const res = await getInsight.mutateAsync({
+      if (!user?.businessId) throw new Error("Missing businessId");
+      const { data } = await getInsight.mutateAsync({
         year,
         month: period === "month" ? month : undefined,
-        businessId: user?.businessId,
+        businessId: user.businessId as string,
       });
-      setInsight(res.insight || "No insight available.");
-      if (!res.cached) setLastInsightDate(new Date());
-      else if (res.cached && res.insight) setLastInsightDate(new Date());
-    } catch {
-      toast.error("Failed to get AI insights");
+      setInsight(data.insight);
+      setLastInsightDate(new Date());
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to get insight");
     } finally {
       setInsightLoading(false);
     }
@@ -222,12 +236,14 @@ export function ExpenditureTable() {
         >
           {Array.from(
             new Set(
-              expenditures?.map((e: any) => new Date(e.date).getFullYear())
+              expenditures?.map((e: Expenditure) =>
+                new Date(e.date).getFullYear()
+              ) ?? []
             )
           )
-            .sort((a, b) => b - a)
+            .sort((a, b) => (b as number) - (a as number))
             .map((y) => (
-              <option key={y} value={y}>
+              <option key={String(y)} value={y as number}>
                 {y}
               </option>
             ))}
@@ -365,7 +381,7 @@ export function ExpenditureTable() {
             </tr>
           </thead>
           <tbody>
-            {filteredExpenditures.map((exp: any) => (
+            {filteredExpenditures.map((exp) => (
               <tr key={exp.id} className="border-t">
                 <td className="p-2">₦{exp.amount.toLocaleString()}</td>
                 <td className="p-2">{exp.description || "-"}</td>
