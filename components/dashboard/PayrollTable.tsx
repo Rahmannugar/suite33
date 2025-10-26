@@ -1,27 +1,33 @@
 "use client";
 
-import { useAuthStore } from "@/lib/stores/authStore";
 import { usePayroll } from "@/lib/hooks/usePayroll";
+import { useAuthStore } from "@/lib/stores/authStore";
 import { useStaff } from "@/lib/hooks/useStaff";
+import ByteDatePicker from "byte-datepicker";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
-interface Payroll {
-  id: string;
-  staffId: string;
-  period: string;
-  amount: number;
-  paid: boolean;
-}
-
 export function PayrollTable() {
   const user = useAuthStore((s) => s.user);
-  const { payroll, isLoading, refetch, markPaid, editSalary } = usePayroll();
+  const {
+    payroll,
+    isLoading,
+    refetch,
+    markPaid,
+    editSalary,
+    generatePayroll,
+    bulkMarkPaid,
+  } = usePayroll();
   const { staff } = useStaff();
 
   // Filter controls
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const year = selectedDate
+    ? selectedDate.getFullYear()
+    : new Date().getFullYear();
+  const month = selectedDate
+    ? selectedDate.getMonth() + 1
+    : new Date().getMonth() + 1;
 
   // Edit modal state
   const [editId, setEditId] = useState<string | null>(null);
@@ -32,7 +38,7 @@ export function PayrollTable() {
   const filteredPayroll = useMemo(() => {
     if (!payroll) return [];
     if (user?.role === "ADMIN") {
-      return payroll.filter((p: Payroll) => {
+      return payroll.filter((p: any) => {
         const d = new Date(p.period);
         return d.getFullYear() === year && d.getMonth() + 1 === month;
       });
@@ -42,7 +48,7 @@ export function PayrollTable() {
         ?.filter((s: any) => s.departmentId === user.departmentId)
         .map((s: any) => s.id);
       return payroll.filter(
-        (p: Payroll) =>
+        (p: any) =>
           deptStaffIds?.includes(p.staffId) &&
           new Date(p.period).getFullYear() === year &&
           new Date(p.period).getMonth() + 1 === month
@@ -50,7 +56,7 @@ export function PayrollTable() {
     }
     if (user?.role === "STAFF") {
       return payroll.filter(
-        (p: Payroll) =>
+        (p: any) =>
           p.staffId === user.id &&
           new Date(p.period).getFullYear() === year &&
           new Date(p.period).getMonth() + 1 === month
@@ -61,14 +67,39 @@ export function PayrollTable() {
 
   // Total payroll for the month
   const totalPayroll = filteredPayroll.reduce(
-    (sum: number, p: Payroll) => sum + p.amount,
+    (sum: number, p: any) => sum + p.amount,
     0
   );
 
-  const deptName =
-    user?.role === "SUB_ADMIN" && user?.departmentName
-      ? user.departmentName
-      : null;
+  async function handleBulkMarkPaid() {
+    if (!user?.departmentId) return;
+    try {
+      await bulkMarkPaid.mutateAsync({
+        departmentId: user.departmentId,
+        year,
+        month,
+      });
+      toast.success("Bulk marked as paid!");
+      refetch();
+    } catch {
+      toast.error("Failed to bulk mark as paid");
+    }
+  }
+
+  async function handleGeneratePayroll() {
+    if (!user?.businessId) return;
+    try {
+      await generatePayroll.mutateAsync({
+        businessId: user.businessId,
+        year,
+        month,
+      });
+      toast.success("Payroll generated!");
+      refetch();
+    } catch {
+      toast.error("Failed to generate payroll");
+    }
+  }
 
   async function handleMarkPaid(id: string) {
     try {
@@ -103,111 +134,99 @@ export function PayrollTable() {
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Payroll</h2>
-      {deptName && (
-        <div className="mb-2 text-base font-semibold text-blue-700">
-          Department: {deptName}
-        </div>
-      )}
-      {/* Filter controls */}
       <div className="flex gap-2 mb-4 items-center">
-        <select
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
-          className="border rounded px-2 py-1"
+        <ByteDatePicker
+          value={selectedDate}
+          onChange={setSelectedDate}
+          formatString="yyyy-mm"
+          includeDays={false}
+          hideInput
         >
-          {Array.from(
-            new Set(
-              (payroll ?? []).map((p: Payroll) =>
-                new Date(p.period).getFullYear()
-              )
-            )
-          )
-            .sort((a, b) => Number(b) - Number(a))
-            .map((y) => (
-              <option key={String(y)} value={String(y)}>
-                {String(y)}
-              </option>
-            ))}
-        </select>
-        <select
-          value={month}
-          onChange={(e) => setMonth(Number(e.target.value))}
-          className="border rounded px-2 py-1"
-        >
-          {Array.from({ length: 12 }, (_, i) => (
-            <option key={i + 1} value={i + 1}>
-              {new Date(2000, i).toLocaleString("default", { month: "long" })}
-            </option>
-          ))}
-        </select>
+          {({ open, formattedValue }) => (
+            <input
+              type="text"
+              readOnly
+              value={
+                formattedValue || `${year}-${String(month).padStart(2, "0")}`
+              }
+              onClick={open}
+              className="block w-full max-w-xs rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition cursor-pointer font-medium"
+            />
+          )}
+        </ByteDatePicker>
+        {user?.role === "ADMIN" && (
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+            onClick={handleGeneratePayroll}
+            disabled={generatePayroll.isPending}
+          >
+            {generatePayroll.isPending ? "Generating..." : "Generate Payroll"}
+          </button>
+        )}
+        {user?.role === "SUB_ADMIN" && (
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+            onClick={handleBulkMarkPaid}
+            disabled={bulkMarkPaid.isPending}
+          >
+            {bulkMarkPaid.isPending ? "Marking..." : "Bulk Mark Paid"}
+          </button>
+        )}
       </div>
-      {/* Table */}
+      <div className="mb-2 font-semibold">
+        Total Payroll: ₦{totalPayroll.toLocaleString()}
+      </div>
       {isLoading ? (
         <div>Loading payroll...</div>
       ) : filteredPayroll.length ? (
         <table className="w-full border rounded">
           <thead>
-            <tr className="bg-blue-50 dark:bg-blue-900/40">
-              <th className="p-2 text-left">Staff</th>
-              <th className="p-2 text-left">Department</th>
-              <th className="p-2 text-left">Amount</th>
-              <th className="p-2 text-left">Period</th>
-              <th className="p-2 text-left">Status</th>
-              {user?.role === "ADMIN" && (
-                <th className="p-2 text-left">Actions</th>
-              )}
+            <tr>
+              <th>Staff</th>
+              <th>Department</th>
+              <th>Amount</th>
+              <th>Paid</th>
+              <th>Period</th>
+              {user?.role === "ADMIN" && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
-            {filteredPayroll.map((p: Payroll) => {
-              const staffMember = staff?.find((s: any) => s.id === p.staffId);
-              return (
-                <tr key={p.id} className="border-t">
-                  <td className="p-2">
-                    {staffMember?.user?.fullName ||
-                      staffMember?.user?.email ||
-                      "-"}
+            {filteredPayroll.map((p: any) => (
+              <tr key={p.id}>
+                <td>
+                  {p.staff?.user?.fullName ?? p.staff?.user?.email ?? "Unknown"}
+                </td>
+                <td>{p.staff?.department?.name ?? "-"}</td>
+                <td>₦{p.amount.toLocaleString()}</td>
+                <td>{p.paid ? "Yes" : "No"}</td>
+                <td>
+                  {new Date(p.period).toLocaleDateString("en-GB", {
+                    year: "numeric",
+                    month: "short",
+                  })}
+                </td>
+                {user?.role === "ADMIN" && (
+                  <td>
+                    <button
+                      className="text-blue-600 mr-2"
+                      onClick={() => {
+                        setEditId(p.id);
+                        setEditAmount(p.amount.toString());
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="text-green-600"
+                      onClick={() => handleMarkPaid(p.id)}
+                      disabled={p.paid}
+                    >
+                      Mark Paid
+                    </button>
                   </td>
-                  <td className="p-2">
-                    {staffMember?.department?.name || "No department"}
-                  </td>
-                  <td className="p-2">₦{p.amount.toLocaleString()}</td>
-                  <td className="p-2">
-                    {new Date(p.period).toLocaleDateString()}
-                  </td>
-                  <td className="p-2">{p.paid ? "Paid" : "Pending"}</td>
-                  {user?.role === "ADMIN" && (
-                    <td className="p-2 flex gap-2">
-                      <button
-                        className="text-blue-600 text-xs"
-                        onClick={() => {
-                          setEditId(p.id);
-                          setEditAmount(p.amount.toString());
-                        }}
-                      >
-                        Edit Salary
-                      </button>
-                      {!p.paid && (
-                        <button
-                          className="text-green-600 text-xs"
-                          onClick={() => handleMarkPaid(p.id)}
-                        >
-                          Mark as Paid
-                        </button>
-                      )}
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-            <tr className="bg-blue-100 dark:bg-blue-900/20 font-bold">
-              <td className="p-2">Total</td>
-              <td className="p-2"></td>
-              <td className="p-2">₦{totalPayroll.toLocaleString()}</td>
-              <td className="p-2"></td>
-              <td className="p-2"></td>
-              {user?.role === "ADMIN" && <td className="p-2"></td>}
-            </tr>
+                )}
+              </tr>
+            ))}
           </tbody>
         </table>
       ) : (
@@ -219,21 +238,21 @@ export function PayrollTable() {
       {editId && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-blue-900/40 rounded-lg p-6 shadow-lg w-full max-w-sm">
-            <h3 className="font-semibold mb-4">Edit Salary</h3>
             <form onSubmit={handleEditSalary} className="space-y-4">
+              <label className="block text-sm font-medium">Edit Salary</label>
               <input
                 type="number"
-                placeholder="Amount"
                 value={editAmount}
                 onChange={(e) => setEditAmount(e.target.value)}
-                className="border rounded px-3 py-2 w-full"
                 required
+                min={0}
+                className="border rounded px-3 py-2 w-full"
               />
               <div className="flex gap-2 justify-end">
                 <button
                   type="button"
-                  className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700"
                   onClick={() => setEditId(null)}
+                  className="px-4 py-2 rounded bg-gray-200"
                   disabled={editing}
                 >
                   Cancel

@@ -1,9 +1,9 @@
 import { useDepartments } from "@/lib/hooks/useDepartments";
 import { useStaff } from "@/lib/hooks/useStaff";
+import { useAuthStore } from "@/lib/stores/authStore";
+import axios from "axios";
 import { useState } from "react";
 import { toast } from "sonner";
-import axios from "axios";
-import { useAuthStore } from "@/lib/stores/authStore";
 
 export function DepartmentManager() {
   const {
@@ -25,6 +25,7 @@ export function DepartmentManager() {
 
   const [newDeptName, setNewDeptName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [deletingStaffId, setDeletingStaffId] = useState<string | null>(null);
 
   async function handleCreateDepartment(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +45,19 @@ export function DepartmentManager() {
       toast.error("Failed to create department");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleDeleteStaff(staffId: string, userId: string) {
+    setDeletingStaffId(staffId);
+    try {
+      await axios.post("/api/staff/delete", { staffId, userId });
+      toast.success("Staff fully deleted!");
+      refetchStaff();
+    } catch {
+      toast.error("Failed to delete staff");
+    } finally {
+      setDeletingStaffId(null);
     }
   }
 
@@ -72,8 +86,8 @@ export function DepartmentManager() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {loadingDepts ? (
           <div>Loading departments...</div>
-        ) : (
-          departments?.map((dept: any) => (
+        ) : departments?.length ? (
+          departments.map((dept: any) => (
             <div key={dept.id} className="border rounded-lg p-4">
               <div className="font-semibold mb-2">{dept.name}</div>
               <div className="mb-2 text-xs text-gray-500">
@@ -82,58 +96,87 @@ export function DepartmentManager() {
               {user?.role === "ADMIN" && (
                 <button
                   className="text-red-600 text-xs mb-2"
-                  onClick={() => deleteDepartment.mutate(dept.id)}
+                  onClick={() => {
+                    deleteDepartment.mutate(dept.id, {
+                      onSuccess: () => {
+                        toast.success("Department deleted!");
+                        refetchDepts();
+                        refetchStaff();
+                      },
+                      onError: () => toast.error("Failed to delete department"),
+                    });
+                  }}
                 >
                   Delete Department
                 </button>
               )}
               <ul className="space-y-1">
+                {dept.staff.length === 0 && (
+                  <li className="text-xs text-[--muted-foreground]">
+                    No staff in this department.
+                  </li>
+                )}
                 {dept.staff.map((s: any) => (
                   <li key={s.id} className="flex items-center gap-2">
                     <span>{s.user.fullName || s.user.email}</span>
-                    <span className="text-xs text-gray-500">
-                      {s.user.role === "SUB_ADMIN"
-                        ? "Assistant Admin"
-                        : "Staff"}
-                    </span>
                     {user?.role === "ADMIN" && (
                       <>
-                        {s.user.role === "STAFF" && (
-                          <button
-                            className="text-blue-600 text-xs"
-                            onClick={() =>
-                              promoteStaff.mutate(
-                                { staffId: s.id },
-                                { onSuccess: () => refetchStaff() }
-                              )
-                            }
-                          >
-                            Promote to Assistant Admin
-                          </button>
-                        )}
+                        {/* Move Staff */}
+                        <select
+                          value={s.departmentId ?? dept.id}
+                          onChange={async (e) => {
+                            const newDeptId = e.target.value;
+                            await moveStaff.mutateAsync(
+                              { staffId: s.id, departmentId: newDeptId },
+                              { onSuccess: () => refetchStaff() }
+                            );
+                            toast.success("Staff moved!");
+                          }}
+                          className="border rounded px-2 py-1 text-xs"
+                        >
+                          {departments?.map((d: any) => (
+                            <option key={d.id} value={d.id}>
+                              {d.name}
+                            </option>
+                          ))}
+                          <option value="">No department</option>
+                        </select>
+                        {/* Remove Staff from Department */}
+                        <button
+                          className="text-red-600 text-xs"
+                          onClick={async () => {
+                            await removeStaff.mutate(
+                              { staffId: s.id },
+                              { onSuccess: () => refetchStaff() }
+                            );
+                            toast.success("Staff removed from department!");
+                          }}
+                        >
+                          Remove
+                        </button>
+                        {/* Demote Assistant Admin */}
                         {s.user.role === "SUB_ADMIN" && (
                           <button
-                            className="text-purple-600 text-xs"
-                            onClick={() =>
-                              demoteStaff.mutate(
+                            className="text-yellow-600 text-xs"
+                            onClick={async () => {
+                              await demoteStaff.mutate(
                                 { staffId: s.id },
                                 { onSuccess: () => refetchStaff() }
-                              )
-                            }
+                              );
+                              toast.success("Demoted to Staff!");
+                            }}
                           >
                             Demote to Staff
                           </button>
                         )}
                         <button
-                          className="text-yellow-600 text-xs"
-                          onClick={() =>
-                            removeStaff.mutate(
-                              { staffId: s.id },
-                              { onSuccess: () => refetchStaff() }
-                            )
-                          }
+                          className="text-red-700 text-xs"
+                          onClick={() => handleDeleteStaff(s.id, s.user.id)}
+                          disabled={deletingStaffId === s.id}
                         >
-                          Remove from Department
+                          {deletingStaffId === s.id
+                            ? "Deleting..."
+                            : "Delete from Business"}
                         </button>
                       </>
                     )}
@@ -142,6 +185,10 @@ export function DepartmentManager() {
               </ul>
             </div>
           ))
+        ) : (
+          <div className="text-sm text-[--muted-foreground]">
+            No departments yet.
+          </div>
         )}
       </div>
       {/* Staff not in any department */}
@@ -150,6 +197,10 @@ export function DepartmentManager() {
         <ul className="space-y-1">
           {loadingStaff ? (
             <div>Loading staff...</div>
+          ) : staff?.filter((s: any) => !s.departmentId).length === 0 ? (
+            <li className="text-xs text-[--muted-foreground]">
+              All staff are assigned to departments.
+            </li>
           ) : (
             staff
               ?.filter((s: any) => !s.departmentId)
@@ -158,6 +209,27 @@ export function DepartmentManager() {
                   <span>{s.user.fullName || s.user.email}</span>
                   {user?.role === "ADMIN" && (
                     <>
+                      {/* Move to department */}
+                      <select
+                        value=""
+                        onChange={async (e) => {
+                          const newDeptId = e.target.value;
+                          await moveStaff.mutateAsync(
+                            { staffId: s.id, departmentId: newDeptId },
+                            { onSuccess: () => refetchStaff() }
+                          );
+                          toast.success("Staff moved to department!");
+                        }}
+                        className="border rounded px-2 py-1 text-xs"
+                      >
+                        <option value="">Assign to department</option>
+                        {departments?.map((d: any) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                      {/* Promote to Assistant Admin */}
                       <button
                         className="text-blue-600 text-xs"
                         onClick={() =>
@@ -169,25 +241,6 @@ export function DepartmentManager() {
                       >
                         Promote to Assistant Admin
                       </button>
-                      <select
-                        className="border rounded px-2 py-1 text-xs"
-                        onChange={(e) =>
-                          moveStaff.mutate(
-                            {
-                              staffId: s.id,
-                              departmentId: e.target.value,
-                            },
-                            { onSuccess: () => refetchStaff() }
-                          )
-                        }
-                      >
-                        <option value="">Move to department...</option>
-                        {departments?.map((dept: any) => (
-                          <option key={dept.id} value={dept.id}>
-                            {dept.name}
-                          </option>
-                        ))}
-                      </select>
                     </>
                   )}
                 </li>

@@ -22,11 +22,45 @@ export function usePayroll() {
     },
   });
 
+  const generatePayroll = useMutation({
+    mutationFn: async ({
+      businessId,
+      year,
+      month,
+    }: {
+      businessId: string;
+      year: number;
+      month: number;
+    }) => {
+      await axios.post("/api/payroll/generate", { businessId, year, month });
+    },
+  });
+
+  const bulkMarkPaid = useMutation({
+    mutationFn: async ({
+      departmentId,
+      year,
+      month,
+    }: {
+      departmentId: string;
+      year: number;
+      month: number;
+    }) => {
+      await axios.post("/api/payroll/bulk-mark-paid", {
+        departmentId,
+        year,
+        month,
+      });
+    },
+  });
+
   return {
     payroll: query.data,
     isLoading: query.isLoading,
     refetch: query.refetch,
     markPaid,
     editSalary,
+    generatePayroll,
+    bulkMarkPaid,
   };
 }

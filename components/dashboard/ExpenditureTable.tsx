@@ -298,13 +298,14 @@ export function ExpenditureTable() {
             hideInput
           >
             {({ open, formattedValue }) => (
-              <button
-                type="button"
-                className="border rounded px-3 py-2 bg-white dark:bg-blue-900/40"
+              <input
+                type="text"
+                readOnly
+                value={formattedValue || ""}
                 onClick={open}
-              >
-                {formattedValue || "Select Date"}
-              </button>
+                placeholder="Select Date"
+                className="border rounded px-3 py-2 bg-white dark:bg-blue-900/40 cursor-pointer"
+              />
             )}
           </ByteDatePicker>
           <button
@@ -411,13 +412,14 @@ export function ExpenditureTable() {
                 hideInput
               >
                 {({ open, formattedValue }) => (
-                  <button
-                    type="button"
-                    className="border rounded px-3 py-2 bg-white dark:bg-blue-900/40 w-full"
+                  <input
+                    type="text"
+                    readOnly
+                    value={formattedValue || ""}
                     onClick={open}
-                  >
-                    {formattedValue || "Select Date"}
-                  </button>
+                    placeholder="Select Date"
+                    className="border rounded px-3 py-2 bg-white dark:bg-blue-900/40 w-full cursor-pointer"
+                  />
                 )}
               </ByteDatePicker>
               <div className="flex gap-2 justify-end">
@@ -444,7 +446,7 @@ export function ExpenditureTable() {
       {/* AI Insight display */}
       {insight && canMutate && (
         <div className="mt-6 p-4 border rounded bg-blue-50 dark:bg-blue-900/40 text-sm">
-          <strong>AI Insight:</strong>
+          <strong>Suite 33 AI Insight:</strong>
           <div className="mt-2 whitespace-pre-line">{insight}</div>
         </div>
       )}

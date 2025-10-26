@@ -133,6 +133,7 @@ model Payroll {
   business   Business @relation(fields: [businessId], references: [id])
   amount     Float
   period     DateTime
+  paid       Boolean  @default(false)
 
   createdAt DateTime @default(now())
 }

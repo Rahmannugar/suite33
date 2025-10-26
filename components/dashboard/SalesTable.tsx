@@ -54,7 +54,6 @@ export function SalesTable() {
 
   // Filter controls
   const [year, setYear] = useState(new Date().getFullYear());
-  const [period, setPeriod] = useState<"month" | "week">("month");
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
   // Import
@@ -79,44 +78,25 @@ export function SalesTable() {
     sales?.filter((s: Sale) => {
       const d = new Date(s.date);
       if (d.getFullYear() !== year) return false;
-      if (period === "month" && d.getMonth() + 1 !== month) return false;
+      if (month && d.getMonth() + 1 !== month) return false;
       return true;
     }) ?? [];
 
   // Prepare chart data
   const chartData =
-    period === "month"
-      ? Array.from({ length: 4 }, (_, i) => {
-          // 4 weeks in month
-          const weekSales = filteredSales.filter((s: Sale) => {
-            const d = new Date(s.date);
-            const week = Math.ceil(d.getDate() / 7);
-            return week === i + 1;
-          });
-          return {
-            name: `Week ${i + 1}`,
-            sales: weekSales.reduce(
-              (sum: number, s: Sale) => sum + s.amount,
-              0
-            ),
-          };
-        })
-      : Array.from({ length: 12 }, (_, i) => {
-          // 12 months in year
-          const monthSales = filteredSales.filter((s: Sale) => {
-            const d = new Date(s.date);
-            return d.getMonth() === i;
-          });
-          return {
-            name: new Date(2000, i).toLocaleString("default", {
-              month: "short",
-            }),
-            sales: monthSales.reduce(
-              (sum: number, s: Sale) => sum + s.amount,
-              0
-            ),
-          };
-        });
+    month &&
+    Array.from({ length: 4 }, (_, i) => {
+      // 4 weeks in month
+      const weekSales = filteredSales.filter((s: Sale) => {
+        const d = new Date(s.date);
+        const week = Math.ceil(d.getDate() / 7);
+        return week === i + 1;
+      });
+      return {
+        name: `Week ${i + 1}`,
+        sales: weekSales.reduce((sum: number, s: Sale) => sum + s.amount, 0),
+      };
+    });
 
   async function handleAddSale(e: React.FormEvent) {
     e.preventDefault();
@@ -216,7 +196,7 @@ export function SalesTable() {
     try {
       const res = await getInsight.mutateAsync({
         year,
-        month: period === "month" ? month : undefined,
+        month: month,
         businessId: user?.businessId ?? "",
       });
       setInsight(res.insight || "No insight available.");
@@ -231,47 +211,31 @@ export function SalesTable() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4">Sales</h2>
-      {/* Filter controls */}
       <div className="flex gap-2 mb-4 items-center">
-        <select
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
-          className="border rounded px-2 py-1"
+        <ByteDatePicker
+          value={new Date(year, month - 1)}
+          onChange={(date) => {
+            if (date) {
+              setYear(date.getFullYear());
+              setMonth(date.getMonth() + 1);
+            }
+          }}
+          formatString="yyyy-mm"
+          includeDays={false}
+          hideInput
         >
-          {Array.from(
-            new Set(
-              (sales ?? []).map((s: Sale) => new Date(s.date).getFullYear())
-            )
-          )
-            .sort((a, b) => Number(b) - Number(a))
-            .map((y) => (
-              <option key={String(y)} value={String(y)}>
-                {String(y)}
-              </option>
-            ))}
-        </select>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value as "month" | "week")}
-          className="border rounded px-2 py-1"
-        >
-          <option value="month">Month</option>
-          <option value="week">Week</option>
-        </select>
-        {period === "month" && (
-          <select
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            className="border rounded px-2 py-1"
-          >
-            {Array.from({ length: 12 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>
-                {new Date(2000, i).toLocaleString("default", { month: "long" })}
-              </option>
-            ))}
-          </select>
-        )}
+          {({ open, formattedValue }) => (
+            <input
+              type="text"
+              readOnly
+              value={
+                formattedValue || `${year}-${String(month).padStart(2, "0")}`
+              }
+              onClick={open}
+              className="block w-full max-w-xs rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition cursor-pointer font-medium"
+            />
+          )}
+        </ByteDatePicker>
         <button
           type="button"
           className={`bg-blue-600 text-white px-3 py-1 rounded ${
@@ -337,13 +301,14 @@ export function SalesTable() {
             hideInput
           >
             {({ open, formattedValue }) => (
-              <button
-                type="button"
-                className="border rounded px-3 py-2 bg-white dark:bg-blue-900/40"
+              <input
+                type="text"
+                readOnly
+                value={formattedValue || ""}
                 onClick={open}
-              >
-                {formattedValue || "Select Date"}
-              </button>
+                placeholder="Select Date"
+                className="border rounded px-3 py-2 bg-white dark:bg-blue-900/40 cursor-pointer"
+              />
             )}
           </ByteDatePicker>
           <button
@@ -450,13 +415,14 @@ export function SalesTable() {
                 hideInput
               >
                 {({ open, formattedValue }) => (
-                  <button
-                    type="button"
-                    className="border rounded px-3 py-2 bg-white dark:bg-blue-900/40 w-full"
+                  <input
+                    type="text"
+                    readOnly
+                    value={formattedValue || ""}
                     onClick={open}
-                  >
-                    {formattedValue || "Select Date"}
-                  </button>
+                    placeholder="Select Date"
+                    className="border rounded px-3 py-2 bg-white dark:bg-blue-900/40 w-full cursor-pointer"
+                  />
                 )}
               </ByteDatePicker>
               <div className="flex gap-2 justify-end">
@@ -483,7 +449,7 @@ export function SalesTable() {
       {/* AI Insight display */}
       {insight && canMutate && (
         <div className="mt-6 p-4 border rounded bg-blue-50 dark:bg-blue-900/40 text-sm">
-          <strong>AI Insight:</strong>
+          <strong>Suite 33 AI Insight:</strong>
           <div className="mt-2 whitespace-pre-line">{insight}</div>
         </div>
       )}
