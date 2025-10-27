@@ -68,7 +68,7 @@ export default function AcceptInvitePage() {
 
   if (signupMutation.data?.needsConfirmation) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-center">
+      <div className="min-h-screen flex items-center flex-col justify-center text-center">
         <h1 className="text-lg font-semibold mb-2">Check your email</h1>
         <p className="text-sm text-[--muted-foreground]">
           We've sent a confirmation link to <b>{invite?.email}</b>. Click it to

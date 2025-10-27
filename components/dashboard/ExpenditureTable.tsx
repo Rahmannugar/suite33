@@ -15,14 +15,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-
-interface Expenditure {
-  id: string;
-  amount: number;
-  description?: string;
-  date: string;
-  businessId?: string;
-}
+import type { Expenditure } from "@/lib/types/expenditure";
 
 export default function ExpenditureTable() {
   const user = useAuthStore((s) => s.user);

@@ -58,7 +58,7 @@ export default function Header() {
         <ThemeToggle />
         <div className="relative" ref={dropdownRef}>
           <button
-            className="flex items-center gap-2 rounded-full border border-[--input] bg-blue-50 dark:bg-blue-900/40 px-2 py-1 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition"
+            className="flex items-center gap-2 rounded-full border border-[--input] bg-blue-50 dark:bg-blue-900/40 px-2 py-[6px] hover:bg-blue-100 dark:hover:bg-blue-900/60 transition"
             onClick={() => setDropdownOpen((v) => !v)}
             aria-label="Profile menu"
             style={{ minWidth: 36, minHeight: 36 }}

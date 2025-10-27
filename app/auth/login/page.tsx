@@ -143,7 +143,7 @@ export default function LoginPage() {
 
         <button
           onClick={() => signInWithGoogle.mutate({})}
-          disabled={signInWithGoogle.isPending}
+          disabled={signInWithGoogle.isPending || signIn.isPending}
           className={`mt-4 w-full flex items-center justify-center gap-2 rounded-lg border border-[--input] py-3 hover:bg-blue-50 dark:hover:bg-blue-900 transition ${
             signInWithGoogle.isPending
               ? "opacity-50 cursor-not-allowed"

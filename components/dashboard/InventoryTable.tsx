@@ -4,15 +4,7 @@ import { useInventory } from "@/lib/hooks/useInventory";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-
-interface Inventory {
-  id: string;
-  name: string;
-  quantity: number;
-  categoryId: string;
-  businessId?: string;
-  category?: { id: string; name: string };
-}
+import type { Inventory } from "@/lib/types/inventory";
 
 export default function InventoryTable() {
   const user = useAuthStore((s) => s.user);
@@ -20,7 +12,7 @@ export default function InventoryTable() {
     inventory,
     isLoading,
     refetch,
-    addItem,
+    add
     editItem,
     deleteItem,
     importCSV,

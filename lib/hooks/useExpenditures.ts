@@ -1,14 +1,20 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
+import { ExpenditureSchema } from "../types/expenditure";
+import z from "zod";
 
 export function useExpenditures() {
+  const queryClient = useQueryClient();
+
   const query = useQuery({
     queryKey: ["expenditures"],
     queryFn: async () => {
       const { data } = await axios.get("/api/expenditures");
-      return data.expenditures;
+      const result = z.array(ExpenditureSchema).safeParse(data.expenditures);
+      if (!result.success) throw new Error("Invalid expenditures data");
+      return result.data;
     },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -23,6 +29,8 @@ export function useExpenditures() {
     }) => {
       await axios.post("/api/expenditures", payload);
     },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["expenditures"] }),
   });
 
   const editExpenditure = useMutation({
@@ -34,12 +42,16 @@ export function useExpenditures() {
     }) => {
       await axios.put(`/api/expenditures/${payload.id}`, payload);
     },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["expenditures"] }),
   });
 
   const deleteExpenditure = useMutation({
     mutationFn: async (id: string) => {
       await axios.delete(`/api/expenditures/${id}`);
     },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["expenditures"] }),
   });
 
   const importCSV = useMutation({

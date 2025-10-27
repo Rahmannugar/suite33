@@ -1,12 +1,18 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import z from "zod";
+import { DepartmentSchema } from "../types/department";
 
 export function useDepartments() {
+  const queryClient = useQueryClient();
+
   const query = useQuery({
     queryKey: ["departments"],
     queryFn: async () => {
       const { data } = await axios.get("/api/departments");
-      return data.departments;
+      const result = z.array(DepartmentSchema).safeParse(data.departments);
+      if (!result.success) throw new Error("Invalid departments data");
+      return result.data;
     },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -16,6 +22,8 @@ export function useDepartments() {
     mutationFn: async (departmentId: string) => {
       await axios.delete(`/api/departments/${departmentId}`);
     },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["departments"] }),
   });
 
   return {

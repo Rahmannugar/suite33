@@ -15,14 +15,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-
-interface Sale {
-  id: string;
-  amount: number;
-  description?: string;
-  date: string;
-  businessId?: string;
-}
+import type { Sale } from "@/lib/types/sale";
 
 export default function SalesTable() {
   const user = useAuthStore((s) => s.user);
@@ -346,7 +339,7 @@ export default function SalesTable() {
             </tr>
           </thead>
           <tbody>
-            {filteredSales.map((sale: any) => (
+            {filteredSales.map((sale: Sale) => (
               <tr key={sale.id} className="border-t">
                 <td className="p-2">₦{sale.amount.toLocaleString()}</td>
                 <td className="p-2">{sale.description || "-"}</td>

@@ -3,8 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/stores/authStore";
 import axios from "axios";
-import type { User } from "../types/user";
+import { UserSchema, User } from "../types/user";
 import { useEffect } from "react";
+import { z } from "zod";
 
 export function useProfile() {
   const { user, setUser } = useAuthStore();
@@ -13,7 +14,9 @@ export function useProfile() {
     queryKey: ["user-profile"],
     queryFn: async () => {
       const { data } = await axios.get("/api/user/profile");
-      return data;
+      const result = UserSchema.safeParse(data);
+      if (!result.success) throw new Error("Invalid user profile data");
+      return result.data as User;
     },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -22,17 +25,16 @@ export function useProfile() {
 
   useEffect(() => {
     if (query.data) {
-      const profile = query.data as User;
       setUser({
-        id: profile.id,
-        email: profile.email,
-        role: profile.role,
-        fullName: profile.fullName,
-        businessId: profile.businessId,
-        businessName: profile.businessName,
-        avatarUrl: profile.avatarUrl,
-        departmentId: profile.departmentId,
-        departmentName: profile.departmentName,
+        id: query.data.id,
+        email: query.data.email,
+        role: query.data.role,
+        fullName: query.data.fullName,
+        businessId: query.data.businessId,
+        businessName: query.data.businessName,
+        avatarUrl: query.data.avatarUrl,
+        departmentId: query.data.departmentId,
+        departmentName: query.data.departmentName,
       });
     }
   }, [query.data, setUser]);

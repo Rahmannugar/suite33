@@ -1,14 +1,20 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
+import { SaleSchema } from "@/lib/types/sale";
+import { z } from "zod";
 
 export function useSales() {
+  const queryClient = useQueryClient();
+
   const query = useQuery({
     queryKey: ["sales"],
     queryFn: async () => {
       const { data } = await axios.get("/api/sales");
-      return data.sales;
+      const result = z.array(SaleSchema).safeParse(data.sales);
+      if (!result.success) throw new Error("Invalid sales data");
+      return result.data;
     },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -23,6 +29,7 @@ export function useSales() {
     }) => {
       await axios.post("/api/sales", payload);
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sales"] }),
   });
 
   const editSale = useMutation({
@@ -34,12 +41,14 @@ export function useSales() {
     }) => {
       await axios.put(`/api/sales/${payload.id}`, payload);
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sales"] }),
   });
 
   const deleteSale = useMutation({
     mutationFn: async (id: string) => {
       await axios.delete(`/api/sales/${id}`);
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sales"] }),
   });
 
   const importCSV = useMutation({

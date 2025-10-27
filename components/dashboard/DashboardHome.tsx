@@ -163,12 +163,12 @@ export default function DashboardHome() {
             />
           ) : (
             <div className="rounded-full w-14 h-14 bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-600">
-              {profile?.businessName?.[0] ?? "?"}
+              {profile?.businessName?.[0] ?? ""}
             </div>
           )}
           <div>
             <div className="font-bold text-lg">
-              {profile?.businessName ?? "Business"}
+              {profile?.businessName.toUpperCase() ?? "Business"}
             </div>
             <div className="text-sm text-[--muted-foreground]">
               {user?.role === "ADMIN"

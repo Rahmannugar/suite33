@@ -1,9 +1,12 @@
-"use client"
+"use client";
 
+import type { Department } from "@/lib/types/department";
+import type { Staff } from "@/lib/types/staff";
 import { useDepartments } from "@/lib/hooks/useDepartments";
 import { useStaff } from "@/lib/hooks/useStaff";
 import { useAuthStore } from "@/lib/stores/authStore";
 import axios from "axios";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -81,6 +84,7 @@ export default function DepartmentManager() {
           >
             {creating ? "Creating..." : "Create Department"}
           </button>
+          <Link href={`/dashboard/admin/invite`}>Invite Staff</Link>
         </form>
       )}
 
@@ -89,11 +93,13 @@ export default function DepartmentManager() {
         {loadingDepts ? (
           <div>Loading departments...</div>
         ) : departments?.length ? (
-          departments.map((dept: any) => (
+          departments.map((dept: Department) => (
             <div key={dept.id} className="border rounded-lg p-4">
-              <div className="font-semibold mb-2">{dept.name}</div>
+              <div className="font-semibold mb-2">
+                {dept.name.toUpperCase()}
+              </div>
               <div className="mb-2 text-xs text-gray-500">
-                Staff: {dept.staff.length}
+                Staff: {dept.staff?.length ?? 0}
               </div>
               {user?.role === "ADMIN" && (
                 <button
@@ -112,13 +118,14 @@ export default function DepartmentManager() {
                   Delete Department
                 </button>
               )}
+
               <ul className="space-y-1">
-                {dept.staff.length === 0 && (
+                {(dept.staff?.length ?? 0) === 0 && (
                   <li className="text-xs text-[--muted-foreground]">
                     No staff in this department.
                   </li>
                 )}
-                {dept.staff.map((s: any) => (
+                {dept.staff?.map((s: Staff) => (
                   <li key={s.id} className="flex items-center gap-2">
                     <span>{s.user.fullName || s.user.email}</span>
                     {user?.role === "ADMIN" && (
@@ -136,7 +143,7 @@ export default function DepartmentManager() {
                           }}
                           className="border rounded px-2 py-1 text-xs"
                         >
-                          {departments?.map((d: any) => (
+                          {departments?.map((d: Department) => (
                             <option key={d.id} value={d.id}>
                               {d.name}
                             </option>
@@ -199,14 +206,14 @@ export default function DepartmentManager() {
         <ul className="space-y-1">
           {loadingStaff ? (
             <div>Loading staff...</div>
-          ) : staff?.filter((s: any) => !s.departmentId).length === 0 ? (
+          ) : staff?.filter((s: Staff) => !s.departmentId).length === 0 ? (
             <li className="text-xs text-[--muted-foreground]">
               All staff are assigned to departments.
             </li>
           ) : (
             staff
-              ?.filter((s: any) => !s.departmentId)
-              .map((s: any) => (
+              ?.filter((s: Staff) => !s.departmentId)
+              .map((s: Staff) => (
                 <li key={s.id} className="flex items-center gap-2">
                   <span>{s.user.fullName || s.user.email}</span>
                   {user?.role === "ADMIN" && (
@@ -225,7 +232,7 @@ export default function DepartmentManager() {
                         className="border rounded px-2 py-1 text-xs"
                       >
                         <option value="">Assign to department</option>
-                        {departments?.map((d: any) => (
+                        {departments?.map((d: Department) => (
                           <option key={d.id} value={d.id}>
                             {d.name}
                           </option>

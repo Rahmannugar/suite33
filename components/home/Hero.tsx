@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { Sparkles, BarChart3, Users2, Wallet, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuthStore } from "@/lib/stores/authStore";
 
 export function Hero() {
+  const user = useAuthStore((s) => s.user);
   return (
     <section className="relative overflow-hidden">
       {/* Subtle gradient background */}
@@ -34,18 +36,27 @@ export function Hero() {
             </p>
 
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              {user ? (
+                <Link
+                  href="/dashboard"
+                  className="inline-flex justify-center items-center rounded-lg bg-blue-600 text-white px-6 py-3 text-base font-semibold shadow hover:bg-blue-700 active:scale-95 transition-all duration-150 focus:ring-2 focus:ring-blue-300"
+                >
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <Link
+                  href="/auth/signup"
+                  className="inline-flex justify-center items-center rounded-lg bg-blue-600 text-white px-6 py-3 text-base font-semibold shadow hover:bg-blue-700 active:scale-95 transition-all duration-150 focus:ring-2 focus:ring-blue-300"
+                >
+                  Get started
+                </Link>
+              )}
               <Link
-                href="/auth/signup"
-                className="inline-flex justify-center items-center rounded-lg bg-blue-600 text-white px-6 py-3 text-base font-semibold shadow hover:bg-blue-700 active:scale-95 transition-all duration-150 focus:ring-2 focus:ring-blue-300"
-              >
-                Get started
-              </Link>
-              <a
                 href="#features"
                 className="inline-flex justify-center items-center rounded-lg border border-blue-600 bg-white text-blue-700 px-6 py-3 text-base font-semibold shadow hover:bg-blue-50 active:scale-95 transition-all duration-150 focus:ring-2 focus:ring-blue-300"
               >
                 Explore features
-              </a>
+              </Link>
             </div>
           </div>
 

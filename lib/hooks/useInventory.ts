@@ -1,14 +1,20 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
+import z from "zod";
+import { InventorySchema } from "../types/inventory";
 
 export function useInventory() {
+  const queryClient = useQueryClient();
+
   const query = useQuery({
     queryKey: ["inventory"],
     queryFn: async () => {
       const { data } = await axios.get("/api/inventory");
-      return data.inventory;
+      const result = z.array(InventorySchema).safeParse(data.inventory);
+      if (!result.success) throw new Error("Invalid inventory data");
+      return result.data;
     },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -23,6 +29,7 @@ export function useInventory() {
     }) => {
       await axios.post("/api/inventory", payload);
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inventory"] }),
   });
 
   const editItem = useMutation({
@@ -34,12 +41,14 @@ export function useInventory() {
     }) => {
       await axios.put(`/api/inventory/${payload.id}`, payload);
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inventory"] }),
   });
 
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
       await axios.delete(`/api/inventory/${id}`);
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inventory"] }),
   });
 
   const importCSV = useMutation({

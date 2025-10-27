@@ -1,5 +1,7 @@
 "use client";
 
+import type { Payroll } from "@/lib/types/payroll";
+import type { Staff } from "@/lib/types/staff";
 import { usePayroll } from "@/lib/hooks/usePayroll";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useStaff } from "@/lib/hooks/useStaff";
@@ -38,25 +40,22 @@ export default function PayrollTable() {
   const filteredPayroll = useMemo(() => {
     if (!payroll) return [];
     if (user?.role === "ADMIN") {
-      return payroll.filter((p: any) => {
-        const d = new Date(p.period);
-        return d.getFullYear() === year && d.getMonth() + 1 === month;
-      });
+      return payroll as Payroll[];
     }
     if (user?.role === "SUB_ADMIN" && user?.departmentId) {
       const deptStaffIds = staff
-        ?.filter((s: any) => s.departmentId === user.departmentId)
-        .map((s: any) => s.id);
-      return payroll.filter(
-        (p: any) =>
+        ?.filter((s: Staff) => s.departmentId === user.departmentId)
+        .map((s: Staff) => s.id);
+      return (payroll as Payroll[]).filter(
+        (p: Payroll) =>
           deptStaffIds?.includes(p.staffId) &&
           new Date(p.period).getFullYear() === year &&
           new Date(p.period).getMonth() + 1 === month
       );
     }
     if (user?.role === "STAFF") {
-      return payroll.filter(
-        (p: any) =>
+      return (payroll as Payroll[]).filter(
+        (p: Payroll) =>
           p.staffId === user.id &&
           new Date(p.period).getFullYear() === year &&
           new Date(p.period).getMonth() + 1 === month
@@ -191,7 +190,7 @@ export default function PayrollTable() {
             </tr>
           </thead>
           <tbody>
-            {filteredPayroll.map((p: any) => (
+            {filteredPayroll.map((p: Payroll) => (
               <tr key={p.id}>
                 <td>
                   {p.staff?.user?.fullName ?? p.staff?.user?.email ?? "Unknown"}
