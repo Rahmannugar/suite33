@@ -10,6 +10,8 @@ export function useExpenditures() {
       const { data } = await axios.get("/api/expenditures");
       return data.expenditures;
     },
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
   const addExpenditure = useMutation({

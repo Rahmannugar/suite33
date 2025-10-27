@@ -20,9 +20,9 @@ export default function DashboardClientProvider({
       <div className="relative">
         <Header />
         <main
-          className={`pt-4 sm:pt-8 transition-all ${
+          className={`pt-20 transition-all px-4 sm:px-8 ${
             collapsed ? "md:pl-20" : "md:pl-64"
-          }`}
+          } md:ml-6`}
         >
           {children}
         </main>

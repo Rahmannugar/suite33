@@ -8,6 +8,8 @@ export function useStaff() {
       const { data } = await axios.get("/api/staff");
       return data.staff;
     },
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
   const promoteStaff = useMutation({

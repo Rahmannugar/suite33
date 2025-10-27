@@ -10,6 +10,8 @@ export function useSales() {
       const { data } = await axios.get("/api/sales");
       return data.sales;
     },
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
   const addSale = useMutation({

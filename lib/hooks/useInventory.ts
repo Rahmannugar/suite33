@@ -10,6 +10,8 @@ export function useInventory() {
       const { data } = await axios.get("/api/inventory");
       return data.inventory;
     },
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
   const addItem = useMutation({
@@ -137,6 +139,8 @@ export function useInventory() {
       const { data } = await axios.get("/api/inventory/low-stock");
       return data.lowStock;
     },
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
   return {

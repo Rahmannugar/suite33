@@ -8,6 +8,8 @@ export function useDepartments() {
       const { data } = await axios.get("/api/departments");
       return data.departments;
     },
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
   const deleteDepartment = useMutation({

@@ -8,6 +8,8 @@ export function usePayroll() {
       const { data } = await axios.get("/api/payroll");
       return data.payroll;
     },
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
   const markPaid = useMutation({
