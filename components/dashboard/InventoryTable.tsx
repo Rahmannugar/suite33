@@ -12,7 +12,7 @@ export default function InventoryTable() {
     inventory,
     isLoading,
     refetch,
-    add
+    addItem,
     editItem,
     deleteItem,
     importCSV,

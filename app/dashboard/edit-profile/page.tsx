@@ -3,7 +3,6 @@
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ThemeToggle } from "@/components/Toggler";
 import { uploadAvatar } from "@/lib/utils/uploadImage";
 import axios from "axios";
 import { toast } from "sonner";
@@ -11,7 +10,7 @@ import Image from "next/image";
 import { useProfile } from "@/lib/hooks/useProfile";
 
 function getInitials(name?: string | null) {
-  if (!name) return "?";
+  if (!name) return "";
   return name
     .split(" ")
     .map((n) => n[0])
@@ -81,7 +80,6 @@ export default function EditProfilePage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background">
       <div className="w-full max-w-md rounded-2xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-sm p-8">
-        <ThemeToggle />
         <div className="flex justify-center mb-6">
           {preview ? (
             <Image
@@ -89,7 +87,7 @@ export default function EditProfilePage() {
               alt={user?.role === "ADMIN" ? "Business Logo" : "Profile Picture"}
               width={64}
               height={64}
-              className="rounded-full object-cover"
+              className="rounded-full object-cover w-16 h-16"
             />
           ) : (
             <div className="rounded-full w-16 h-16 bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600">

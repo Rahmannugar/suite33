@@ -18,6 +18,22 @@ export function useDepartments() {
     refetchOnWindowFocus: false,
   });
 
+  const createDepartment = useMutation({
+    mutationFn: async (payload: { name: string; businessId: string }) => {
+      await axios.post("/api/departments/create", payload);
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["departments"] }),
+  });
+
+  const editDepartment = useMutation({
+    mutationFn: async (payload: { id: string; name: string }) => {
+      await axios.put(`/api/departments/${payload.id}`, { name: payload.name });
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["departments"] }),
+  });
+
   const deleteDepartment = useMutation({
     mutationFn: async (departmentId: string) => {
       await axios.delete(`/api/departments/${departmentId}`);
@@ -29,6 +45,8 @@ export function useDepartments() {
   return {
     departments: query.data,
     isLoading: query.isLoading,
+    createDepartment,
+    editDepartment,
     deleteDepartment,
     refetch: query.refetch,
   };

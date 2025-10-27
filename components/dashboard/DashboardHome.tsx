@@ -26,6 +26,7 @@ import { usePayroll } from "@/lib/hooks/usePayroll";
 import { useMemo } from "react";
 import Image from "next/image";
 import { useProfile } from "@/lib/hooks/useProfile";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Sale {
   date: string;
@@ -42,6 +43,13 @@ interface PayrollItem {
   status: string;
 }
 
+function formatCurrencyShort(value: number): string {
+  if (value >= 1_000_000_000) return `₦${(value / 1_000_000_000).toFixed(1)}B`;
+  if (value >= 1_000_000) return `₦${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `₦${(value / 1_000).toFixed(1)}K`;
+  return `₦${value.toLocaleString()}`;
+}
+
 function getEmptyText(feature: string, role: string) {
   if (role === "ADMIN" || role === "SUB_ADMIN") {
     return `${feature} is empty, start adding.`;
@@ -56,12 +64,12 @@ export default function DashboardHome() {
   const { staff, isLoading: staffLoading } = useStaff();
   const { inventory, isLoading: invLoading } = useInventory();
   const { payroll, isLoading: payrollLoading } = usePayroll();
-  const { profile } = useProfile();
+  const { profile, isLoading: profileLoading } = useProfile();
 
   const role = user?.role ?? "STAFF";
   const currentYear = new Date().getFullYear();
 
-  // Sales chart
+  // Compute chart data
   const salesChartData = sales?.length
     ? Array.from({ length: 12 }, (_, i) => {
         const monthName = new Date(2000, i).toLocaleString("default", {
@@ -74,12 +82,11 @@ export default function DashboardHome() {
         );
         return {
           name: monthName,
-          sales: monthSales.reduce((sum: number, s: Sale) => sum + s.amount, 0),
+          sales: monthSales.reduce((sum, s) => sum + s.amount, 0),
         };
       })
     : [];
 
-  // Expenditure chart
   const expChartData = expenditures?.length
     ? Array.from({ length: 12 }, (_, i) => {
         const monthName = new Date(2000, i).toLocaleString("default", {
@@ -92,37 +99,27 @@ export default function DashboardHome() {
         );
         return {
           name: monthName,
-          exp: monthExp.reduce(
-            (sum: number, e: Expenditure) => sum + e.amount,
-            0
-          ),
+          expenditures: monthExp.reduce((sum, e) => sum + e.amount, 0),
         };
       })
     : [];
 
-  // Profit & Loss Table
   const pnlTable = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const monthSales =
         sales?.filter(
-          (s: Sale) =>
+          (s) =>
             new Date(s.date).getFullYear() === currentYear &&
             new Date(s.date).getMonth() === i
         ) ?? [];
       const monthExp =
         expenditures?.filter(
-          (e: Expenditure) =>
+          (e) =>
             new Date(e.date).getFullYear() === currentYear &&
             new Date(e.date).getMonth() === i
         ) ?? [];
-      const salesTotal = monthSales.reduce(
-        (sum: number, s: Sale) => sum + s.amount,
-        0
-      );
-      const expTotal = monthExp.reduce(
-        (sum: number, e: Expenditure) => sum + e.amount,
-        0
-      );
+      const salesTotal = monthSales.reduce((sum, s) => sum + s.amount, 0);
+      const expTotal = monthExp.reduce((sum, e) => sum + e.amount, 0);
       return {
         month: new Date(2000, i).toLocaleString("default", { month: "long" }),
         sales: salesTotal,
@@ -132,278 +129,157 @@ export default function DashboardHome() {
     });
   }, [sales, expenditures, currentYear]);
 
-  const yearSales = pnlTable.reduce(
-    (sum: number, row: { sales: number }) => sum + row.sales,
-    0
-  );
-  const yearExp = pnlTable.reduce(
-    (sum: number, row: { expenditures: number }) => sum + row.expenditures,
-    0
-  );
+  const yearSales = pnlTable.reduce((sum, row) => sum + row.sales, 0);
+  const yearExp = pnlTable.reduce((sum, row) => sum + row.expenditures, 0);
   const yearPnl = yearSales - yearExp;
 
-  const businessLogo =
-    profile?.businessId && profile?.businessName && profile?.avatarUrl
-      ? profile.avatarUrl
-      : null;
+  const businessLogo = profile?.avatarUrl || null;
 
   return (
-    <div>
-      {/* User Info Card */}
-      <div className="mb-6">
-        <div className="rounded-xl border border-[--border] bg-[--card] p-4 flex flex-col sm:flex-row items-center gap-4">
-          {/* Business Logo */}
-          {businessLogo ? (
-            <Image
-              src={businessLogo}
-              alt="Business Logo"
-              width={56}
-              height={56}
-              className="rounded-full object-cover"
-            />
-          ) : (
-            <div className="rounded-full w-14 h-14 bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-600">
-              {profile?.businessName?.[0] ?? ""}
-            </div>
-          )}
-          <div>
-            <div className="font-bold text-lg">
-              {profile?.businessName.toUpperCase() ?? "Business"}
-            </div>
-            <div className="text-sm text-[--muted-foreground]">
-              {user?.role === "ADMIN"
-                ? `Admin: ${user?.fullName ?? ""}`
-                : user?.role === "SUB_ADMIN"
-                ? `Assistant Admin: ${user?.fullName ?? ""}`
-                : `Staff: ${user?.fullName ?? ""}`}
-            </div>
+    <div className="space-y-8">
+      {/* Business / User Info (not clickable) */}
+      <div className="rounded-xl border border-[--border] bg-[--card] p-5 flex flex-col sm:flex-row items-center gap-4 shadow-sm">
+        {profileLoading ? (
+          <Skeleton className="h-16 w-16 rounded-full" />
+        ) : businessLogo ? (
+          <Image
+            src={businessLogo}
+            alt="Business Logo"
+            width={64}
+            height={64}
+            className="rounded-full object-cover border border-blue-600 w-16 h-16"
+          />
+        ) : (
+          <div className="rounded-full w-16 h-16 bg-blue-600 flex items-center justify-center text-2xl font-semibold text-white">
+            {profile?.businessName?.[0] ?? ""}
+          </div>
+        )}
+        <div>
+          <div className="font-bold text-lg">
+            {profile?.businessName?.toUpperCase() ?? "Business"}
+          </div>
+          <div className="text-sm text-[--muted-foreground]">
+            {user?.role === "ADMIN"
+              ? `Admin: ${user?.fullName ?? ""}`
+              : user?.role === "SUB_ADMIN"
+              ? `Assistant Admin: ${user?.fullName ?? ""}`
+              : `Staff: ${user?.fullName ?? ""}`}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-        {/* Sales */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp size={20} className="text-blue-600" />
-              Sales
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {salesLoading ? (
-              <div className="text-sm text-[--muted-foreground]">
-                Loading...
-              </div>
-            ) : salesChartData.length ? (
-              <>
-                <div className="font-bold text-2xl">
-                  ₦
-                  {sales
-                    .filter(
-                      (s: Sale) =>
-                        new Date(s.date).getFullYear() === currentYear
-                    )
-                    .reduce((sum: number, s: Sale) => sum + s.amount, 0)
-                    .toLocaleString()}
-                </div>
-                <ResponsiveContainer width="100%" height={80}>
-                  <BarChart data={salesChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis hide />
-                    <Tooltip />
-                    <Bar dataKey="sales" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </>
-            ) : (
-              <div className="text-sm text-[--muted-foreground]">
-                {getEmptyText("Sales", role)}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Expenditures */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wallet size={20} className="text-blue-600" />
-              Expenditures
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {expLoading ? (
-              <div className="text-sm text-[--muted-foreground]">
-                Loading...
-              </div>
-            ) : expChartData.length ? (
-              <>
-                <div className="font-bold text-2xl">
-                  ₦
-                  {expenditures
-                    .filter(
-                      (e: Expenditure) =>
-                        new Date(e.date).getFullYear() === currentYear
-                    )
-                    .reduce((sum: number, e: Expenditure) => sum + e.amount, 0)
-                    .toLocaleString()}
-                </div>
-                <ResponsiveContainer width="100%" height={80}>
-                  <BarChart data={expChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis hide />
-                    <Tooltip />
-                    <Bar dataKey="exp" fill="#eab308" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </>
-            ) : (
-              <div className="text-sm text-[--muted-foreground]">
-                {getEmptyText("Expenditures", role)}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Staff */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users2 size={20} className="text-blue-600" />
-              Staff
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {staffLoading ? (
-              <div className="text-sm text-[--muted-foreground]">
-                Loading...
-              </div>
-            ) : staff?.length ? (
-              <>
-                <div className="font-bold text-2xl">{staff.length}</div>
-                <div className="text-sm text-[--muted-foreground]">
-                  Active staff
-                </div>
-              </>
-            ) : (
-              <div className="text-sm text-[--muted-foreground]">
-                {getEmptyText("Staff", role)}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Inventory */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Boxes size={20} className="text-blue-600" />
-              Inventory
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {invLoading ? (
-              <div className="text-sm text-[--muted-foreground]">
-                Loading...
-              </div>
-            ) : inventory?.length ? (
-              <>
-                <div className="font-bold text-2xl">{inventory.length}</div>
-                <div className="text-sm text-[--muted-foreground]">
-                  Items tracked
-                </div>
-              </>
-            ) : (
-              <div className="text-sm text-[--muted-foreground]">
-                {getEmptyText("Inventory", role)}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Payroll Summary */}
-        <div className="col-span-1 md:col-span-2 xl:col-span-4 mt-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BadgeDollarSign size={20} className="text-blue-600" />
-                Payroll Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {payrollLoading ? (
-                <div className="text-sm text-[--muted-foreground]">
-                  Loading...
-                </div>
-              ) : payroll?.length ? (
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div>
-                    <div className="font-bold text-xl">
-                      ₦
-                      {payroll
-                        .filter((p: PayrollItem) => p.status === "Paid")
-                        .reduce(
-                          (sum: number, p: PayrollItem) => sum + p.amount,
-                          0
-                        )
-                        .toLocaleString()}
-                    </div>
-                    <div className="text-sm text-[--muted-foreground]">
-                      Total paid this month
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-bold text-xl">
-                      ₦
-                      {payroll
-                        .filter((p: PayrollItem) => p.status !== "Paid")
-                        .reduce(
-                          (sum: number, p: PayrollItem) => sum + p.amount,
-                          0
-                        )
-                        .toLocaleString()}
-                    </div>
-                    <div className="text-sm text-[--muted-foreground]">
-                      Pending payroll
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-[--muted-foreground]">
-                  {getEmptyText("Payroll", role)}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+        <MetricCard
+          title="Sales"
+          icon={<TrendingUp size={20} className="text-blue-600" />}
+          isLoading={salesLoading}
+          data={salesChartData}
+          total={sales
+            ?.filter((s) => new Date(s.date).getFullYear() === currentYear)
+            .reduce((sum, s) => sum + s.amount, 0)}
+          dataKey="sales"
+          color="#2563eb"
+          role={role}
+        />
+        <MetricCard
+          title="Expenditures"
+          icon={<Wallet size={20} className="text-amber-500" />}
+          isLoading={expLoading}
+          data={expChartData}
+          total={expenditures
+            ?.filter((e) => new Date(e.date).getFullYear() === currentYear)
+            .reduce((sum, e) => sum + e.amount, 0)}
+          dataKey="expenditures"
+          color="#eab308"
+          role={role}
+        />
+        <SimpleMetric
+          title="Staff"
+          icon={<Users2 size={20} className="text-blue-600" />}
+          count={staff?.length}
+          loading={staffLoading}
+          subtitle="Active staff"
+          role={role}
+        />
+        <SimpleMetric
+          title="Inventory"
+          icon={<Boxes size={20} className="text-blue-600" />}
+          count={inventory?.length}
+          loading={invLoading}
+          subtitle="Items tracked"
+          role={role}
+        />
       </div>
 
-      {/* Revenue Tab */}
-      <div className="mt-8">
+      {/* Payroll (clickable styling added) */}
+      <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] hover:shadow-md cursor-pointer will-change-transform">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BadgeDollarSign size={20} className="text-blue-600" />
+            Payroll Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {payrollLoading ? (
+            <LoadingPlaceholder />
+          ) : payroll?.length ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <PayrollBlock
+                label="Total paid this month"
+                color="text-green-600"
+                amount={payroll
+                  .filter((p) => p.status === "Paid")
+                  .reduce((sum, p) => sum + p.amount, 0)}
+              />
+              <PayrollBlock
+                label="Pending payroll"
+                color="text-amber-600"
+                amount={payroll
+                  .filter((p) => p.status !== "Paid")
+                  .reduce((sum, p) => sum + p.amount, 0)}
+              />
+            </div>
+          ) : (
+            <p className="text-sm text-[--muted-foreground]">
+              {getEmptyText("Payroll", role)}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* P&L Table */}
+      <div>
         <h3 className="text-lg font-semibold mb-2">
-          Monthly & Yearly Revenue (P&L)
+          P & L Summary – {currentYear}
         </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-[600px] w-full border rounded">
-            <thead>
-              <tr className="bg-blue-50 dark:bg-blue-900/40">
-                <th className="p-2 text-left">Month</th>
-                <th className="p-2 text-left">Sales</th>
-                <th className="p-2 text-left">Expenditures</th>
-                <th className="p-2 text-left">Net P&L</th>
+        <div className="overflow-x-auto sm:overflow-x-visible">
+          <table className="min-w-[600px] w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            <thead className="bg-blue-50 dark:bg-blue-900/30 text-gray-800 dark:text-gray-200">
+              <tr>
+                <th className="p-2.5 text-left font-medium">Month</th>
+                <th className="p-2.5 text-left font-medium">Sales</th>
+                <th className="p-2.5 text-left font-medium">Expenditures</th>
+                <th className="p-2.5 text-left font-medium">Net P&L</th>
               </tr>
             </thead>
             <tbody>
-              {pnlTable.map((row) => (
-                <tr key={row.month} className="border-t">
-                  <td className="p-2">{row.month}</td>
-                  <td className="p-2">₦{row.sales.toLocaleString()}</td>
-                  <td className="p-2">₦{row.expenditures.toLocaleString()}</td>
+              {pnlTable.map((row, i) => (
+                <tr
+                  key={row.month}
+                  className={`${
+                    i % 2 === 0
+                      ? "bg-white dark:bg-gray-900/40"
+                      : "bg-gray-50 dark:bg-gray-800/30"
+                  } border-t`}
+                >
+                  <td className="p-2.5">{row.month}</td>
+                  <td className="p-2.5">₦{row.sales.toLocaleString()}</td>
+                  <td className="p-2.5">
+                    ₦{row.expenditures.toLocaleString()}
+                  </td>
                   <td
-                    className={`p-2 font-semibold ${
+                    className={`p-2.5 font-semibold ${
                       row.pnl < 0 ? "text-red-600" : "text-green-600"
                     }`}
                   >
@@ -411,12 +287,12 @@ export default function DashboardHome() {
                   </td>
                 </tr>
               ))}
-              <tr className="bg-blue-100 dark:bg-blue-900/20 font-bold">
-                <td className="p-2">Total</td>
-                <td className="p-2">₦{yearSales.toLocaleString()}</td>
-                <td className="p-2">₦{yearExp.toLocaleString()}</td>
+              <tr className="bg-blue-100 dark:bg-blue-900/40 font-bold text-[15px]">
+                <td className="p-3">Total</td>
+                <td className="p-3">₦{yearSales.toLocaleString()}</td>
+                <td className="p-3">₦{yearExp.toLocaleString()}</td>
                 <td
-                  className={`p-2 ${
+                  className={`p-3 ${
                     yearPnl < 0 ? "text-red-600" : "text-green-600"
                   }`}
                 >
@@ -427,6 +303,117 @@ export default function DashboardHome() {
           </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* Supporting Components */
+
+function MetricCard({
+  title,
+  icon,
+  data,
+  total,
+  dataKey,
+  color,
+  isLoading,
+  role,
+}: any) {
+  return (
+    <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] hover:shadow-md cursor-pointer will-change-transform">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {icon} {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <LoadingPlaceholder />
+        ) : data?.length ? (
+          <>
+            <div className="font-bold text-2xl mb-3">
+              ₦{total?.toLocaleString()}
+            </div>
+            <div className="cursor-pointer">
+              <ResponsiveContainer width="100%" height={150}>
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis hide />
+                  <Tooltip
+                    formatter={(value: number) => [
+                      formatCurrencyShort(value),
+                      title,
+                    ]}
+                  />
+                  <Bar
+                    dataKey={dataKey}
+                    name={title}
+                    fill={color}
+                    radius={[6, 6, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-[--muted-foreground]">
+            {getEmptyText(title, role)}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SimpleMetric({ title, icon, count, loading, subtitle, role }: any) {
+  return (
+    <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] hover:shadow-md cursor-pointer will-change-transform">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {icon} {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <LoadingPlaceholder />
+        ) : count ? (
+          <>
+            <div className="font-bold text-2xl">{count}</div>
+            <p className="text-sm text-[--muted-foreground]">{subtitle}</p>
+          </>
+        ) : (
+          <p className="text-sm text-[--muted-foreground]">
+            {getEmptyText(title, role)}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PayrollBlock({
+  label,
+  color,
+  amount,
+}: {
+  label: string;
+  color: string;
+  amount: number;
+}) {
+  return (
+    <div>
+      <p className={`font-bold text-xl ${color}`}>₦{amount.toLocaleString()}</p>
+      <p className="text-sm text-[--muted-foreground]">{label}</p>
+    </div>
+  );
+}
+
+function LoadingPlaceholder() {
+  return (
+    <div className="space-y-2 animate-pulse">
+      <Skeleton className="h-6 w-1/3 rounded" />
+      <Skeleton className="h-32 w-full rounded" />
     </div>
   );
 }

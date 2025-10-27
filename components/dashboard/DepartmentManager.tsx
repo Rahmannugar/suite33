@@ -5,7 +5,6 @@ import type { Staff } from "@/lib/types/staff";
 import { useDepartments } from "@/lib/hooks/useDepartments";
 import { useStaff } from "@/lib/hooks/useStaff";
 import { useAuthStore } from "@/lib/stores/authStore";
-import axios from "axios";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -14,6 +13,8 @@ export default function DepartmentManager() {
   const {
     departments,
     isLoading: loadingDepts,
+    createDepartment,
+    editDepartment,
     deleteDepartment,
     refetch: refetchDepts,
   } = useDepartments();
@@ -30,7 +31,9 @@ export default function DepartmentManager() {
 
   const [newDeptName, setNewDeptName] = useState("");
   const [creating, setCreating] = useState(false);
-  const [deletingStaffId, setDeletingStaffId] = useState<string | null>(null);
+  const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+  const [editDeptName, setEditDeptName] = useState("");
+  const [editingDept, setEditingDept] = useState(false);
 
   async function handleCreateDepartment(e: React.FormEvent) {
     e.preventDefault();
@@ -39,7 +42,7 @@ export default function DepartmentManager() {
 
     setCreating(true);
     try {
-      await axios.post("/api/departments/create", {
+      await createDepartment.mutateAsync({
         name: newDeptName,
         businessId: user.businessId,
       });
@@ -50,6 +53,26 @@ export default function DepartmentManager() {
       toast.error("Failed to create department");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleEditDepartment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingDeptId || !editDeptName.trim()) return;
+    setEditingDept(true);
+    try {
+      await editDepartment.mutateAsync({
+        id: editingDeptId,
+        name: editDeptName,
+      });
+      toast.success("Department name updated!");
+      setEditingDeptId(null);
+      setEditDeptName("");
+      refetchDepts();
+    } catch {
+      toast.error("Failed to update department");
+    } finally {
+      setEditingDept(false);
     }
   }
 
@@ -96,7 +119,49 @@ export default function DepartmentManager() {
           departments.map((dept: Department) => (
             <div key={dept.id} className="border rounded-lg p-4">
               <div className="font-semibold mb-2">
-                {dept.name.toUpperCase()}
+                {editingDeptId === dept.id ? (
+                  <form onSubmit={handleEditDepartment} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editDeptName}
+                      onChange={(e) => setEditDeptName(e.target.value)}
+                      className="border rounded px-2 py-1 text-sm"
+                      autoFocus
+                    />
+                    <button
+                      type="submit"
+                      className="bg-blue-600 text-white px-3 py-1 rounded text-xs"
+                      disabled={editingDept}
+                    >
+                      {editingDept ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs px-2 py-1 rounded bg-gray-100"
+                      onClick={() => {
+                        setEditingDeptId(null);
+                        setEditDeptName("");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    {dept.name}
+                    {user?.role === "ADMIN" && (
+                      <button
+                        className="ml-2 text-xs text-blue-600 underline"
+                        onClick={() => {
+                          setEditingDeptId(dept.id);
+                          setEditDeptName(dept.name);
+                        }}
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
               <div className="mb-2 text-xs text-gray-500">
                 Staff: {dept.staff?.length ?? 0}

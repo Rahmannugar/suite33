@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
+import Image from "next/image";
 
 function getInitials(name: string | null | undefined) {
-  if (!name) return "?";
+  if (!name) return "";
   return name
     .split(" ")
     .map((n) => n[0])
@@ -50,7 +51,7 @@ export default function Header() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-6 py-3 border-b border-[--border] bg-[--card] shadow-sm"
+      className="fixed top-0 left-0 right-0 z-30 flex items-center justify-end px-6 py-3 border-b border-[--border] bg-[--card] shadow-sm"
       style={{ background: "var(--card, #fff)" }}
     >
       <div />
@@ -58,13 +59,13 @@ export default function Header() {
         <ThemeToggle />
         <div className="relative" ref={dropdownRef}>
           <button
-            className="flex items-center gap-2 rounded-full border border-[--input] bg-blue-50 dark:bg-blue-900/40 px-2 py-[6px] hover:bg-blue-100 dark:hover:bg-blue-900/60 transition"
+            className="flex items-center gap-2 cursor-pointer rounded-full border border-[--input] bg-blue-50 dark:bg-blue-900/40 px-2 py-[6px] hover:bg-blue-100 dark:hover:bg-blue-900/60 transition"
             onClick={() => setDropdownOpen((v) => !v)}
             aria-label="Profile menu"
             style={{ minWidth: 36, minHeight: 36 }}
           >
             {user?.avatarUrl ? (
-              <img
+              <Image
                 src={user.avatarUrl}
                 alt="Avatar"
                 width={28}
@@ -80,13 +81,13 @@ export default function Header() {
           </button>
           {dropdownOpen && (
             <div
-              className="absolute right-0 mt-2 w-44 rounded-xl border border-[--border] bg-[--card] shadow-xl z-10"
+              className="absolute right-0 mt-2 w-52 rounded-2xl bg-[--card] shadow-xl border-2 z-10"
               style={{ background: "var(--card, #fff)" }}
             >
-              <ul className="py-2">
-                <li>
+              <ul className="flex flex-col">
+                <li className="hover:bg-blue-50 dark:hover:bg-blue-800 rounded-t-xl">
                   <button
-                    className="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-800 transition rounded-lg"
+                    className="w-full text-left px-5 py-2 transition cursor-pointer font-medium"
                     onClick={handleEditProfile}
                     type="button"
                   >
@@ -94,8 +95,11 @@ export default function Header() {
                   </button>
                 </li>
                 <li>
+                  <div className="border-t border-[--border]" />
+                </li>
+                <li className="hover:bg-red-50 dark:hover:bg-red-400 rounded-b-xl">
                   <button
-                    className="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-800 text-red-600 transition rounded-lg"
+                    className="w-full text-left px-5 py-2 rounded-b-xl text-red-600 transition cursor-pointer font-medium"
                     onClick={handleLogout}
                     type="button"
                   >
