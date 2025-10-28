@@ -38,21 +38,17 @@ export default function SalesTable() {
   const [date, setDate] = useState<Date | null>(new Date());
   const [adding, setAdding] = useState(false);
 
-  // Edit modal state
   const [editId, setEditId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editDate, setEditDate] = useState<Date | null>(null);
   const [editing, setEditing] = useState(false);
 
-  // Filter controls
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
-  // Import
   const [importing, setImporting] = useState(false);
 
-  // AI Insights
   const [insight, setInsight] = useState<string | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [lastInsightDate, setLastInsightDate] = useState<Date | null>(null);
@@ -63,7 +59,7 @@ export default function SalesTable() {
     if (!lastInsightDate) return true;
     const now = new Date();
     const diff = now.getTime() - lastInsightDate.getTime();
-    return diff > 6 * 24 * 60 * 60 * 1000; // 7 days
+    return diff > 6 * 24 * 60 * 60 * 1000;
   }, [canMutate, lastInsightDate]);
 
   // Filter sales by year/month/week
@@ -75,21 +71,19 @@ export default function SalesTable() {
       return true;
     }) ?? [];
 
-  // Prepare chart data
-  const chartData =
-    month &&
-    Array.from({ length: 4 }, (_, i) => {
-      // 4 weeks in month
-      const weekSales = filteredSales.filter((s: Sale) => {
-        const d = new Date(s.date);
-        const week = Math.ceil(d.getDate() / 7);
-        return week === i + 1;
-      });
-      return {
-        name: `Week ${i + 1}`,
-        sales: weekSales.reduce((sum: number, s: Sale) => sum + s.amount, 0),
-      };
-    });
+  const chartData = sales?.length
+    ? Array.from({ length: 4 }, (_, i) => {
+        const weekSales = filteredSales.filter((s: Sale) => {
+          const d = new Date(s.date);
+          const week = Math.ceil(d.getDate() / 7);
+          return week === i + 1;
+        });
+        return {
+          name: `Week ${i + 1}`,
+          sales: weekSales.reduce((sum: number, s: Sale) => sum + s.amount, 0),
+        };
+      })
+    : [];
 
   async function handleAddSale(e: React.FormEvent) {
     e.preventDefault();

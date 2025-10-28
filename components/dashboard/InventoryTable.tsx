@@ -24,7 +24,6 @@ export default function InventoryTable() {
     refetchLowStock,
   } = useInventory();
 
-  // Extract unique categories from inventory data
   const categories = useMemo(() => {
     if (!inventory) return [];
     const map = new Map<string, { id: string; name: string }>();
@@ -39,14 +38,12 @@ export default function InventoryTable() {
   const [categoryId, setCategoryId] = useState("");
   const [adding, setAdding] = useState(false);
 
-  // Edit modal state
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editQuantity, setEditQuantity] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
   const [editing, setEditing] = useState(false);
 
-  // Filter by category
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const filteredInventory =
     filterCategory === "all"

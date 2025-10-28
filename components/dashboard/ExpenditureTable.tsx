@@ -38,22 +38,18 @@ export default function ExpenditureTable() {
   const [date, setDate] = useState<Date | null>(new Date());
   const [adding, setAdding] = useState(false);
 
-  // Edit modal state
   const [editId, setEditId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editDate, setEditDate] = useState<Date | null>(null);
   const [editing, setEditing] = useState(false);
 
-  // Filter controls
   const [year, setYear] = useState(new Date().getFullYear());
   const [period, setPeriod] = useState<"month" | "week">("month");
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
-  // Import
   const [importing, setImporting] = useState(false);
 
-  // AI Insights
   const [insight, setInsight] = useState<string | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [lastInsightDate, setLastInsightDate] = useState<Date | null>(null);
@@ -64,7 +60,7 @@ export default function ExpenditureTable() {
     if (!lastInsightDate) return true;
     const now = new Date();
     const diff = now.getTime() - lastInsightDate.getTime();
-    return diff > 6 * 24 * 60 * 60 * 1000; // 7 days
+    return diff > 6 * 24 * 60 * 60 * 1000;
   }, [canMutate, lastInsightDate]);
 
   // Filter expenditures by year/month/week
@@ -76,11 +72,9 @@ export default function ExpenditureTable() {
       return true;
     }) ?? [];
 
-  // Prepare chart data
   const chartData =
     period === "month"
       ? Array.from({ length: 4 }, (_, i) => {
-          // 4 weeks in month
           const weekExps = filteredExpenditures.filter((e: Expenditure) => {
             const d = new Date(e.date);
             const week = Math.ceil(d.getDate() / 7);
@@ -95,7 +89,6 @@ export default function ExpenditureTable() {
           };
         })
       : Array.from({ length: 12 }, (_, i) => {
-          // 12 months in year
           const monthExps = filteredExpenditures.filter((e: Expenditure) => {
             const d = new Date(e.date);
             return d.getMonth() === i;

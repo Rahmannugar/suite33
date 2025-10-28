@@ -26,8 +26,6 @@ import { usePayroll } from "@/lib/hooks/usePayroll";
 import { useProfile } from "@/lib/hooks/useProfile";
 import type { Sale } from "@/lib/types/sale";
 import type { Expenditure } from "@/lib/types/expenditure";
-import type { Payroll } from "@/lib/types/payroll";
-import { useMemo } from "react";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -57,7 +55,6 @@ export default function DashboardHome() {
   const role = user?.role ?? "STAFF";
   const currentYear = new Date().getFullYear();
 
-  // Compute chart data
   const salesChartData = sales?.length
     ? Array.from({ length: 12 }, (_, i) => {
         const monthName = new Date(2000, i).toLocaleString("default", {
@@ -123,7 +120,7 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-8">
-      {/* Business / User Info (not clickable) */}
+      {/* Business / User Info*/}
       <div className="rounded-xl border border-[--border] bg-[--card] p-5 flex flex-col sm:flex-row items-center gap-4 shadow-sm">
         {profileLoading ? (
           <Skeleton className="h-16 w-16 rounded-full" />
@@ -215,14 +212,14 @@ export default function DashboardHome() {
                 label="Total paid this month"
                 color="text-green-600"
                 amount={payroll
-                  .filter((p) => p.status === "Paid")
+                  .filter((p) => p.paid)
                   .reduce((sum, p) => sum + p.amount, 0)}
               />
               <PayrollBlock
                 label="Pending payroll"
                 color="text-amber-600"
                 amount={payroll
-                  .filter((p) => p.status !== "Paid")
+                  .filter((p) => !p.paid)
                   .reduce((sum, p) => sum + p.amount, 0)}
               />
             </div>

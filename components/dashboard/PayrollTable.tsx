@@ -22,7 +22,6 @@ export default function PayrollTable() {
   } = usePayroll();
   const { staff } = useStaff();
 
-  // Filter controls
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const year = selectedDate
     ? selectedDate.getFullYear()
@@ -31,12 +30,10 @@ export default function PayrollTable() {
     ? selectedDate.getMonth() + 1
     : new Date().getMonth() + 1;
 
-  // Edit modal state
   const [editId, setEditId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editing, setEditing] = useState(false);
 
-  // Role-based payroll filter
   const filteredPayroll = useMemo(() => {
     if (!payroll) return [];
     if (user?.role === "ADMIN") {
