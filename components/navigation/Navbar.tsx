@@ -18,7 +18,7 @@ const navLinks = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
   const { signOut } = useAuth();
   const router = useRouter();
 

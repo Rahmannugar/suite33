@@ -28,7 +28,7 @@ export default function DepartmentManager() {
     removeStaff,
     refetch: refetchStaff,
   } = useStaff();
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
 
   const [newDeptName, setNewDeptName] = useState("");
   const [creating, setCreating] = useState(false);

@@ -8,7 +8,8 @@ import { useEffect } from "react";
 import { z } from "zod";
 
 export function useProfile() {
-  const { user, setUser } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
 
   const query = useQuery({
     queryKey: ["user-profile"],

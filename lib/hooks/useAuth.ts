@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 type Credentials = { email: string; password: string };
 
 export function useAuth() {
-  const setUser = useAuthStore((s) => s.setUser);
+  const setUser = useAuthStore((state) => state.setUser);
   const queryClient = useQueryClient();
   const router = useRouter();
 

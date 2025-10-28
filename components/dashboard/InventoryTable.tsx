@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import type { Inventory } from "@/lib/types/inventory";
 
 export default function InventoryTable() {
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
   const {
     inventory,
     isLoading,

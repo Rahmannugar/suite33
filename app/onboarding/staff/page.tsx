@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 export default function StaffOnboardingPage() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
 
   const [fullName, setFullName] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -116,7 +116,7 @@ export default function StaffOnboardingPage() {
               <button
                 type="button"
                 onClick={() => document.getElementById("logo-upload")?.click()}
-                className="p-2 rounded-full border border-[--input] bg-[--card] hover:bg-[--muted] transition"
+                className="p-2 rounded-full border border-[--input] cursor-pointer bg-[--card] hover:bg-[--muted] transition"
                 aria-label={
                   preview ? "Replace profile picture" : "Upload profile picture"
                 }

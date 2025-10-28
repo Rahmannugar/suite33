@@ -19,7 +19,7 @@ function getInitials(name: string | null | undefined) {
 }
 
 export default function Header() {
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
   const { signOut } = useAuth();
   const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);

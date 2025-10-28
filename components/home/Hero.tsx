@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { useAuthStore } from "@/lib/stores/authStore";
 
 export default function Hero() {
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
   return (
     <section className="relative overflow-hidden">
       {/* Subtle gradient background */}

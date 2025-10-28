@@ -13,7 +13,7 @@ import { Upload, RefreshCw } from "lucide-react";
 
 export default function AdminOnboardingPage() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     if (user?.role === "ADMIN" && user?.businessId) {
@@ -177,7 +177,7 @@ export default function AdminOnboardingPage() {
               <button
                 type="button"
                 onClick={() => document.getElementById("logo-upload")?.click()}
-                className="p-2 rounded-full border border-[--input] bg-[--card] hover:bg-[--muted] transition"
+                className="p-2 rounded-full border border-[--input] cursor-pointer bg-[--card] hover:bg-[--muted] transition"
                 aria-label={logoPreview ? "Replace logo" : "Upload logo"}
               >
                 {logoPreview ? <RefreshCw size={20} /> : <Upload size={20} />}

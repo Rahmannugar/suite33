@@ -59,7 +59,7 @@ function getLinksByRole(role?: string) {
 }
 
 export default function Sidebar() {
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
   const pathname = usePathname();
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } =
     useSidebarStore();
@@ -76,7 +76,7 @@ export default function Sidebar() {
       >
         <div className="relative flex items-center h-16 px-4">
           <div
-            className={`font-bold text-lg text-blue-700 transition-all duration-200 ${
+            className={`font-bold text-lg text-blue-600 transition-all duration-200 ${
               collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
             }`}
           >
@@ -86,7 +86,7 @@ export default function Sidebar() {
           <button
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={() => setCollapsed(!collapsed)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 bg-[--card] border border-[--sidebar-border] p-2 rounded-full shadow-sm hover:bg-blue-50"
+            className="absolute right-3 top-1/2 -translate-y-1/2 bg-[--card] border border-[--sidebar-border] p-2 rounded-full shadow-sm cursor-pointer hover:scale-95 duration-200 transition-all"
             title={collapsed ? "Expand" : "Collapse"}
           >
             {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}

@@ -10,7 +10,7 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
 export default function PayrollTable() {
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
   const {
     payroll,
     isLoading,

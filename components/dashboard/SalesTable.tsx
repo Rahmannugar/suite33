@@ -18,7 +18,7 @@ import {
 import type { Sale } from "@/lib/types/sale";
 
 export default function SalesTable() {
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
   const {
     sales,
     isLoading,

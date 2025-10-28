@@ -18,7 +18,7 @@ import {
 import type { Expenditure } from "@/lib/types/expenditure";
 
 export default function ExpenditureTable() {
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
   const {
     expenditures,
     isLoading,

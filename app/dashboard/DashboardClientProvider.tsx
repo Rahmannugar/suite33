@@ -12,7 +12,7 @@ export default function DashboardClientProvider({
   children: ReactNode;
 }) {
   useProfile();
-  const { collapsed } = useSidebarStore();
+  const collapsed = useSidebarStore((state) => state.collapsed);
 
   return (
     <div className="min-h-screen bg-background">

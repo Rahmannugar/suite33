@@ -3,9 +3,14 @@
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useStaffInvite } from "@/lib/hooks/useStaffInvite";
 import Link from "next/link";
+import { useSidebarStore } from "@/lib/stores/sidebarStore";
+import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/router";
 
 export default function StaffInvitePage() {
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
+  const collapsed = useSidebarStore((state) => state.collapsed);
+  const router = useRouter();
   const {
     email,
     setEmail,
@@ -23,9 +28,23 @@ export default function StaffInvitePage() {
   );
 
   const canInvite = !!user?.businessId;
+  const leftClass = collapsed ? "md:left-24" : "md:left-[272px]";
+
+  const navigateFn = () => {
+    router.push("/dashboard/admin/management");
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-background relative">
+      <button
+        type="button"
+        onClick={navigateFn}
+        className={`fixed top-24 left-7 ${leftClass} p-2 rounded-full border border-[--border] hover:bg-[--muted] transition-all hover:scale-95 cursor-pointer z-30`}
+        aria-label="Go back"
+      >
+        <ArrowLeft size={20} />
+      </button>
+
       <div className="w-full max-w-md rounded-2xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-sm p-8">
         <h1 className="text-2xl font-semibold text-center mb-1">
           Invite a <span className="text-[--primary]">Team Member</span>
