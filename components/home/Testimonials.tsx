@@ -1,4 +1,4 @@
-export function Testimonials() {
+export default function Testimonials() {
   const testimonials = [
     {
       quote:

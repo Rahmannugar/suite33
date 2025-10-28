@@ -1,10 +1,10 @@
-import { Navbar } from "@/components/navigation/Navbar";
-import { Hero } from "@/components/home/Hero";
-import { Features } from "@/components/home/Features";
-import { Process } from "@/components/home/Process";
-import { Testimonials } from "@/components/home/Testimonials";
-import { CTA } from "@/components/home/CTA";
-import { Footer } from "@/components/navigation/Footer";
+import Navbar from "@/components/navigation/Navbar";
+import Hero from "@/components/home/Hero";
+import Features from "@/components/home/Features";
+import Process from "@/components/home/Process";
+import Testimonials from "@/components/home/Testimonials";
+import CTA from "@/components/home/CTA";
+import Footer from "@/components/navigation/Footer";
 
 export default function HomePage() {
   return (

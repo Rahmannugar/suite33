@@ -8,6 +8,7 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import axios from "axios";
 
 export default function DepartmentManager() {
   const {
@@ -32,6 +33,7 @@ export default function DepartmentManager() {
   const [newDeptName, setNewDeptName] = useState("");
   const [creating, setCreating] = useState(false);
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+  const [deletingStaffId, setDeletingStaffId] = useState<string | null>(null);
   const [editDeptName, setEditDeptName] = useState("");
   const [editingDept, setEditingDept] = useState(false);
 

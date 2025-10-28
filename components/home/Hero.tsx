@@ -5,7 +5,7 @@ import { Sparkles, BarChart3, Users2, Wallet, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/lib/stores/authStore";
 
-export function Hero() {
+export default function Hero() {
   const user = useAuthStore((s) => s.user);
   return (
     <section className="relative overflow-hidden">

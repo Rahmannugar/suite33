@@ -7,6 +7,7 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 
 function getInitials(name: string | null | undefined) {
   if (!name) return "";
@@ -24,7 +25,7 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on click outside
+  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (
@@ -37,6 +38,15 @@ export default function Header() {
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
+  }, [dropdownOpen]);
+
+  // Close dropdown when scrolling
+  useEffect(() => {
+    const handleScroll = () => {
+      if (dropdownOpen) setDropdownOpen(false);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [dropdownOpen]);
 
   const handleLogout = async () => {
@@ -59,7 +69,7 @@ export default function Header() {
         <ThemeToggle />
         <div className="relative" ref={dropdownRef}>
           <button
-            className="flex items-center gap-2 cursor-pointer rounded-full border border-[--input] bg-blue-50 dark:bg-blue-900/40 px-2 py-[6px] hover:bg-blue-100 dark:hover:bg-blue-900/60 transition"
+            className="flex items-center gap-2 cursor-pointer rounded-full border border-[--input] bg-blue-50 dark:bg-blue-900/40 px-2 py-[6px] hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all duration-200 ease-in-out hover:scale-[1.03]"
             onClick={() => setDropdownOpen((v) => !v)}
             aria-label="Profile menu"
             style={{ minWidth: 36, minHeight: 36 }}
@@ -77,38 +87,49 @@ export default function Header() {
                 {getInitials(user?.fullName)}
               </span>
             )}
-            <ChevronDown size={16} />
+            <ChevronDown
+              size={16}
+              className={`transition-transform duration-200 ${
+                dropdownOpen ? "rotate-180" : ""
+              }`}
+            />
           </button>
-          {dropdownOpen && (
-            <div
-              className="absolute right-0 mt-2 w-52 rounded-2xl bg-[--card] shadow-xl border-2 z-10"
-              style={{ background: "var(--card, #fff)" }}
-            >
-              <ul className="flex flex-col">
-                <li className="hover:bg-blue-50 dark:hover:bg-blue-800 rounded-t-xl">
-                  <button
-                    className="w-full text-left px-5 py-2 transition cursor-pointer font-medium"
-                    onClick={handleEditProfile}
-                    type="button"
-                  >
-                    Edit Profile
-                  </button>
-                </li>
-                <li>
-                  <div className="border-t border-[--border]" />
-                </li>
-                <li className="hover:bg-red-50 dark:hover:bg-red-400 rounded-b-xl">
-                  <button
-                    className="w-full text-left px-5 py-2 rounded-b-xl text-red-600 transition cursor-pointer font-medium"
-                    onClick={handleLogout}
-                    type="button"
-                  >
-                    Logout
-                  </button>
-                </li>
-              </ul>
-            </div>
-          )}
+
+          {/* Animated Dropdown */}
+          <AnimatePresence>
+            {dropdownOpen && (
+              <motion.div
+                className="absolute right-0 mt-2 w-52 rounded-2xl bg-[--card] shadow-xl border border-[--border] z-10 overflow-hidden"
+                style={{ background: "var(--card, #fff)" }}
+                initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                transition={{ type: "tween", duration: 0.18, ease: "easeOut" }}
+              >
+                <ul className="flex flex-col">
+                  <li>
+                    <button
+                      className="w-full text-left px-5 py-2.5 cursor-pointer font-medium transition-all duration-150 hover:bg-blue-50 dark:hover:bg-blue-900/40"
+                      onClick={handleEditProfile}
+                      type="button"
+                    >
+                      Edit Profile
+                    </button>
+                  </li>
+                  <li className="border-t border-[--border]" />
+                  <li>
+                    <button
+                      className="w-full text-left px-5 py-2.5 cursor-pointer font-medium text-red-600 transition-all duration-150 hover:bg-red-50 dark:hover:bg-red-500/30"
+                      onClick={handleLogout}
+                      type="button"
+                    >
+                      Logout
+                    </button>
+                  </li>
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>

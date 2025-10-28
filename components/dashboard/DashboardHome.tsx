@@ -23,25 +23,13 @@ import { useExpenditures } from "@/lib/hooks/useExpenditures";
 import { useStaff } from "@/lib/hooks/useStaff";
 import { useInventory } from "@/lib/hooks/useInventory";
 import { usePayroll } from "@/lib/hooks/usePayroll";
+import { useProfile } from "@/lib/hooks/useProfile";
+import type { Sale } from "@/lib/types/sale";
+import type { Expenditure } from "@/lib/types/expenditure";
+import type { Payroll } from "@/lib/types/payroll";
 import { useMemo } from "react";
 import Image from "next/image";
-import { useProfile } from "@/lib/hooks/useProfile";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface Sale {
-  date: string;
-  amount: number;
-}
-
-interface Expenditure {
-  date: string;
-  amount: number;
-}
-
-interface PayrollItem {
-  amount: number;
-  status: string;
-}
 
 function formatCurrencyShort(value: number): string {
   if (value >= 1_000_000_000) return `₦${(value / 1_000_000_000).toFixed(1)}B`;
@@ -104,30 +92,28 @@ export default function DashboardHome() {
       })
     : [];
 
-  const pnlTable = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => {
-      const monthSales =
-        sales?.filter(
-          (s) =>
-            new Date(s.date).getFullYear() === currentYear &&
-            new Date(s.date).getMonth() === i
-        ) ?? [];
-      const monthExp =
-        expenditures?.filter(
-          (e) =>
-            new Date(e.date).getFullYear() === currentYear &&
-            new Date(e.date).getMonth() === i
-        ) ?? [];
-      const salesTotal = monthSales.reduce((sum, s) => sum + s.amount, 0);
-      const expTotal = monthExp.reduce((sum, e) => sum + e.amount, 0);
-      return {
-        month: new Date(2000, i).toLocaleString("default", { month: "long" }),
-        sales: salesTotal,
-        expenditures: expTotal,
-        pnl: salesTotal - expTotal,
-      };
-    });
-  }, [sales, expenditures, currentYear]);
+  const pnlTable = Array.from({ length: 12 }, (_, i) => {
+    const salesMonth =
+      sales?.filter(
+        (s: Sale) =>
+          new Date(s.date).getFullYear() === currentYear &&
+          new Date(s.date).getMonth() === i
+      ) ?? [];
+    const expMonth =
+      expenditures?.filter(
+        (e: Expenditure) =>
+          new Date(e.date).getFullYear() === currentYear &&
+          new Date(e.date).getMonth() === i
+      ) ?? [];
+    return {
+      month: new Date(2000, i).toLocaleString("default", { month: "short" }),
+      sales: salesMonth.reduce((sum, s) => sum + s.amount, 0),
+      expenditures: expMonth.reduce((sum, e) => sum + e.amount, 0),
+      pnl:
+        salesMonth.reduce((sum, s) => sum + s.amount, 0) -
+        expMonth.reduce((sum, e) => sum + e.amount, 0),
+    };
+  });
 
   const yearSales = pnlTable.reduce((sum, row) => sum + row.sales, 0);
   const yearExp = pnlTable.reduce((sum, row) => sum + row.expenditures, 0);
@@ -212,7 +198,7 @@ export default function DashboardHome() {
         />
       </div>
 
-      {/* Payroll (clickable styling added) */}
+      {/* Payroll  */}
       <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] hover:shadow-md cursor-pointer will-change-transform">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

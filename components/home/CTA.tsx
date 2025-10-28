@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export function CTA() {
+export default function CTA() {
   return (
     <section id="cta" className="border-t border-[--border]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
@@ -10,8 +10,8 @@ export function CTA() {
               Ready to simplify your business?
             </h3>
             <p className="mt-2 text-[--muted-foreground]">
-              Create your business, invite staff, import data. Let Suite33 handle
-              the rest.
+              Create your business, invite staff, import data. Let Suite33
+              handle the rest.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">

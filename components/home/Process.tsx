@@ -23,7 +23,7 @@ const steps = [
   },
 ];
 
-export function Process() {
+export default function Process() {
   return (
     <section
       id="process"
