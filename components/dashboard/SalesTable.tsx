@@ -234,7 +234,6 @@ export default function SalesPage() {
             value={date}
             onChange={(v) => v && setDate(v)}
             includeDays={false}
-            formatString={viewMode === "monthly" ? "MM yyyy" : "yyyy"}
           >
             {({ open, formattedValue }) => (
               <Button
