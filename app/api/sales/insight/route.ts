@@ -25,14 +25,12 @@ export async function POST(request: NextRequest) {
     const total = sales.reduce((sum, s) => sum + s.amount, 0);
     const avg = sales.length ? total / sales.length : 0;
 
-    //gemini prompt
     const periodLabel = month
       ? `${new Date(year, month - 1).toLocaleString("default", {
           month: "long",
         })} ${year}`
       : `Year ${year}`;
 
-    //gemini prompt
     const prompt = `
 You are a professional business analyst for Suite33.
 
@@ -68,17 +66,7 @@ Keep it under 160 words total. Use professional, clear business language.
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
-    await prisma.insight.create({
-      data: {
-        businessId,
-        type: "SALES",
-        year,
-        month,
-        text,
-      },
-    });
-
-    return NextResponse.json({ insight: text, cached: false });
+    return NextResponse.json({ insight: text });
   } catch (error) {
     console.error("Insight generation error:", error);
     return NextResponse.json(

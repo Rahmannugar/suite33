@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useSidebarStore } from "@/lib/stores/sidebarStore";
 import { useProfile } from "@/lib/hooks/useProfile";
-import { useProfileUpdate } from "@/lib/hooks/useEditProfile";
+import { useEditProfile } from "@/lib/hooks/useEditProfile";
 import { uploadAvatar } from "@/lib/utils/uploadImage";
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
@@ -33,7 +33,7 @@ export default function EditProfilePage() {
   );
   const [saving, setSaving] = useState(false);
 
-  const updateProfile = useProfileUpdate();
+  const updateProfile = useEditProfile();
 
   const navigateFn = () => {
     router.push(

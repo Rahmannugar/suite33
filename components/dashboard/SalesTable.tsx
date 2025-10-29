@@ -2,7 +2,7 @@
 
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useSales } from "@/lib/hooks/useSales";
-import { useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import ByteDatePicker from "byte-datepicker";
 import "byte-datepicker/styles.css";
@@ -32,8 +32,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { motion, AnimatePresence } from "framer-motion";
 import type { Sale } from "@/lib/types/sale";
 
 export default function SalesPage() {
@@ -53,63 +59,123 @@ export default function SalesPage() {
 
   const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
   const [date, setDate] = useState<Date>(new Date());
-  const [amount, setAmount] = useState("");
-  const [desc, setDesc] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [insight, setInsight] = useState<string | null>(null);
-  const [insightLoading, setInsightLoading] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState("");
-  const [editDesc, setEditDesc] = useState("");
-  const [editDate, setEditDate] = useState<Date | null>(null);
-  const [editing, setEditing] = useState(false);
   const [page, setPage] = useState(1);
   const perPage = 10;
 
-  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
+  const [insight, setInsight] = useState<string | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
 
+  const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const [selected, setSelected] = useState<Sale | null>(null);
+
+  const [amount, setAmount] = useState("");
+  const [desc, setDesc] = useState("");
+  const [saleDate, setSaleDate] = useState<Date | null>(new Date());
+  const [saving, setSaving] = useState(false);
+
+  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
   const year = date.getFullYear();
   const month = date.getMonth() + 1;
 
   const filteredSales =
     sales?.filter((s) => {
       const d = new Date(s.date);
-      if (viewMode === "monthly") {
-        return d.getFullYear() === year && d.getMonth() + 1 === month;
-      }
-      return d.getFullYear() === year;
+      return viewMode === "monthly"
+        ? d.getFullYear() === year && d.getMonth() + 1 === month
+        : d.getFullYear() === year;
     }) ?? [];
 
   const totalSales = filteredSales.reduce((sum, s) => sum + s.amount, 0);
-  const paginatedSales = filteredSales.slice(
-    (page - 1) * perPage,
-    page * perPage
-  );
+  const paginated = filteredSales.slice((page - 1) * perPage, page * perPage);
 
   const chartData =
     viewMode === "monthly"
       ? Array.from({ length: 4 }, (_, i) => {
-          const weekSales = filteredSales.filter((s) => {
+          const wk = i + 1;
+          const wkSales = filteredSales.filter((s) => {
             const d = new Date(s.date);
-            const week = Math.ceil(d.getDate() / 7);
-            return week === i + 1;
+            const w = Math.ceil(d.getDate() / 7);
+            return w === wk;
           });
           return {
-            name: `Week ${i + 1}`,
-            sales: weekSales.reduce((sum, s) => sum + s.amount, 0),
+            name: `Week ${wk}`,
+            sales: wkSales.reduce((sum, s) => sum + s.amount, 0),
           };
         })
       : Array.from({ length: 12 }, (_, i) => {
-          const monthSales = filteredSales.filter(
+          const mSales = filteredSales.filter(
             (s) => new Date(s.date).getMonth() === i
           );
           return {
             name: new Date(0, i).toLocaleString("default", { month: "short" }),
-            sales: monthSales.reduce((sum, s) => sum + s.amount, 0),
+            sales: mSales.reduce((sum, s) => sum + s.amount, 0),
           };
         });
 
-  async function handleAIInsights() {
+  useEffect(() => {
+    setInsight(null);
+  }, [viewMode, date]);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user?.businessId || !amount || !saleDate) return;
+    setSaving(true);
+    try {
+      await addSale.mutateAsync({
+        amount: parseFloat(amount),
+        description: desc,
+        businessId: user.businessId,
+        date: saleDate,
+      });
+      toast.success("Sale added");
+      setAddOpen(false);
+      setAmount("");
+      setDesc("");
+      setSaleDate(new Date());
+    } catch {
+      toast.error("Failed to add sale");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected?.id || !amount || !saleDate) return;
+    setSaving(true);
+    try {
+      await editSale.mutateAsync({
+        id: selected.id,
+        amount: parseFloat(amount),
+        description: desc,
+        date: saleDate,
+      });
+      toast.success("Sale updated");
+      setEditOpen(false);
+      setSelected(null);
+    } catch {
+      toast.error("Failed to update sale");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selected?.id) return;
+    try {
+      await deleteSale.mutateAsync(selected.id);
+      toast.success("Sale deleted");
+      setDeleteOpen(false);
+      setSelected(null);
+    } catch {
+      toast.error("Failed to delete sale");
+    }
+  }
+
+  async function handleInsight() {
     setInsightLoading(true);
     try {
       const res = await getInsight.mutateAsync({
@@ -125,9 +191,9 @@ export default function SalesPage() {
     }
   }
 
-  function handleExport(type: "csv" | "excel") {
-    const filtered = filteredSales.map((s, i) => ({
-      S_N: i + 1,
+  function handleExport(kind: "csv" | "excel") {
+    const rows = filteredSales.map((s, i) => ({
+      "S/N": i + 1,
       Amount: `₦${s.amount.toLocaleString()}`,
       Description: s.description || "-",
       Date: new Date(s.date).toLocaleDateString(),
@@ -136,67 +202,114 @@ export default function SalesPage() {
       viewMode === "monthly"
         ? `${date.toLocaleString("default", { month: "long" })} ${year} sales`
         : `${year} sales`;
-    type === "csv" ? exportCSV(filtered, label) : exportExcel(filtered, label);
+    kind === "csv" ? exportCSV(rows, label) : exportExcel(rows, label);
   }
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-wrap justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Sales Overview</h1>
-        <div className="flex items-center gap-3">
+      {/* Top bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight">Sales</h1>
+        <div className="flex items-center gap-3 flex-wrap">
           <Button
             variant={viewMode === "monthly" ? "default" : "outline"}
-            onClick={() => setViewMode("monthly")}
+            onClick={() => {
+              setViewMode("monthly");
+              setPage(1);
+            }}
           >
             Monthly
           </Button>
           <Button
             variant={viewMode === "yearly" ? "default" : "outline"}
-            onClick={() => setViewMode("yearly")}
+            onClick={() => {
+              setViewMode("yearly");
+              setPage(1);
+            }}
           >
             Yearly
           </Button>
+
           <ByteDatePicker
             value={date}
-            onChange={(val) => val && setDate(val)}
+            onChange={(v) => v && setDate(v)}
             includeDays={false}
-            formatString={viewMode === "monthly" ? "mm yyyy" : "yyyy"}
+            formatString={viewMode === "monthly" ? "MM yyyy" : "yyyy"}
           >
             {({ open, formattedValue }) => (
               <Button
                 onClick={open}
                 variant="outline"
-                className="cursor-pointer font-medium"
+                className="cursor-pointer font-medium min-w-[130px]"
               >
                 {formattedValue}
               </Button>
             )}
           </ByteDatePicker>
+
+          {canMutate && (
+            <>
+              <Button variant="outline" onClick={() => setAddOpen(true)}>
+                Add Sale
+              </Button>
+              <label className="px-3 py-2 border rounded-md cursor-pointer text-sm font-medium bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
+                Import CSV/Excel
+                <input
+                  type="file"
+                  accept=".csv,.xlsx"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.name.endsWith(".csv")) {
+                      importCSV.mutate({
+                        file,
+                        businessId: user?.businessId ?? "",
+                      });
+                    } else {
+                      importExcel.mutate({
+                        file,
+                        businessId: user?.businessId ?? "",
+                      });
+                    }
+                    e.currentTarget.value = "";
+                  }}
+                  className="hidden"
+                />
+              </label>
+              <Button variant="outline" onClick={() => handleExport("csv")}>
+                Export CSV
+              </Button>
+              <Button variant="outline" onClick={() => handleExport("excel")}>
+                Export Excel
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Total Summary */}
+      {/* Total */}
       <div className="text-xl font-semibold">
         Total: ₦{totalSales.toLocaleString()}
       </div>
 
       {/* Chart */}
-      <Card className="hover:shadow-lg transition">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-blue-700 dark:text-blue-300">
+      <Card className="hover:shadow-lg transition cursor-pointer">
+        <CardHeader>
+          <CardTitle>
             {viewMode === "monthly"
               ? "Weekly Sales Breakdown"
               : "Yearly Sales Trend"}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip />
+              <Tooltip
+                formatter={(val: number) => `₦${val.toLocaleString()}`}
+              />
               <Bar dataKey="sales" fill="#2563eb" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -208,7 +321,7 @@ export default function SalesPage() {
 
       {/* Table */}
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle>Sales Records</CardTitle>
         </CardHeader>
         <CardContent>
@@ -223,21 +336,53 @@ export default function SalesPage() {
                     <TableHead>Amount</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Date</TableHead>
+                    {canMutate && <TableHead>Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedSales.map((s, i) => (
-                    <TableRow key={s.id}>
+                  {paginated.map((s, i) => (
+                    <TableRow
+                      key={s.id}
+                      className="hover:bg-blue-50/30 transition"
+                    >
                       <TableCell>{(page - 1) * perPage + i + 1}</TableCell>
                       <TableCell>₦{s.amount.toLocaleString()}</TableCell>
                       <TableCell>{s.description || "-"}</TableCell>
                       <TableCell>
                         {new Date(s.date).toLocaleDateString()}
                       </TableCell>
+                      {canMutate && (
+                        <TableCell className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelected(s);
+                              setAmount(s.amount.toString());
+                              setDesc(s.description || "");
+                              setSaleDate(new Date(s.date));
+                              setEditOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              setSelected(s);
+                              setDeleteOpen(true);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+
               {viewMode === "yearly" && (
                 <Pagination className="mt-4">
                   <PaginationContent>
@@ -272,112 +417,149 @@ export default function SalesPage() {
         </CardContent>
       </Card>
 
-      {/* AI Insight Section */}
-      <AnimatePresence mode="wait">
-        {insightLoading ? (
-          <motion.div
-            key="skeleton"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-          >
-            <Card className="p-5 space-y-3">
-              <CardHeader>
-                <CardTitle className="font-semibold text-lg text-[--foreground]">
-                  Suite 33 AI Insight
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6" />
-                <Skeleton className="h-4 w-3/4" />
-              </CardContent>
-            </Card>
-          </motion.div>
-        ) : insight ? (
-          <motion.div
-            key="insight-card"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
-            <Card className="p-5 border border-blue-200 dark:border-blue-800 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="font-semibold text-lg text-blue-700 dark:text-blue-300">
-                  Suite 33 AI Insight
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm space-y-4 leading-relaxed">
-                <InsightText text={insight} />
-              </CardContent>
-            </Card>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="generate-button"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-          >
-            <Button
-              onClick={handleAIInsights}
-              className="bg-blue-600 text-white hover:bg-blue-700 transition cursor-pointer"
-            >
-              Generate AI Insight
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
+      {/* Insight */}
+      {insightLoading ? (
+        <Card className="p-5 space-y-3">
+          <CardHeader>
+            <CardTitle>Suite33 AI Insight</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+          </CardContent>
+        </Card>
+      ) : insight ? (
+        <Card className="p-5 border border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <CardTitle className="text-blue-700 dark:text-blue-300">
+              Suite33 AI Insight
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm whitespace-pre-line leading-relaxed">
+            {insight}
+          </CardContent>
+        </Card>
+      ) : (
+        <Button
+          onClick={handleInsight}
+          className="bg-blue-600 text-white hover:bg-blue-700 transition cursor-pointer"
+        >
+          Generate AI Insight
+        </Button>
+      )}
 
-/** AI insight parser */
-function InsightText({ text }: { text: string }) {
-  const lines = text.split("\n").filter((l) => l.trim() !== "");
-  return (
-    <div className="space-y-1">
-      {lines.map((line, i) => {
-        if (line.startsWith("**Summary:**"))
-          return (
-            <h3 key={i} className="font-semibold text-base mt-2 mb-1">
-              Summary
-            </h3>
-          );
-        if (line.startsWith("**Insights:**"))
-          return (
-            <h3 key={i} className="font-semibold text-base mt-4 mb-1">
-              Insights
-            </h3>
-          );
-        if (line.startsWith("**Recommendations:**"))
-          return (
-            <h3 key={i} className="font-semibold text-base mt-4 mb-1">
-              Recommendations
-            </h3>
-          );
-        if (line.startsWith("-"))
-          return (
-            <li key={i} className="ml-5 list-disc text-[--muted-foreground]">
-              {line.replace(/^-/, "").trim()}
-            </li>
-          );
-        if (/^\d\./.test(line))
-          return (
-            <li key={i} className="ml-5 list-decimal text-[--muted-foreground]">
-              {line.replace(/^\d\./, "").trim()}
-            </li>
-          );
-        return (
-          <p key={i} className="text-[--foreground]/90">
-            {line}
-          </p>
-        );
-      })}
+      {/* Add Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Sale</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAdd} className="space-y-4">
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Amount"
+              required
+              className="w-full p-2 border rounded"
+            />
+            <input
+              type="text"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="Description"
+              className="w-full p-2 border rounded"
+            />
+            <ByteDatePicker
+              value={saleDate}
+              onChange={setSaleDate}
+              includeDays
+              formatString="dd-MM-yyyy"
+            >
+              {({ open, formattedValue }) => (
+                <input
+                  readOnly
+                  onClick={open}
+                  value={formattedValue || ""}
+                  placeholder="Select Date"
+                  className="w-full p-2 border rounded cursor-pointer"
+                />
+              )}
+            </ByteDatePicker>
+            <DialogFooter>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Saving..." : "Add"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Sale</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Amount"
+              required
+              className="w-full p-2 border rounded"
+            />
+            <input
+              type="text"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="Description"
+              className="w-full p-2 border rounded"
+            />
+            <ByteDatePicker
+              value={saleDate}
+              onChange={setSaleDate}
+              includeDays
+              formatString="dd-MM-yyyy"
+            >
+              {({ open, formattedValue }) => (
+                <input
+                  readOnly
+                  onClick={open}
+                  value={formattedValue || ""}
+                  placeholder="Select Date"
+                  className="w-full p-2 border rounded cursor-pointer"
+                />
+              )}
+            </ByteDatePicker>
+            <DialogFooter>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Sale</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to delete this sale?</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
