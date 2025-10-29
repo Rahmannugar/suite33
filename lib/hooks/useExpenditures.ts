@@ -166,7 +166,6 @@ export function useExpenditures() {
   return {
     expenditures: query.data,
     isLoading: query.isLoading,
-    refetch: query.refetch,
     addExpenditure,
     editExpenditure,
     deleteExpenditure,

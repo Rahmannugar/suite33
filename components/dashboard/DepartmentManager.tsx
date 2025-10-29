@@ -8,7 +8,6 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import axios from "axios";
 
 export default function DepartmentManager() {
   const {
@@ -17,7 +16,6 @@ export default function DepartmentManager() {
     createDepartment,
     editDepartment,
     deleteDepartment,
-    refetch: refetchDepts,
   } = useDepartments();
   const {
     staff,
@@ -26,7 +24,6 @@ export default function DepartmentManager() {
     demoteStaff,
     moveStaff,
     removeStaff,
-    refetch: refetchStaff,
   } = useStaff();
   const user = useAuthStore((state) => state.user);
 
@@ -50,7 +47,6 @@ export default function DepartmentManager() {
       });
       toast.success("Department created!");
       setNewDeptName("");
-      refetchDepts();
     } catch {
       toast.error("Failed to create department");
     } finally {
@@ -70,7 +66,6 @@ export default function DepartmentManager() {
       toast.success("Department name updated!");
       setEditingDeptId(null);
       setEditDeptName("");
-      refetchDepts();
     } catch {
       toast.error("Failed to update department");
     } finally {
@@ -81,11 +76,10 @@ export default function DepartmentManager() {
   async function handleDeleteStaff(staffId: string, userId: string) {
     setDeletingStaffId(staffId);
     try {
-      await axios.post("/api/staff/delete", { staffId, userId });
-      toast.success("Staff fully deleted!");
-      refetchStaff();
+      await removeStaff.mutateAsync({ staffId });
+      toast.success("Staff removed from department!");
     } catch {
-      toast.error("Failed to delete staff");
+      toast.error("Failed to remove staff");
     } finally {
       setDeletingStaffId(null);
     }
@@ -113,7 +107,6 @@ export default function DepartmentManager() {
         </form>
       )}
 
-      {/* Departments List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {loadingDepts ? (
           <div>Loading departments...</div>
@@ -173,11 +166,7 @@ export default function DepartmentManager() {
                   className="text-red-600 text-xs mb-2"
                   onClick={() => {
                     deleteDepartment.mutate(dept.id, {
-                      onSuccess: () => {
-                        toast.success("Department deleted!");
-                        refetchDepts();
-                        refetchStaff();
-                      },
+                      onSuccess: () => toast.success("Department deleted!"),
                       onError: () => toast.error("Failed to delete department"),
                     });
                   }}
@@ -197,15 +186,14 @@ export default function DepartmentManager() {
                     <span>{s.user.fullName || s.user.email}</span>
                     {user?.role === "ADMIN" && (
                       <>
-                        {/* Move Staff */}
                         <select
                           value={s.departmentId ?? dept.id}
                           onChange={async (e) => {
                             const newDeptId = e.target.value;
-                            await moveStaff.mutateAsync(
-                              { staffId: s.id, departmentId: newDeptId },
-                              { onSuccess: () => refetchStaff() }
-                            );
+                            await moveStaff.mutateAsync({
+                              staffId: s.id,
+                              departmentId: newDeptId,
+                            });
                             toast.success("Staff moved!");
                           }}
                           className="border rounded px-2 py-1 text-xs"
@@ -217,43 +205,24 @@ export default function DepartmentManager() {
                           ))}
                           <option value="">No department</option>
                         </select>
-                        {/* Remove Staff from Department */}
                         <button
                           className="text-red-600 text-xs"
-                          onClick={async () => {
-                            await removeStaff.mutate(
-                              { staffId: s.id },
-                              { onSuccess: () => refetchStaff() }
-                            );
-                            toast.success("Staff removed from department!");
-                          }}
+                          onClick={() => handleDeleteStaff(s.id, s.user.id)}
+                          disabled={deletingStaffId === s.id}
                         >
-                          Remove
+                          {deletingStaffId === s.id ? "Removing..." : "Remove"}
                         </button>
-                        {/* Demote Assistant Admin */}
                         {s.user.role === "SUB_ADMIN" && (
                           <button
                             className="text-yellow-600 text-xs"
                             onClick={async () => {
-                              await demoteStaff.mutate(
-                                { staffId: s.id },
-                                { onSuccess: () => refetchStaff() }
-                              );
+                              await demoteStaff.mutateAsync({ staffId: s.id });
                               toast.success("Demoted to Staff!");
                             }}
                           >
                             Demote to Staff
                           </button>
                         )}
-                        <button
-                          className="text-red-700 text-xs"
-                          onClick={() => handleDeleteStaff(s.id, s.user.id)}
-                          disabled={deletingStaffId === s.id}
-                        >
-                          {deletingStaffId === s.id
-                            ? "Deleting..."
-                            : "Delete from Business"}
-                        </button>
                       </>
                     )}
                   </li>
@@ -267,7 +236,6 @@ export default function DepartmentManager() {
           </div>
         )}
       </div>
-      {/* Staff not in any department */}
       <div>
         <h2 className="font-semibold mb-2">Staff without Department</h2>
         <ul className="space-y-1">
@@ -285,15 +253,14 @@ export default function DepartmentManager() {
                   <span>{s.user.fullName || s.user.email}</span>
                   {user?.role === "ADMIN" && (
                     <>
-                      {/* Move to department */}
                       <select
                         value=""
                         onChange={async (e) => {
                           const newDeptId = e.target.value;
-                          await moveStaff.mutateAsync(
-                            { staffId: s.id, departmentId: newDeptId },
-                            { onSuccess: () => refetchStaff() }
-                          );
+                          await moveStaff.mutateAsync({
+                            staffId: s.id,
+                            departmentId: newDeptId,
+                          });
                           toast.success("Staff moved to department!");
                         }}
                         className="border rounded px-2 py-1 text-xs"
@@ -305,14 +272,10 @@ export default function DepartmentManager() {
                           </option>
                         ))}
                       </select>
-                      {/* Promote to Assistant Admin */}
                       <button
                         className="text-blue-600 text-xs"
                         onClick={() =>
-                          promoteStaff.mutate(
-                            { staffId: s.id },
-                            { onSuccess: () => refetchStaff() }
-                          )
+                          promoteStaff.mutateAsync({ staffId: s.id })
                         }
                       >
                         Promote to Assistant Admin

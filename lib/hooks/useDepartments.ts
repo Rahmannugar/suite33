@@ -48,6 +48,5 @@ export function useDepartments() {
     createDepartment,
     editDepartment,
     deleteDepartment,
-    refetch: query.refetch,
   };
 }

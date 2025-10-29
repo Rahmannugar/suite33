@@ -76,7 +76,7 @@ export default function Sidebar() {
       >
         <div className="relative flex items-center h-16 px-4">
           <div
-            className={`font-bold text-lg text-blue-600 transition-all duration-200 ${
+            className={`font-bold text-lg text-blue-700 dark:text-blue-300 transition-all duration-200 ${
               collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
             }`}
           >

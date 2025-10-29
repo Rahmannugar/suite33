@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       role: record.role,
       businessId: record.business?.id ?? null,
       businessName: record.business?.name ?? null,
+      businessLogo: record.business?.logoUrl ?? null,
       departmentId: record.Staff?.department?.id ?? null,
       departmentName: record.Staff?.department?.name ?? null,
     });

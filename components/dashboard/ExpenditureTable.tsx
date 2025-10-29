@@ -22,7 +22,6 @@ export default function ExpenditureTable() {
   const {
     expenditures,
     isLoading,
-    refetch,
     addExpenditure,
     editExpenditure,
     deleteExpenditure,
@@ -120,7 +119,6 @@ export default function ExpenditureTable() {
       setAmount("");
       setDesc("");
       setDate(new Date());
-      refetch();
     } catch {
       toast.error("Failed to add expenditure");
     } finally {
@@ -144,7 +142,6 @@ export default function ExpenditureTable() {
       setEditAmount("");
       setEditDesc("");
       setEditDate(null);
-      refetch();
     } catch {
       toast.error("Failed to update expenditure");
     } finally {
@@ -156,7 +153,6 @@ export default function ExpenditureTable() {
     try {
       await deleteExpenditure.mutateAsync(id);
       toast.success("Expenditure deleted!");
-      refetch();
     } catch {
       toast.error("Failed to delete expenditure");
     }
@@ -176,7 +172,6 @@ export default function ExpenditureTable() {
         throw new Error("Unsupported file type");
       }
       toast.success("Expenditures imported!");
-      refetch();
     } catch (err: any) {
       toast.error(err?.message || "Failed to import expenditures");
     } finally {

@@ -34,6 +34,7 @@ export function useProfile() {
         businessId: query.data.businessId,
         businessName: query.data.businessName,
         avatarUrl: query.data.avatarUrl,
+        businessLogo: query.data.businessLogo, 
         departmentId: query.data.departmentId,
         departmentName: query.data.departmentName,
       });
@@ -44,6 +45,5 @@ export function useProfile() {
     profile: query.data,
     isLoading: query.isLoading,
     isError: query.isError,
-    refetch: query.refetch,
   };
 }

@@ -12,28 +12,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // Check if insight already generated this week
-    const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay()); // Sunday
-    weekStart.setHours(0, 0, 0, 0);
-
-    const existing = await prisma.insight.findFirst({
-      where: {
-        businessId,
-        type: "SALES",
-        year,
-        ...(month && { month }),
-        createdAt: { gte: weekStart },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (existing) {
-      return NextResponse.json({ insight: existing.text, cached: true });
-    }
-
-    // Get sales data for the period
     const sales = await prisma.sale.findMany({
       where: {
         businessId,
@@ -44,18 +22,52 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Prepare prompt for Gemini
     const total = sales.reduce((sum, s) => sum + s.amount, 0);
-    const prompt = `You are an expert business analyst. Here is the sales data for ${
-      month ? `month ${month}` : `year ${year}`
-    }: Total sales: ₦${total.toLocaleString()}. Give a summary and 3 actionable recommendations to improve sales.`;
+    const avg = sales.length ? total / sales.length : 0;
 
-    // Call Gemini API (free tier)
+    //gemini prompt
+    const periodLabel = month
+      ? `${new Date(year, month - 1).toLocaleString("default", {
+          month: "long",
+        })} ${year}`
+      : `Year ${year}`;
+
+    //gemini prompt
+    const prompt = `
+You are a professional business analyst for Suite33.
+
+Analyze this sales data and provide a concise, structured business report.
+
+Details:
+- Period: ${periodLabel}
+- Total Sales: ₦${total.toLocaleString()}
+- Transactions: ${sales.length}
+- Average Sale: ₦${avg.toLocaleString()}
+
+If there are no sales, note that clearly but still provide a short recommendation on how to improve.
+
+Return in this exact format (no extra text):
+
+**Summary:**
+(2–3 sentences summarizing overall performance and possible reasons)
+
+**Insights:**
+- (Key trend or pattern)
+- (Another observation)
+- (One more observation)
+
+**Recommendations:**
+1. (Practical, specific step)
+2. (Another step)
+3. (Another actionable step)
+
+Keep it under 160 words total. Use professional, clear business language.
+`;
+
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
-    // Save insight
     await prisma.insight.create({
       data: {
         businessId,
@@ -68,8 +80,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ insight: text, cached: false });
   } catch (error) {
+    console.error("Insight generation error:", error);
     return NextResponse.json(
-      { error: "Failed to get AI insight" },
+      { error: "Failed to generate AI insight" },
       { status: 500 }
     );
   }

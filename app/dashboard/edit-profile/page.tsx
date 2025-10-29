@@ -1,15 +1,15 @@
 "use client";
 
-import { useSidebarStore } from "@/lib/stores/sidebarStore";
-import { useAuthStore } from "@/lib/stores/authStore";
-import { useProfile } from "@/lib/hooks/useProfile";
-import { uploadAvatar } from "@/lib/utils/uploadImage";
-import axios from "axios";
-import { toast } from "sonner";
-import Image from "next/image";
-import { ArrowLeft, Upload, RefreshCw } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { useSidebarStore } from "@/lib/stores/sidebarStore";
+import { useProfile } from "@/lib/hooks/useProfile";
+import { useProfileUpdate } from "@/lib/hooks/useEditProfile";
+import { uploadAvatar } from "@/lib/utils/uploadImage";
+import Image from "next/image";
+import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 function getInitials(name?: string | null) {
   if (!name) return "";
@@ -22,17 +22,16 @@ function getInitials(name?: string | null) {
 
 export default function EditProfilePage() {
   const user = useAuthStore((state) => state.user);
-  const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  const { profile, refetch } = useProfile();
+  const { profile } = useProfile();
   const collapsed = useSidebarStore((state) => state.collapsed);
 
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(
-    user?.avatarUrl ?? null
-  );
+  const [preview, setPreview] = useState<string | null>(user?.avatarUrl ?? null);
   const [saving, setSaving] = useState(false);
+
+  const updateProfile = useProfileUpdate();
 
   const navigateFn = () => {
     router.push(
@@ -57,22 +56,11 @@ export default function EditProfilePage() {
       if (file) {
         avatarUrl = await uploadAvatar(file, user.id);
       }
-      if (user.role === "ADMIN") {
-        await axios.put("/api/profile/admin", {
-          userId: user.id,
-          fullName,
-          logoUrl: avatarUrl,
-        });
-        setUser({ ...user, fullName });
-        await refetch();
-      } else {
-        await axios.put("/api/profile/staff", {
-          userId: user.id,
-          fullName,
-          avatarUrl,
-        });
-        setUser({ ...user, fullName, avatarUrl });
-      }
+      await updateProfile.mutateAsync({
+        user,
+        fullName,
+        file,
+      });
       toast.success("Profile updated!");
       navigateFn();
     } catch (err: any) {
@@ -107,13 +95,9 @@ export default function EditProfilePage() {
               unoptimized
             />
           ) : (
-            <div className="rounded-full w-16 h-16 bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 border border-[--border]">
-              {getInitials(
-                user?.role === "ADMIN"
-                  ? profile?.businessName
-                  : user?.fullName ?? user?.email
-              )}
-            </div>
+            <span className="inline-flex items-center justify-center rounded-full w-16 h-16 font-bold text-white bg-blue-600 text-2xl">
+              {getInitials(fullName)}
+            </span>
           )}
         </div>
 
@@ -122,9 +106,9 @@ export default function EditProfilePage() {
         </h1>
 
         <form onSubmit={handleSave} className="space-y-5 mt-5">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-[--muted-foreground]">
-              {user?.role === "ADMIN" ? "Your Full Name" : "Full Name"}
+          <div>
+            <label className="block text-sm font-medium text-[--muted-foreground] mb-1">
+              Full Name
             </label>
             <input
               type="text"
@@ -134,46 +118,17 @@ export default function EditProfilePage() {
               className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
             />
           </div>
-
-          {/* Upload Section */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-[--muted-foreground]">
+          <div>
+            <label className="block text-sm font-medium text-[--muted-foreground] mb-1">
               {user?.role === "ADMIN" ? "Business Logo" : "Profile Picture"}
             </label>
-            <div className="flex items-center gap-3">
-              <input
-                id="avatar-upload"
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  document.getElementById("avatar-upload")?.click()
-                }
-                className="p-2 rounded-full border cursor-pointer border-[--input] bg-[--card] hover:bg-[--muted] transition active:scale-95"
-                aria-label={file ? "Change image" : "Upload image"}
-              >
-                {file ? <RefreshCw size={20} /> : <Upload size={20} />}
-              </button>
-
-              {preview && (
-                <Image
-                  src={preview}
-                  alt="Preview"
-                  width={48}
-                  height={48}
-                  className="rounded-full object-cover border border-[--border]"
-                  style={{ width: "48px", height: "48px" }}
-                  unoptimized
-                  priority
-                />
-              )}
-            </div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            />
           </div>
-
           <button
             type="submit"
             className={`w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition ${

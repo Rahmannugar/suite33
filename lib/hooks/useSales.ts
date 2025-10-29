@@ -5,6 +5,13 @@ import ExcelJS from "exceljs";
 import { SaleSchema } from "@/lib/types/sale";
 import { z } from "zod";
 
+type ExportableSale = {
+  S_N: number;
+  Amount: string;
+  Description: string;
+  Date: string;
+};
+
 export function useSales() {
   const queryClient = useQueryClient();
 
@@ -63,13 +70,11 @@ export function useSales() {
         Papa.parse(file, {
           header: true,
           complete: async (results) => {
-            // Validate schema
             const validRows = results.data.filter(
               (row: any) => row.amount && !isNaN(Number(row.amount))
             );
             if (!validRows.length)
               return reject(new Error("No valid sales data found in CSV"));
-            // Ensure date is present or use current date
             validRows.forEach((row: any) => {
               if (!row.date) row.date = new Date().toISOString();
             });
@@ -97,16 +102,13 @@ export function useSales() {
       const worksheet = workbook.worksheets[0];
       const sales: any[] = [];
       worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // skip header
-        if (!row.values || !Array.isArray(row.values)) return;
+        if (rowNumber === 1) return;
         const [amount, description, date] = (row.values as any[]).slice(1);
         if (amount && !isNaN(Number(amount))) {
           sales.push({
             amount,
             description,
-            date: date
-              ? new Date(date).toISOString()
-              : new Date().toISOString(),
+            date: date ? new Date(date).toISOString() : new Date().toISOString(),
           });
         }
       });
@@ -115,32 +117,47 @@ export function useSales() {
     },
   });
 
-  function exportCSV(sales: any[]) {
+  /** --------------------------
+   *   EXPORT HELPERS
+   * -------------------------- */
+
+  function exportCSV(sales: ExportableSale[], label: string) {
+    if (!sales.length) throw new Error("No sales to export");
+
     const csv = Papa.unparse(sales);
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "sales.csv";
+    a.download = `${label}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  async function exportExcel(sales: any[]) {
+  async function exportExcel(sales: ExportableSale[], label: string) {
+    if (!sales.length) throw new Error("No sales to export");
+
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Sales");
-    worksheet.addRow(["Amount", "Description", "Date"]);
+    const worksheet = workbook.addWorksheet(label);
+
+    worksheet.addRow(["S/N", "Amount", "Description", "Date"]);
     sales.forEach((s) => {
-      worksheet.addRow([s.amount, s.description, s.date]);
+      worksheet.addRow([s.S_N, s.Amount, s.Description, s.Date]);
     });
+
+    worksheet.columns.forEach((col) => {
+      col.width = 20;
+    });
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "sales.xlsx";
+    a.download = `${label}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -159,7 +176,6 @@ export function useSales() {
   return {
     sales: query.data,
     isLoading: query.isLoading,
-    refetch: query.refetch,
     addSale,
     editSale,
     deleteSale,

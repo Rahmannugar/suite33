@@ -155,7 +155,6 @@ export function useInventory() {
   return {
     inventory: query.data,
     isLoading: query.isLoading,
-    refetch: query.refetch,
     addItem,
     editItem,
     deleteItem,

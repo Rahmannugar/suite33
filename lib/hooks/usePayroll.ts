@@ -69,7 +69,6 @@ export function usePayroll() {
   return {
     payroll: query.data,
     isLoading: query.isLoading,
-    refetch: query.refetch,
     markPaid,
     editSalary,
     generatePayroll,

@@ -14,7 +14,6 @@ export default function PayrollTable() {
   const {
     payroll,
     isLoading,
-    refetch,
     markPaid,
     editSalary,
     generatePayroll,
@@ -76,7 +75,6 @@ export default function PayrollTable() {
         month,
       });
       toast.success("Bulk marked as paid!");
-      refetch();
     } catch {
       toast.error("Failed to bulk mark as paid");
     }
@@ -91,7 +89,6 @@ export default function PayrollTable() {
         month,
       });
       toast.success("Payroll generated!");
-      refetch();
     } catch {
       toast.error("Failed to generate payroll");
     }
@@ -101,7 +98,6 @@ export default function PayrollTable() {
     try {
       await markPaid.mutateAsync(id);
       toast.success("Marked as paid!");
-      refetch();
     } catch {
       toast.error("Failed to mark as paid");
     }
@@ -119,7 +115,6 @@ export default function PayrollTable() {
       toast.success("Salary updated!");
       setEditId(null);
       setEditAmount("");
-      refetch();
     } catch {
       toast.error("Failed to update salary");
     } finally {

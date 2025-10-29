@@ -58,6 +58,5 @@ export function useStaff() {
     demoteStaff,
     moveStaff,
     removeStaff,
-    refetch: query.refetch,
   };
 }

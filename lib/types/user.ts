@@ -7,6 +7,7 @@ export const UserSchema = z.object({
   role: z.enum(["ADMIN", "STAFF", "SUB_ADMIN"]),
   fullName: z.string().nullable().optional(),
   businessId: z.string().nullable().optional(),
+  businessLogo: z.url().nullable().optional(),
   businessName: z.string().nullable().optional(),
   departmentId: z.string().nullable().optional(),
   departmentName: z.string().nullable().optional(),
