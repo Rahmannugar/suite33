@@ -28,7 +28,9 @@ export default function EditProfilePage() {
 
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(user?.avatarUrl ?? null);
+  const [preview, setPreview] = useState<string | null>(
+    user?.avatarUrl ?? null
+  );
   const [saving, setSaving] = useState(false);
 
   const updateProfile = useProfileUpdate();
