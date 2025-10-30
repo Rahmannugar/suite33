@@ -112,7 +112,6 @@ export default function SalesPage() {
   const [openDelete, setOpenDelete] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
-
   const [openAddDate, setOpenAddDate] = useState(false);
   const [openEditDate, setOpenEditDate] = useState(false);
 
@@ -128,12 +127,14 @@ export default function SalesPage() {
     const d = new Date(date);
     const year = d.getFullYear();
     const month = d.getMonth() + 1;
-    return sales.filter((s: Sale) => {
-      const sd = new Date(s.date);
-      return viewMode === "yearly"
-        ? sd.getFullYear() === year
-        : sd.getFullYear() === year && sd.getMonth() + 1 === month;
-    });
+    return sales
+      .filter((s) => {
+        const sd = new Date(s.date);
+        return viewMode === "yearly"
+          ? sd.getFullYear() === year
+          : sd.getFullYear() === year && sd.getMonth() + 1 === month;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [sales, date, viewMode]);
 
   const totalAmount = filteredSales.reduce((sum, s) => sum + s.amount, 0);
@@ -237,9 +238,7 @@ export default function SalesPage() {
           <TabsTrigger value="yearly">Yearly</TabsTrigger>
         </TabsList>
 
-        {/* Filters + Actions */}
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          {/* ByteDatePicker for main view */}
           <div className="w-full md:w-auto">
             <ByteDatePicker
               value={date}
@@ -263,7 +262,6 @@ export default function SalesPage() {
             </ByteDatePicker>
           </div>
 
-          {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-3 lg:flex lg:items-center lg:justify-end">
             {canMutate && (
               <>
@@ -320,7 +318,7 @@ export default function SalesPage() {
             )}
 
             <Button
-              className="w-full md:w-auto gap-2 bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+              className="w-full md:w-auto gap-2 bg-amber-500 text-white hover:bg-amber-600 cursor-pointer"
               onClick={async () => {
                 clearInsight();
                 await handleInsight();
@@ -333,7 +331,7 @@ export default function SalesPage() {
           </div>
         </div>
 
-        {/* Chart + Table */}
+        {/* Chart and Table */}
         <TabsContent value={viewMode}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -357,7 +355,7 @@ export default function SalesPage() {
                     <Tooltip content={<ChartTooltip />} />
                     <Bar
                       dataKey="amount"
-                      fill="#2563eb"
+                      fill="#eab308"
                       radius={[8, 8, 0, 0]}
                     />
                   </BarChart>
@@ -365,342 +363,8 @@ export default function SalesPage() {
               )}
             </CardContent>
           </Card>
-
-          {/* Sales Table */}
-          <Card className="mt-6">
-            <CardHeader className="py-4">
-              <CardTitle className="text-base font-semibold">
-                Sales Records
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-40 w-full" />
-              ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>S/N</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        {canMutate && <TableHead>Actions</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedSales.map((s, i) => (
-                        <TableRow key={s.id}>
-                          <TableCell>{(page - 1) * perPage + i + 1}</TableCell>
-                          <TableCell>{s.description || "-"}</TableCell>
-                          <TableCell>₦{s.amount.toLocaleString()}</TableCell>
-                          <TableCell>
-                            {new Date(s.date).toLocaleDateString("en-GB")}
-                          </TableCell>
-                          {canMutate && (
-                            <TableCell className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-1 cursor-pointer"
-                                onClick={() => {
-                                  setEditingSale(s);
-                                  setForm({
-                                    desc: s.description || "",
-                                    amount: s.amount.toString(),
-                                    date: new Date(s.date),
-                                  });
-                                  setOpenEdit(true);
-                                }}
-                              >
-                                <Edit size={14} /> Edit
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="gap-1 cursor-pointer"
-                                onClick={() => {
-                                  setDeletingSale(s);
-                                  setOpenDelete(true);
-                                }}
-                              >
-                                <Trash2 size={14} /> Delete
-                              </Button>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <Pagination className="mt-4">
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={() => setPage((p) => Math.max(1, p - 1))}
-                            className="cursor-pointer"
-                          />
-                        </PaginationItem>
-                        {Array.from({ length: totalPages }, (_, i) => (
-                          <PaginationItem key={i}>
-                            <PaginationLink
-                              onClick={() => setPage(i + 1)}
-                              isActive={page === i + 1}
-                              className="cursor-pointer"
-                            >
-                              {i + 1}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={() =>
-                              setPage((p) => Math.min(totalPages, p + 1))
-                            }
-                            className="cursor-pointer"
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Insights */}
-          {insight && (
-            <Card
-              ref={insightRef}
-              className="mt-6 border-blue-200 dark:border-blue-800"
-            >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-blue-700 dark:text-blue-300">
-                  Suite 33 AI Insight
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm whitespace-pre-line leading-relaxed">
-                {insight}
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
       </Tabs>
-
-      {/* Add Sale */}
-      <Dialog open={openAdd} onOpenChange={(o) => !saving && setOpenAdd(o)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Sale</DialogTitle>
-          </DialogHeader>
-
-          <input
-            type="text"
-            value={form.desc}
-            onChange={(e) => setForm({ ...form, desc: e.target.value })}
-            placeholder="Description"
-            className="border rounded-lg px-3 py-2 w-full"
-          />
-          <input
-            type="number"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            placeholder="Amount"
-            className="border rounded-lg px-3 py-2 w-full"
-          />
-
-          <Popover open={openAddDate} onOpenChange={setOpenAddDate}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="justify-start gap-2 cursor-pointer w-full"
-              >
-                <CalendarIcon size={16} />
-                {form.date ? format(form.date, "dd-MM-yyyy") : "Select Date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="center"
-              sideOffset={4}
-              className="p-0 w-auto mx-auto"
-            >
-              <Calendar
-                mode="single"
-                selected={form.date}
-                onSelect={(d) => {
-                  if (d) {
-                    setForm({ ...form, date: d });
-                    setOpenAddDate(false);
-                  }
-                }}
-                initialFocus
-                className="rounded-md border bg-popover p-2 shadow-sm w-full max-w-xs mx-auto [&_.rdp-caption_label]:text-center [&_.rdp-caption]:flex [&_.rdp-caption]:justify-center [&_.rdp-head_row]:text-center [&_.rdp-table]:mx-auto"
-              />
-            </PopoverContent>
-          </Popover>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setOpenAdd(false)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!form.amount) return;
-                setSaving(true);
-                try {
-                  await addSale.mutateAsync({
-                    amount: parseFloat(form.amount),
-                    description: form.desc,
-                    businessId: user?.businessId ?? "",
-                    date: form.date,
-                  });
-                  toast.success("Sale added");
-                  setForm({ desc: "", amount: "", date: new Date() });
-                  setOpenAdd(false);
-                } catch {
-                  toast.error("Failed to add sale");
-                } finally {
-                  setSaving(false);
-                }
-              }}
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Sale */}
-      <Dialog open={openEdit} onOpenChange={(o) => !saving && setOpenEdit(o)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Sale</DialogTitle>
-          </DialogHeader>
-
-          <input
-            type="text"
-            value={form.desc}
-            onChange={(e) => setForm({ ...form, desc: e.target.value })}
-            placeholder="Description"
-            className="border rounded-lg px-3 py-2 w-full"
-          />
-          <input
-            type="number"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            placeholder="Amount"
-            className="border rounded-lg px-3 py-2 w-full"
-          />
-
-          <Popover open={openEditDate} onOpenChange={setOpenEditDate}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="justify-start gap-2 cursor-pointer w-full"
-              >
-                <CalendarIcon size={16} />
-                {form.date ? format(form.date, "dd-MM-yyyy") : "Select Date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="center"
-              sideOffset={4}
-              className="p-0 w-auto mx-auto"
-            >
-              <Calendar
-                mode="single"
-                selected={form.date}
-                onSelect={(d) => {
-                  if (d) {
-                    setForm({ ...form, date: d });
-                    setOpenEditDate(false);
-                  }
-                }}
-                initialFocus
-                className="rounded-md border bg-popover p-2 shadow-sm w-full max-w-xs mx-auto [&_.rdp-caption_label]:text-center [&_.rdp-caption]:flex [&_.rdp-caption]:justify-center [&_.rdp-head_row]:text-center [&_.rdp-table]:mx-auto"
-              />
-            </PopoverContent>
-          </Popover>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setOpenEdit(false)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!editingSale) return;
-                setSaving(true);
-                try {
-                  await editSale.mutateAsync({
-                    id: editingSale.id,
-                    amount: parseFloat(form.amount),
-                    description: form.desc,
-                    date: form.date,
-                  });
-                  toast.success("Sale updated");
-                  setOpenEdit(false);
-                  setEditingSale(null);
-                } catch {
-                  toast.error("Failed to update sale");
-                } finally {
-                  setSaving(false);
-                }
-              }}
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Sale */}
-      <Dialog open={openDelete} onOpenChange={setOpenDelete}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Sale</DialogTitle>
-          </DialogHeader>
-          <p>Are you sure you want to delete this sale record?</p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => setOpenDelete(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              className="cursor-pointer"
-              onClick={async () => {
-                if (!deletingSale) return;
-                try {
-                  await deleteSale.mutateAsync(deletingSale.id);
-                  toast.success("Sale deleted");
-                } catch {
-                  toast.error("Failed to delete sale");
-                } finally {
-                  setOpenDelete(false);
-                  setDeletingSale(null);
-                }
-              }}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

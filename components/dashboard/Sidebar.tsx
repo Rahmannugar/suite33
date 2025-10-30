@@ -76,7 +76,7 @@ export default function Sidebar() {
       >
         <div className="relative flex items-center h-16 px-4">
           <div
-            className={`font-bold text-lg text-blue-700 dark:text-blue-300 transition-all duration-200 ${
+            className={`font-bold text-lg text-blue-600 dark:text-blue-300 transition-all duration-200 ${
               collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
             }`}
           >
@@ -139,7 +139,7 @@ export default function Sidebar() {
         aria-hidden={!mobileOpen}
       >
         <div className="relative flex items-center h-16 px-4">
-          <div className="font-bold text-lg text-blue-700">Suite33</div>
+          <div className="font-bold text-lg text-blue-600 dark:text-blue-300">Suite33</div>
           <button
             aria-label="Close sidebar"
             onClick={() => setMobileOpen(false)}

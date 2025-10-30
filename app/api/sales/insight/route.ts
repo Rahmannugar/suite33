@@ -46,15 +46,15 @@ If there are no sales, note that clearly but still provide a short recommendatio
 
 Return in this exact format (no extra text):
 
-**Summary:**
+Summary:
 (2–3 sentences summarizing overall performance and possible reasons)
 
-**Insights:**
+Insights:
 - (Key trend or pattern)
 - (Another observation)
 - (One more observation)
 
-**Recommendations:**
+Recommendations:
 1. (Practical, specific step)
 2. (Another step)
 3. (Another actionable step)
@@ -68,9 +68,9 @@ Keep it under 160 words total. Use professional, clear business language.
 
     return NextResponse.json({ insight: text });
   } catch (error) {
-    console.error("Insight generation error:", error);
+    console.error("Sales insight generation error:", error);
     return NextResponse.json(
-      { error: "Failed to generate AI insight" },
+      { error: "Failed to generate sales insight" },
       { status: 500 }
     );
   }

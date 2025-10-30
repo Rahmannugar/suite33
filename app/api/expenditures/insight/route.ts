@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    const sales = await prisma.sale.findMany({
+    const expenditures = await prisma.expenditure.findMany({
       where: {
         businessId,
         date: {
@@ -22,38 +22,39 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const total = sales.reduce((sum, s) => sum + s.amount, 0);
-    const avg = sales.length ? total / sales.length : 0;
+    const total = expenditures.reduce((sum, e) => sum + e.amount, 0);
+    const avg = expenditures.length ? total / expenditures.length : 0;
 
     const periodLabel = month
-      ? `${new Date(year, month - 1).toLocaleString("default", { month: "long" })} ${year}`
+      ? `${new Date(year, month - 1).toLocaleString("default", {
+          month: "long",
+        })} ${year}`
       : `Year ${year}`;
 
-  //gemini prompt
     const prompt = `
 You are a professional business analyst for Suite33.
 
-Analyze this sales data and provide a concise, structured business report.
+Analyze this expenditure data and provide a concise, structured report.
 
 Details:
 - Period: ${periodLabel}
-- Total Sales: ₦${total.toLocaleString()}
-- Transactions: ${sales.length}
-- Average Sale: ₦${avg.toLocaleString()}
+- Total Expenditure: ₦${total.toLocaleString()}
+- Transactions: ${expenditures.length}
+- Average Expenditure: ₦${avg.toLocaleString()}
 
-If there are no sales, note that clearly but still provide a short recommendation on how to improve.
+If there are no expenditures, note that clearly but still provide a short recommendation on how to improve.
 
 Return in this exact format (no extra text):
 
-**Summary:**
+Summary:
 (2–3 sentences summarizing overall performance and possible reasons)
 
-**Insights:**
-- (Key trend or pattern)
+Insights:
+- (Key trend or spending pattern)
 - (Another observation)
 - (One more observation)
 
-**Recommendations:**
+Recommendations:
 1. (Practical, specific step)
 2. (Another step)
 3. (Another actionable step)
@@ -65,21 +66,11 @@ Keep it under 160 words total. Use professional, clear business language.
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
-    await prisma.insight.create({
-      data: {
-        businessId,
-        type: "SALES",
-        year,
-        month,
-        text,
-      },
-    });
-
-    return NextResponse.json({ insight: text, cached: false });
+    return NextResponse.json({ insight: text });
   } catch (error) {
-    console.error("Insight generation error:", error);
+    console.error("Expenditure insight generation error:", error);
     return NextResponse.json(
-      { error: "Failed to generate AI insight" },
+      { error: "Failed to generate expenditures insight" },
       { status: 500 }
     );
   }

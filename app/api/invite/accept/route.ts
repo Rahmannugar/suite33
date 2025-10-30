@@ -1,8 +1,3 @@
-import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/lib/generated/prisma";
-
-const prisma = new PrismaClient();
-
 export async function POST(request: NextRequest) {
   try {
     const { token, userId, email } = await request.json();
@@ -11,7 +6,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // Find the invite
     const invite = await prisma.invite.findUnique({
       where: { token },
       include: { business: true, department: true },
@@ -21,20 +15,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid invite" }, { status: 404 });
     }
 
-    // Mark invite as accepted
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      include: { business: true },
+    });
+
+    if (existingUser && existingUser.businessId) {
+      return NextResponse.json(
+        { error: "This email is already registered to another business." },
+        { status: 409 }
+      );
+    }
+
     await prisma.invite.update({
       where: { token },
       data: { accepted: true },
     });
 
-    // Create or update the user in Prisma
-    const user = await prisma.user.upsert({
-      where: { id: userId },
-      update: {
-        role: invite.role,
-        business: { connect: { id: invite.businessId } },
-      },
-      create: {
+    const user = await prisma.user.create({
+      data: {
         id: userId,
         email,
         role: invite.role,
@@ -43,16 +42,8 @@ export async function POST(request: NextRequest) {
       include: { business: true },
     });
 
-    // Create staff record linked to the business and user
-    await prisma.staff.upsert({
-      where: { userId },
-      update: {
-        business: { connect: { id: invite.businessId } },
-        department: invite.departmentId
-          ? { connect: { id: invite.departmentId } }
-          : undefined,
-      },
-      create: {
+    await prisma.staff.create({
+      data: {
         user: { connect: { id: userId } },
         business: { connect: { id: invite.businessId } },
         department: invite.departmentId
@@ -61,7 +52,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Set secure role cookie
     const res = NextResponse.json({ success: true, user });
     res.cookies.set("user_role", invite.role, {
       path: "/",

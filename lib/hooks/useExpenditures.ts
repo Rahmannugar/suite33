@@ -2,8 +2,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
-import { ExpenditureSchema } from "../types/expenditure";
-import z from "zod";
+import { ExpenditureSchema } from "@/lib/types/expenditure";
+import { z } from "zod";
+
+type ExportableExpenditure = {
+  S_N: number;
+  Amount: string;
+  Description: string;
+  Date: string;
+};
 
 export function useExpenditures() {
   const queryClient = useQueryClient();
@@ -70,9 +77,7 @@ export function useExpenditures() {
               (row: any) => row.amount && !isNaN(Number(row.amount))
             );
             if (!validRows.length)
-              return reject(
-                new Error("No valid expenditure data found in CSV")
-              );
+              return reject(new Error("No valid expenditures found in CSV"));
             validRows.forEach((row: any) => {
               if (!row.date) row.date = new Date().toISOString();
             });
@@ -100,8 +105,7 @@ export function useExpenditures() {
       const worksheet = workbook.worksheets[0];
       const expenditures: any[] = [];
       worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // skip header
-        if (!row.values || !Array.isArray(row.values)) return;
+        if (rowNumber === 1) return;
         const [amount, description, date] = (row.values as any[]).slice(1);
         if (amount && !isNaN(Number(amount))) {
           expenditures.push({
@@ -114,7 +118,7 @@ export function useExpenditures() {
         }
       });
       if (!expenditures.length)
-        throw new Error("No valid expenditure data found in Excel");
+        throw new Error("No valid expenditures found in Excel");
       await axios.post("/api/expenditures/import", {
         expenditures,
         businessId,
@@ -122,24 +126,33 @@ export function useExpenditures() {
     },
   });
 
-  function exportCSV(expenditures: any[]) {
+  function exportCSV(expenditures: ExportableExpenditure[], label: string) {
+    if (!expenditures.length) throw new Error("No expenditures to export");
+
     const csv = Papa.unparse(expenditures);
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "expenditures.csv";
+    a.download = `${label}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  async function exportExcel(expenditures: any[]) {
+  async function exportExcel(
+    expenditures: ExportableExpenditure[],
+    label: string
+  ) {
+    if (!expenditures.length) throw new Error("No expenditures to export");
+
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Expenditures");
-    worksheet.addRow(["Amount", "Description", "Date"]);
+    const worksheet = workbook.addWorksheet(label);
+    worksheet.addRow(["S/N", "Amount", "Description", "Date"]);
     expenditures.forEach((e) => {
-      worksheet.addRow([e.amount, e.description, e.date]);
+      worksheet.addRow([e.S_N, e.Amount, e.Description, e.Date]);
     });
+    worksheet.columns.forEach((col) => (col.width = 20));
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -147,7 +160,7 @@ export function useExpenditures() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "expenditures.xlsx";
+    a.download = `${label}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   }

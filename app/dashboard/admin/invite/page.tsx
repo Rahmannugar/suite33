@@ -1,11 +1,17 @@
 "use client";
 
-import { useAuthStore } from "@/lib/stores/authStore";
-import { useStaffInvite } from "@/lib/hooks/useStaffInvite";
-import Link from "next/link";
-import { useSidebarStore } from "@/lib/stores/sidebarStore";
 import { ArrowLeft } from "lucide-react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { useSidebarStore } from "@/lib/stores/sidebarStore";
+import { useStaffInvite } from "@/lib/hooks/useStaffInvite";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 export default function StaffInvitePage() {
   const user = useAuthStore((state) => state.user);
@@ -54,15 +60,9 @@ export default function StaffInvitePage() {
         </p>
         {!canInvite && (
           <div className="mb-4 flex flex-col items-center gap-2">
-            <p className="text-sm text-red-500 text-center">
-              Complete your business setup before inviting staff.
-            </p>
-            <Link
-              href="/onboarding/admin"
-              className="text-blue-500 text-sm underline"
-            >
-              Go to Business Onboarding
-            </Link>
+            <span className="text-sm text-red-500">
+              You must create a business before inviting staff.
+            </span>
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,7 +76,7 @@ export default function StaffInvitePage() {
             disabled={!canInvite}
           />
           {emailError && (
-            <p className="text-xs text-red-500 mt-1">{emailError}</p>
+            <div className="text-xs text-red-500">{emailError}</div>
           )}
           <input
             type="text"
@@ -86,15 +86,21 @@ export default function StaffInvitePage() {
             className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
             disabled={!canInvite}
           />
-          <select
+          <Select
             value={role}
-            onChange={(e) => setRole(e.target.value as "STAFF" | "SUB_ADMIN")}
-            className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            onValueChange={(v) => setRole(v as "STAFF" | "SUB_ADMIN")}
             disabled={!canInvite}
           >
-            <option value="STAFF">Staff</option>
-            <option value="SUB_ADMIN">Assistant Admin</option>
-          </select>
+            <SelectTrigger className="block w-full rounded-lg border border-[--input] bg-transparent p-3 font-medium">
+              <SelectValue>
+                {role === "STAFF" ? "Staff" : "Sub-admin"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="STAFF">Staff</SelectItem>
+              <SelectItem value="SUB_ADMIN">Sub-admin</SelectItem>
+            </SelectContent>
+          </Select>
 
           <button
             type="submit"

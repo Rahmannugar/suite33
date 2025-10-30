@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
     const month = `${now.getFullYear()}-${now.getMonth() + 1}`;
     const admin = await prisma.user.findUnique({ where: { id: adminId } });
 
-    // Null check for admin
     if (!admin) {
       return NextResponse.json(
         { error: "Admin user not found" },
@@ -70,7 +69,6 @@ export async function POST(request: NextRequest) {
       include: { business: true, department: true },
     });
 
-    // Increment invite count
     await prisma.user.update({
       where: { id: adminId },
       data: { inviteCount: { increment: 1 } },

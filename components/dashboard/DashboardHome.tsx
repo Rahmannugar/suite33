@@ -124,7 +124,7 @@ export default function DashboardHome() {
   const yearExp = pnlTable.reduce((sum, row) => sum + row.expenditures, 0);
   const yearPnl = yearSales - yearExp;
 
-  const businessLogo = profile?.businessLogo || null;
+  const businessLogo = user?.businessLogo || null;
 
   return (
     <div className="space-y-8">
