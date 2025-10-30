@@ -13,17 +13,19 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update admin full name
-    await prisma.user.update({
-      where: { id: userId },
-      data: { fullName },
-    });
-
-    // Update business logo if provided
     if (logoUrl) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { fullName, avatarUrl: logoUrl },
+      });
       await prisma.business.update({
         where: { ownerId: userId },
         data: { logoUrl },
+      });
+    } else {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { fullName },
       });
     }
 

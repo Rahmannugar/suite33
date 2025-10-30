@@ -1,4 +1,4 @@
-import PayrollTable from "@/components/dashboard/PayrollTable";
+import PayrollPage from "@/components/dashboard/PayrollPage";
 export default function AdminPayrollPage() {
-  return <PayrollTable />;
+  return <PayrollPage />;
 }

@@ -17,7 +17,7 @@ import {
 } from "recharts";
 import type { Expenditure } from "@/lib/types/expenditure";
 
-export default function ExpenditureTable() {
+export default function ExpendituresPage() {
   const user = useAuthStore((state) => state.user);
   const {
     expenditures,

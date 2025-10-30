@@ -1,5 +1,5 @@
-import InventoryTable from "@/components/dashboard/InventoryTable";
+import InventoryPage from "@/components/dashboard/InventoryPage";
 
 export default function StaffInventoryPage() {
-  return <InventoryTable />;
+  return <InventoryPage />;
 }

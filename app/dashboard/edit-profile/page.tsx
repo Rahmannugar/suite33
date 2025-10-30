@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/lib/stores/authStore";
 import { useSidebarStore } from "@/lib/stores/sidebarStore";
+import { useAuthStore } from "@/lib/stores/authStore";
 import { useProfile } from "@/lib/hooks/useProfile";
 import { useEditProfile } from "@/lib/hooks/useEditProfile";
 import { uploadAvatar } from "@/lib/utils/uploadImage";
-import Image from "next/image";
-import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import Image from "next/image";
+import { ArrowLeft, Upload, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 function getInitials(name?: string | null) {
   if (!name) return "";
@@ -97,9 +97,13 @@ export default function EditProfilePage() {
               unoptimized
             />
           ) : (
-            <span className="inline-flex items-center justify-center rounded-full w-16 h-16 font-bold text-white bg-blue-600 text-2xl">
-              {getInitials(fullName)}
-            </span>
+            <div className="rounded-full w-16 h-16 bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 border border-[--border]">
+              {getInitials(
+                user?.role === "ADMIN"
+                  ? profile?.businessName
+                  : user?.fullName ?? user?.email
+              )}
+            </div>
           )}
         </div>
 
@@ -108,9 +112,9 @@ export default function EditProfilePage() {
         </h1>
 
         <form onSubmit={handleSave} className="space-y-5 mt-5">
-          <div>
-            <label className="block text-sm font-medium text-[--muted-foreground] mb-1">
-              Full Name
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-[--muted-foreground]">
+              {user?.role === "ADMIN" ? "Your Full Name" : "Full Name"}
             </label>
             <input
               type="text"
@@ -120,17 +124,44 @@ export default function EditProfilePage() {
               className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-[--muted-foreground] mb-1">
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-[--muted-foreground]">
               {user?.role === "ADMIN" ? "Business Logo" : "Profile Picture"}
             </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
-            />
+            <div className="flex items-center gap-3">
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  document.getElementById("avatar-upload")?.click()
+                }
+                className="p-2 rounded-full border cursor-pointer border-[--input] bg-[--card] hover:bg-[--muted] transition active:scale-95"
+                aria-label={file ? "Change image" : "Upload image"}
+              >
+                {file ? <RefreshCw size={20} /> : <Upload size={20} />}
+              </button>
+              {preview && (
+                <Image
+                  src={preview}
+                  alt="Preview"
+                  width={48}
+                  height={48}
+                  className="rounded-full object-cover border border-[--border]"
+                  style={{ width: "48px", height: "48px" }}
+                  unoptimized
+                  priority
+                />
+              )}
+            </div>
           </div>
+
           <button
             type="submit"
             className={`w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition ${

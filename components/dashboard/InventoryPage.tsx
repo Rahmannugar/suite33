@@ -13,7 +13,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 
-export default function InventoryTable() {
+export default function InventoryPage() {
   const user = useAuthStore((state) => state.user);
   const {
     inventory,

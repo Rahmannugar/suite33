@@ -1,4 +1,4 @@
-import SalesTable from "@/components/dashboard/SalesTable";
+import SalesPage from "@/components/dashboard/SalesPage";
 export default function AdminSalesPage() {
-  return <SalesTable />;
+  return <SalesPage />;
 }

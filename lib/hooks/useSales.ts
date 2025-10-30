@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
-import { SaleSchema } from "@/lib/types/sale";
 import { z } from "zod";
+import { SaleSchema } from "@/lib/types/sale";
 
 type ExportableSale = {
   S_N: number;
@@ -108,7 +108,9 @@ export function useSales() {
           sales.push({
             amount,
             description,
-            date: date ? new Date(date).toISOString() : new Date().toISOString(),
+            date: date
+              ? new Date(date).toISOString()
+              : new Date().toISOString(),
           });
         }
       });
@@ -117,13 +119,8 @@ export function useSales() {
     },
   });
 
-  /** --------------------------
-   *   EXPORT HELPERS
-   * -------------------------- */
-
   function exportCSV(sales: ExportableSale[], label: string) {
     if (!sales.length) throw new Error("No sales to export");
-
     const csv = Papa.unparse(sales);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -136,24 +133,17 @@ export function useSales() {
 
   async function exportExcel(sales: ExportableSale[], label: string) {
     if (!sales.length) throw new Error("No sales to export");
-
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(label);
-
     worksheet.addRow(["S/N", "Amount", "Description", "Date"]);
-    sales.forEach((s) => {
-      worksheet.addRow([s.S_N, s.Amount, s.Description, s.Date]);
-    });
-
-    worksheet.columns.forEach((col) => {
-      col.width = 20;
-    });
-
+    sales.forEach((s) =>
+      worksheet.addRow([s.S_N, s.Amount, s.Description, s.Date])
+    );
+    worksheet.columns.forEach((col) => (col.width = 20));
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
-
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

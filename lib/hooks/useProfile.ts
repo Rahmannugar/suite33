@@ -34,7 +34,7 @@ export function useProfile() {
         businessId: query.data.businessId,
         businessName: query.data.businessName,
         avatarUrl: query.data.avatarUrl,
-        businessLogo: query.data.businessLogo, 
+        businessLogo: query.data.businessLogo,
         departmentId: query.data.departmentId,
         departmentName: query.data.departmentName,
       });
