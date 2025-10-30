@@ -29,7 +29,7 @@ function MainContent({ children }: { children: ReactNode }) {
 
   return (
     <main
-      className={`pt-20 pb-10 transition-all px-4 sm:px-8 ${
+      className={`pt-24 pb-10 transition-all px-6 sm:px-8 ${
         collapsed ? "md:pl-20" : "md:pl-64"
       } md:ml-6`}
     >

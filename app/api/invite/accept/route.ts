@@ -1,3 +1,8 @@
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient } from "@/lib/generated/prisma";
+
+const prisma = new PrismaClient();
+
 export async function POST(request: NextRequest) {
   try {
     const { token, userId, email } = await request.json();
@@ -20,7 +25,7 @@ export async function POST(request: NextRequest) {
       include: { business: true },
     });
 
-    if (existingUser && existingUser.businessId) {
+    if (existingUser && existingUser.business?.id) {
       return NextResponse.json(
         { error: "This email is already registered to another business." },
         { status: 409 }

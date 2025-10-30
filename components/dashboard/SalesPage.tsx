@@ -216,7 +216,7 @@ export default function SalesPage() {
 
     promise
       .then(() => toast.success("Sales imported successfully"))
-      .catch(() => toast.error("Failed to import Sales"))
+      .catch(() => toast.error("Failed to import sales"))
       .finally(() => (e.currentTarget.value = ""));
   };
 
@@ -229,6 +229,7 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-2xl font-semibold">Sales</h2>
         {canMutate && (
@@ -241,6 +242,7 @@ export default function SalesPage() {
         )}
       </div>
 
+      {/* Filters */}
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
         <TabsList className="w-fit">
           <TabsTrigger value="monthly">Monthly</TabsTrigger>
@@ -271,6 +273,7 @@ export default function SalesPage() {
             </ByteDatePicker>
           </div>
 
+          {/* Actions */}
           <div className="grid grid-cols-2 gap-3 lg:flex lg:items-center lg:justify-end">
             {canMutate && (
               <>
@@ -328,7 +331,7 @@ export default function SalesPage() {
             )}
 
             <Button
-              className="w-full md:w-auto gap-2 bg-amber-500 text-white hover:bg-amber-600 cursor-pointer"
+              className="w-full md:w-auto gap-2 bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
               onClick={async () => {
                 clearInsight();
                 await handleInsight();
@@ -341,6 +344,7 @@ export default function SalesPage() {
           </div>
         </div>
 
+        {/* Chart */}
         <TabsContent value={viewMode}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -364,7 +368,7 @@ export default function SalesPage() {
                     <Tooltip content={<ChartTooltip />} />
                     <Bar
                       dataKey="amount"
-                      fill="#eab308"
+                      fill="#2563eb"
                       radius={[8, 8, 0, 0]}
                     />
                   </BarChart>
@@ -373,6 +377,7 @@ export default function SalesPage() {
             </CardContent>
           </Card>
 
+          {/* Table */}
           <Card className="mt-6">
             <CardHeader className="py-4">
               <CardTitle className="text-base font-semibold">
@@ -475,13 +480,14 @@ export default function SalesPage() {
             </CardContent>
           </Card>
 
+          {/* Insight Card */}
           {insight && (
             <Card
               ref={insightRef}
-              className="mt-6 border-amber-200 dark:border-amber-800"
+              className="mt-6 border-blue-200 dark:border-blue-800"
             >
               <CardHeader className="pb-2">
-                <CardTitle className="text-amber-700 dark:text-amber-300">
+                <CardTitle className="text-blue-700 dark:text-blue-300">
                   Suite 33 AI Insight
                 </CardTitle>
               </CardHeader>
@@ -493,12 +499,12 @@ export default function SalesPage() {
         </TabsContent>
       </Tabs>
 
+      {/* Add Dialog */}
       <Dialog open={openAdd} onOpenChange={(o) => !saving && setOpenAdd(o)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Sale</DialogTitle>
           </DialogHeader>
-
           <input
             type="text"
             value={form.desc}
@@ -580,12 +586,12 @@ export default function SalesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Dialog */}
       <Dialog open={openEdit} onOpenChange={(o) => !saving && setOpenEdit(o)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Sale</DialogTitle>
           </DialogHeader>
-
           <input
             type="text"
             value={form.desc}
@@ -667,6 +673,7 @@ export default function SalesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Dialog */}
       <Dialog open={openDelete} onOpenChange={setOpenDelete}>
         <DialogContent>
           <DialogHeader>

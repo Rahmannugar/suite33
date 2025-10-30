@@ -70,7 +70,10 @@ Keep it under 160 words total. Use professional, clear business language.
   } catch (error) {
     console.error("Expenditure insight generation error:", error);
     return NextResponse.json(
-      { error: "Failed to generate expenditures insight" },
+      {
+        error: "Failed to generate sales insight",
+        details: error || String(error),
+      },
       { status: 500 }
     );
   }

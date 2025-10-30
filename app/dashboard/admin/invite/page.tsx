@@ -91,7 +91,7 @@ export default function StaffInvitePage() {
     onValueChange={(v) => setRole(v as "STAFF" | "SUB_ADMIN")}
     disabled={!canInvite}
   >
-    <SelectTrigger className="w-full rounded-lg border border-[--input] bg-transparent px-3 py-5 focus:ring-2 focus:ring-blue-500 outline-none transition font-medium">
+    <SelectTrigger className="w-full rounded-lg border border-[--input] bg-transparent px-3 py-6 focus:ring-2 focus:ring-blue-500 outline-none transition font-medium">
       <SelectValue placeholder="Select role" />
     </SelectTrigger>
     <SelectContent position="popper" className="z-50">
