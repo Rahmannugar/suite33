@@ -86,21 +86,19 @@ export default function StaffInvitePage() {
             className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
             disabled={!canInvite}
           />
-          <Select
-            value={role}
-            onValueChange={(v) => setRole(v as "STAFF" | "SUB_ADMIN")}
-            disabled={!canInvite}
-          >
-            <SelectTrigger className="block w-full rounded-lg border border-[--input] bg-transparent p-3 font-medium">
-              <SelectValue>
-                {role === "STAFF" ? "Staff" : "Sub-admin"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="STAFF">Staff</SelectItem>
-              <SelectItem value="SUB_ADMIN">Sub-admin</SelectItem>
-            </SelectContent>
-          </Select>
+         <Select
+    value={role}
+    onValueChange={(v) => setRole(v as "STAFF" | "SUB_ADMIN")}
+    disabled={!canInvite}
+  >
+    <SelectTrigger className="w-full rounded-lg border border-[--input] bg-transparent px-3 py-5 focus:ring-2 focus:ring-blue-500 outline-none transition font-medium">
+      <SelectValue placeholder="Select role" />
+    </SelectTrigger>
+    <SelectContent position="popper" className="z-50">
+      <SelectItem value="STAFF">Staff</SelectItem>
+      <SelectItem value="SUB_ADMIN">Sub-admin</SelectItem>
+    </SelectContent>
+  </Select>
 
           <button
             type="submit"
