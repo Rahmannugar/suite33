@@ -1,16 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useSales } from "@/lib/hooks/useSales";
+import { useInsightStore } from "@/lib/stores/insightStore";
 import ByteDatePicker from "byte-datepicker";
 import "byte-datepicker/styles.css";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +41,7 @@ import {
   Lightbulb,
   Trash2,
   Edit,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -55,7 +53,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { toast } from "sonner";
-import { Sale } from "@/lib/types/sale";
+import type { Sale } from "@/lib/types/sale";
 
 type ChartPoint = { name: string; amount: number; count: number };
 
@@ -81,6 +79,7 @@ function ChartTooltip({
 
 export default function SalesPage() {
   const user = useAuthStore((s) => s.user);
+  const { insight, setInsight, clearInsight } = useInsightStore();
   const {
     sales,
     isLoading,
@@ -98,8 +97,6 @@ export default function SalesPage() {
 
   const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
   const [date, setDate] = useState<Date | null>(new Date());
-  const [insight, setInsight] = useState<string | null>(null);
-  const [insightLoading, setInsightLoading] = useState(false);
 
   const [page, setPage] = useState(1);
   const perPage = 10;
@@ -110,8 +107,12 @@ export default function SalesPage() {
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
 
-  const [form, setForm] = useState({ amount: "", desc: "", date: new Date() });
+  const [form, setForm] = useState({ desc: "", amount: "", date: new Date() });
   const [saving, setSaving] = useState(false);
+  const [insightLoading, setInsightLoading] = useState(false);
+
+  const insightRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const filteredSales = useMemo(() => {
     if (!sales || !date) return [];
@@ -160,8 +161,10 @@ export default function SalesPage() {
 
   const periodLabel =
     viewMode === "yearly"
-      ? `${date?.getFullYear()}`
-      : `${date?.toLocaleString("default", { month: "long" })} ${date?.getFullYear()}`;
+      ? `${date?.getFullYear()} Sales`
+      : `${date?.toLocaleString("default", {
+          month: "long",
+        })} ${date?.getFullYear()} Sales`;
 
   const handleInsight = async () => {
     if (!user?.businessId) return;
@@ -172,7 +175,14 @@ export default function SalesPage() {
         month: viewMode === "monthly" ? (date?.getMonth() ?? 0) + 1 : undefined,
         businessId: user.businessId,
       });
-      setInsight(res.insight);
+      const refined = String(res.insight || "")
+        .replace(/\*\*/g, "")
+        .trim();
+      setInsight(refined);
+      toast.success("Insight generated successfully");
+      setTimeout(() => {
+        insightRef.current?.scrollIntoView({ block: "start" });
+      }, 150);
     } catch {
       toast.error("Failed to generate insights");
     } finally {
@@ -180,21 +190,32 @@ export default function SalesPage() {
     }
   };
 
-  const handleImport = (file: File) => {
-    file.name.endsWith(".csv")
-      ? importCSV.mutate({ file, businessId: user?.businessId ?? "" })
-      : importExcel.mutate({ file, businessId: user?.businessId ?? "" });
+  const handleImportClick = () => fileInputRef.current?.click();
+  const handleImportChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    f.name.toLowerCase().endsWith(".csv")
+      ? importCSV.mutate({ file: f, businessId: user?.businessId ?? "" })
+      : importExcel.mutate({ file: f, businessId: user?.businessId ?? "" });
+    e.currentTarget.value = "";
   };
 
   const exportLabel =
-    viewMode === "yearly" ? `${periodLabel} Sales` : `${periodLabel} Sales`;
+    viewMode === "yearly"
+      ? `${date?.getFullYear()} Sales`
+      : `${date?.toLocaleString("default", {
+          month: "long",
+        })} ${date?.getFullYear()} Sales`;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-2xl font-semibold">Sales</h2>
         {canMutate && (
-          <Button onClick={() => setOpenAdd(true)} className="gap-2 cursor-pointer">
+          <Button
+            onClick={() => setOpenAdd(true)}
+            className="gap-2 cursor-pointer"
+          >
             <Plus size={16} /> Add Sale
           </Button>
         )}
@@ -210,9 +231,9 @@ export default function SalesPage() {
           <div className="w-full md:w-auto">
             <ByteDatePicker
               value={date}
-              onChange={setDate}
+              onChange={(d) => setDate(d)}
               hideInput
-              formatString={viewMode === "yearly" ? "yyyy" : "mmm yyyy"}
+              formatString={viewMode === "yearly" ? "yyyy" : "month yyyy"}
               yearOnly={viewMode === "yearly"}
             >
               {({ open, formattedValue }) => (
@@ -220,9 +241,11 @@ export default function SalesPage() {
                   type="button"
                   variant="outline"
                   onClick={open}
-                  className="w-full md:w-48 justify-start font-medium cursor-pointer"
+                  className="w-full md:w-48 justify-start font-medium cursor-pointer gap-2"
                 >
-                  {formattedValue || (viewMode === "yearly" ? "Year" : "MM YYYY")}
+                  <CalendarIcon size={16} />
+                  {formattedValue ||
+                    (viewMode === "yearly" ? "Select Year" : "Select Month")}
                 </Button>
               )}
             </ByteDatePicker>
@@ -231,69 +254,65 @@ export default function SalesPage() {
           <div className="grid grid-cols-2 gap-3 lg:flex lg:items-center lg:justify-end">
             {canMutate && (
               <>
-                <label className="relative cursor-pointer">
-                  <input
-                    type="file"
-                    accept=".csv,.xlsx"
-                    className="absolute inset-0 cursor-pointer opacity-0"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleImport(f);
-                      e.currentTarget.value = "";
-                    }}
-                  />
-                  <Button type="button" variant="outline" className="whitespace-nowrap cursor-pointer w-full md:w-auto gap-2">
-                    <FileUp size={16} />
-                    Import CSV/Excel
-                  </Button>
-                </label>
-
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx"
+                  className="hidden"
+                  onChange={handleImportChange}
+                />
                 <Button
-                  type="button"
                   variant="outline"
-                  className="whitespace-nowrap w-full cursor-pointer md:w-auto gap-2"
-                  onClick={() =>
-                    exportCSV(
-                      filteredSales.map((s, i) => ({
-                        S_N: i + 1,
-                        Amount: `₦${s.amount.toLocaleString()}`,
-                        Description: s.description || "-",
-                        Date: new Date(s.date).toLocaleDateString("en-GB"),
-                      })),
-                      exportLabel
-                    )
-                  }
+                  onClick={handleImportClick}
+                  className="whitespace-nowrap w-full md:w-auto gap-2 cursor-pointer"
                 >
-                  <FileDown size={16} />
-                  Export CSV
+                  <FileUp size={16} />
+                  Import CSV/Excel
                 </Button>
 
                 <Button
-                  type="button"
                   variant="outline"
-                  className="whitespace-nowrap w-full cursor-pointer md:w-auto gap-2"
+                  className="whitespace-nowrap w-full md:w-auto gap-2 cursor-pointer"
                   onClick={() =>
-                    exportExcel(
-                      filteredSales.map((s, i) => ({
-                        S_N: i + 1,
-                        Amount: `₦${s.amount.toLocaleString()}`,
+                    exportCSV(
+                      filteredSales.map((s) => ({
                         Description: s.description || "-",
+                        Amount: `₦${s.amount.toLocaleString()}`,
                         Date: new Date(s.date).toLocaleDateString("en-GB"),
                       })),
                       exportLabel
                     )
                   }
                 >
-                  <FileDown size={16} />
-                  Export Excel
+                  <FileDown size={16} /> Export CSV
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="whitespace-nowrap w-full md:w-auto gap-2 cursor-pointer"
+                  onClick={() =>
+                    exportExcel(
+                      filteredSales.map((s) => ({
+                        Description: s.description || "-",
+                        Amount: `₦${s.amount.toLocaleString()}`,
+                        Date: new Date(s.date).toLocaleDateString("en-GB"),
+                      })),
+                      exportLabel
+                    )
+                  }
+                >
+                  <FileDown size={16} /> Export Excel
                 </Button>
               </>
             )}
 
             <Button
               type="button"
-              className="w-full md:w-auto gap-2 bg-blue-600 cursor-pointer text-white hover:bg-blue-700"
-              onClick={handleInsight}
+              className="w-full md:w-auto gap-2 bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+              onClick={async () => {
+                clearInsight();
+                await handleInsight();
+              }}
               disabled={insightLoading}
             >
               <Lightbulb size={16} />
@@ -306,17 +325,18 @@ export default function SalesPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base font-semibold">
-                {viewMode === "yearly" ? `${periodLabel} Sales` : `${periodLabel} Sales`}
+                {periodLabel}
               </CardTitle>
               <div className="text-sm font-semibold">
-                Total: ₦{totalAmount.toLocaleString()} ({totalSales} sales)
+                Total: ₦{totalAmount.toLocaleString()} ({totalSales}{" "}
+                {totalSales === 1 ? "sale" : "sales"})
               </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <Skeleton className="w-full h-[380px] rounded-lg" />
+                <Skeleton className="w-full h-[420px] rounded-lg" />
               ) : (
-                <ResponsiveContainer width="100%" height={380}>
+                <ResponsiveContainer width="100%" height={420}>
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
@@ -335,7 +355,9 @@ export default function SalesPage() {
 
           <Card className="mt-6">
             <CardHeader className="py-4">
-              <CardTitle className="text-base font-semibold">Sales Records</CardTitle>
+              <CardTitle className="text-base font-semibold">
+                Sales Records
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -346,8 +368,8 @@ export default function SalesPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>S/N</TableHead>
-                        <TableHead>Amount</TableHead>
                         <TableHead>Description</TableHead>
+                        <TableHead>Amount</TableHead>
                         <TableHead>Date</TableHead>
                         {canMutate && <TableHead>Actions</TableHead>}
                       </TableRow>
@@ -356,8 +378,8 @@ export default function SalesPage() {
                       {paginatedSales.map((s, i) => (
                         <TableRow key={s.id}>
                           <TableCell>{(page - 1) * perPage + i + 1}</TableCell>
-                          <TableCell>₦{s.amount.toLocaleString()}</TableCell>
                           <TableCell>{s.description || "-"}</TableCell>
+                          <TableCell>₦{s.amount.toLocaleString()}</TableCell>
                           <TableCell>
                             {new Date(s.date).toLocaleDateString("en-GB")}
                           </TableCell>
@@ -370,15 +392,14 @@ export default function SalesPage() {
                                 onClick={() => {
                                   setEditingSale(s);
                                   setForm({
-                                    amount: s.amount.toString(),
                                     desc: s.description || "",
+                                    amount: s.amount.toString(),
                                     date: new Date(s.date),
                                   });
                                   setOpenEdit(true);
                                 }}
                               >
-                                <Edit size={14} />
-                                Edit
+                                <Edit size={14} /> Edit
                               </Button>
                               <Button
                                 variant="destructive"
@@ -389,8 +410,7 @@ export default function SalesPage() {
                                   setOpenDelete(true);
                                 }}
                               >
-                                <Trash2 size={14} />
-                                Delete
+                                <Trash2 size={14} /> Delete
                               </Button>
                             </TableCell>
                           )}
@@ -436,7 +456,10 @@ export default function SalesPage() {
           </Card>
 
           {insight && (
-            <Card className="mt-6 border-blue-200 dark:border-blue-800">
+            <Card
+              ref={insightRef}
+              className="mt-6 border-blue-200 dark:border-blue-800"
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-blue-700 dark:text-blue-300">
                   Suite 33 AI Insight
@@ -450,21 +473,20 @@ export default function SalesPage() {
         </TabsContent>
       </Tabs>
 
+      {/* Add Sale */}
       <Dialog open={openAdd} onOpenChange={(o) => !saving && setOpenAdd(o)}>
         <DialogContent
-          onInteractOutside={(e) => saving && e.preventDefault()}
+          onInteractOutside={(e) => {
+            const t = e.target as HTMLElement;
+            if (t.closest(".datepicker-dropdown")) e.preventDefault();
+            if (saving) e.preventDefault();
+          }}
           onEscapeKeyDown={(e) => saving && e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>Add Sale</DialogTitle>
           </DialogHeader>
-          <input
-            type="number"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            placeholder="Amount"
-            className="border rounded-lg px-3 py-2 w-full"
-          />
+
           <input
             type="text"
             value={form.desc}
@@ -472,25 +494,40 @@ export default function SalesPage() {
             placeholder="Description"
             className="border rounded-lg px-3 py-2 w-full"
           />
+          <input
+            type="number"
+            value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            placeholder="Amount"
+            className="border rounded-lg px-3 py-2 w-full"
+          />
+
           <ByteDatePicker
             value={form.date}
-            onChange={(d) => setForm({ ...form, date: d || new Date() })}
+            onChange={(d) => d && setForm({ ...form, date: d })}
             includeDays
             formatString="dd-mm-yyyy"
             hideInput
           >
             {({ open, formattedValue }) => (
-              <input
-                readOnly
-                value={formattedValue}
+              <Button
+                type="button"
                 onClick={open}
-                placeholder="Select Date"
-                className="border rounded-lg px-3 py-2 w-full cursor-pointer"
-              />
+                variant="outline"
+                className="justify-start gap-2 cursor-pointer"
+              >
+                <CalendarIcon size={16} />
+                {formattedValue || "Select Date"}
+              </Button>
             )}
           </ByteDatePicker>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenAdd(false)} disabled={saving}>
+            <Button
+              variant="outline"
+              onClick={() => setOpenAdd(false)}
+              disabled={saving}
+            >
               Cancel
             </Button>
             <Button
@@ -505,7 +542,7 @@ export default function SalesPage() {
                     date: form.date,
                   });
                   toast.success("Sale added");
-                  setForm({ amount: "", desc: "", date: new Date() });
+                  setForm({ desc: "", amount: "", date: new Date() });
                   setOpenAdd(false);
                 } catch {
                   toast.error("Failed to add sale");
@@ -521,21 +558,20 @@ export default function SalesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Sale */}
       <Dialog open={openEdit} onOpenChange={(o) => !saving && setOpenEdit(o)}>
         <DialogContent
-          onInteractOutside={(e) => saving && e.preventDefault()}
+          onInteractOutside={(e) => {
+            const t = e.target as HTMLElement;
+            if (t.closest(".datepicker-dropdown")) e.preventDefault();
+            if (saving) e.preventDefault();
+          }}
           onEscapeKeyDown={(e) => saving && e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>Edit Sale</DialogTitle>
           </DialogHeader>
-          <input
-            type="number"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            placeholder="Amount"
-            className="border rounded-lg px-3 py-2 w-full"
-          />
+
           <input
             type="text"
             value={form.desc}
@@ -543,25 +579,41 @@ export default function SalesPage() {
             placeholder="Description"
             className="border rounded-lg px-3 py-2 w-full"
           />
+          <input
+            type="number"
+            value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            placeholder="Amount"
+            className="border rounded-lg px-3 py-2 w-full"
+          />
+
           <ByteDatePicker
             value={form.date}
-            onChange={(d) => setForm({ ...form, date: d || new Date() })}
+            onChange={(d) => d && setForm({ ...form, date: d })}
             includeDays
             formatString="dd-mm-yyyy"
             hideInput
           >
             {({ open, formattedValue }) => (
-              <input
-                readOnly
-                value={formattedValue}
+              <Button
+                type="button"
                 onClick={open}
-                placeholder="Select Date"
-                className="border rounded-lg px-3 py-2 w-full cursor-pointer"
-              />
+                variant="outline"
+                className="justify-start gap-2 cursor-pointer"
+              >
+                <CalendarIcon size={16} />
+                {formattedValue || "Select Date"}
+              </Button>
             )}
           </ByteDatePicker>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenEdit(false)} disabled={saving}>
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => setOpenEdit(false)}
+              disabled={saving}
+            >
               Cancel
             </Button>
             <Button
@@ -592,6 +644,7 @@ export default function SalesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Sale */}
       <Dialog open={openDelete} onOpenChange={setOpenDelete}>
         <DialogContent>
           <DialogHeader>
@@ -599,11 +652,16 @@ export default function SalesPage() {
           </DialogHeader>
           <p>Are you sure you want to delete this sale record?</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenDelete(false)}>
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => setOpenDelete(false)}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
+              className="cursor-pointer"
               onClick={async () => {
                 if (!deletingSale) return;
                 try {

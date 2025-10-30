@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const record = await prisma.user.findUnique({
       where: { id: user.id },
       include: {
-        business: { select: { id: true, name: true } },
+        business: { select: { id: true, name: true, logoUrl: true } },
         Staff: { include: { department: true } },
       },
     });

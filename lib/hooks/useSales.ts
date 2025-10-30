@@ -6,9 +6,8 @@ import { z } from "zod";
 import { SaleSchema } from "@/lib/types/sale";
 
 type ExportableSale = {
-  S_N: number;
-  Amount: string;
   Description: string;
+  Amount: string;
   Date: string;
 };
 
@@ -103,14 +102,12 @@ export function useSales() {
       const sales: any[] = [];
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return;
-        const [amount, description, date] = (row.values as any[]).slice(1);
+        const [description, amount, date] = (row.values as any[]).slice(1);
         if (amount && !isNaN(Number(amount))) {
           sales.push({
             amount,
             description,
-            date: date
-              ? new Date(date).toISOString()
-              : new Date().toISOString(),
+            date: date ? new Date(date).toISOString() : new Date().toISOString(),
           });
         }
       });
@@ -135,10 +132,8 @@ export function useSales() {
     if (!sales.length) throw new Error("No sales to export");
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(label);
-    worksheet.addRow(["S/N", "Amount", "Description", "Date"]);
-    sales.forEach((s) =>
-      worksheet.addRow([s.S_N, s.Amount, s.Description, s.Date])
-    );
+    worksheet.addRow(["Description", "Amount", "Date"]);
+    sales.forEach((s) => worksheet.addRow([s.Description, s.Amount, s.Date]));
     worksheet.columns.forEach((col) => (col.width = 20));
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {

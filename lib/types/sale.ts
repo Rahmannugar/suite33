@@ -3,8 +3,8 @@ import { z } from "zod";
 export const SaleSchema = z.object({
   id: z.string(),
   businessId: z.string(),
-  amount: z.number(),
   description: z.string().nullable().optional(),
+  amount: z.number(),
   date: z.string(),
 });
 

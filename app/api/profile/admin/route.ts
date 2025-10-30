@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export async function PUT(request: NextRequest) {
   try {
-    const { userId, fullName, logoUrl } = await request.json();
+    const { userId, fullName, logoUrl, businessId } = await request.json();
     if (!userId || !fullName) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -18,10 +18,12 @@ export async function PUT(request: NextRequest) {
         where: { id: userId },
         data: { fullName, avatarUrl: logoUrl },
       });
-      await prisma.business.update({
-        where: { ownerId: userId },
-        data: { logoUrl },
-      });
+      if (businessId) {
+        await prisma.business.update({
+          where: { id: businessId },
+          data: { logoUrl },
+        });
+      }
     } else {
       await prisma.user.update({
         where: { id: userId },

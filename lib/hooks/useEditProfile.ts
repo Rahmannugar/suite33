@@ -26,6 +26,7 @@ export function useEditProfile() {
           userId: user.id,
           fullName,
           logoUrl: avatarUrl,
+          businessId: user.businessId,
         });
       } else {
         await axios.put("/api/profile/staff", {
