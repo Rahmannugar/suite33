@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
     const total = sales.reduce((sum, s) => sum + s.amount, 0);
     const avg = sales.length ? total / sales.length : 0;
 
-  //gemini prompt
     const periodLabel = month
       ? `${new Date(year, month - 1).toLocaleString("default", { month: "long" })} ${year}`
       : `Year ${year}`;

@@ -54,6 +54,13 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import type { Sale } from "@/lib/types/sale";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 type ChartPoint = { name: string; amount: number; count: number };
 
@@ -97,7 +104,6 @@ export default function SalesPage() {
 
   const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
   const [date, setDate] = useState<Date | null>(new Date());
-
   const [page, setPage] = useState(1);
   const perPage = 10;
 
@@ -106,6 +112,9 @@ export default function SalesPage() {
   const [openDelete, setOpenDelete] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
+
+  const [openAddDate, setOpenAddDate] = useState(false);
+  const [openEditDate, setOpenEditDate] = useState(false);
 
   const [form, setForm] = useState({ desc: "", amount: "", date: new Date() });
   const [saving, setSaving] = useState(false);
@@ -180,9 +189,10 @@ export default function SalesPage() {
         .trim();
       setInsight(refined);
       toast.success("Insight generated successfully");
-      setTimeout(() => {
-        insightRef.current?.scrollIntoView({ block: "start" });
-      }, 150);
+      setTimeout(
+        () => insightRef.current?.scrollIntoView({ block: "start" }),
+        150
+      );
     } catch {
       toast.error("Failed to generate insights");
     } finally {
@@ -227,7 +237,9 @@ export default function SalesPage() {
           <TabsTrigger value="yearly">Yearly</TabsTrigger>
         </TabsList>
 
+        {/* Filters + Actions */}
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* ByteDatePicker for main view */}
           <div className="w-full md:w-auto">
             <ByteDatePicker
               value={date}
@@ -251,6 +263,7 @@ export default function SalesPage() {
             </ByteDatePicker>
           </div>
 
+          {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-3 lg:flex lg:items-center lg:justify-end">
             {canMutate && (
               <>
@@ -307,7 +320,6 @@ export default function SalesPage() {
             )}
 
             <Button
-              type="button"
               className="w-full md:w-auto gap-2 bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
               onClick={async () => {
                 clearInsight();
@@ -321,6 +333,7 @@ export default function SalesPage() {
           </div>
         </div>
 
+        {/* Chart + Table */}
         <TabsContent value={viewMode}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -353,6 +366,7 @@ export default function SalesPage() {
             </CardContent>
           </Card>
 
+          {/* Sales Table */}
           <Card className="mt-6">
             <CardHeader className="py-4">
               <CardTitle className="text-base font-semibold">
@@ -419,6 +433,7 @@ export default function SalesPage() {
                     </TableBody>
                   </Table>
 
+                  {/* Pagination */}
                   {totalPages > 1 && (
                     <Pagination className="mt-4">
                       <PaginationContent>
@@ -455,6 +470,7 @@ export default function SalesPage() {
             </CardContent>
           </Card>
 
+          {/* Insights */}
           {insight && (
             <Card
               ref={insightRef}
@@ -475,14 +491,7 @@ export default function SalesPage() {
 
       {/* Add Sale */}
       <Dialog open={openAdd} onOpenChange={(o) => !saving && setOpenAdd(o)}>
-        <DialogContent
-          onInteractOutside={(e) => {
-            const t = e.target as HTMLElement;
-            if (t.closest(".datepicker-dropdown")) e.preventDefault();
-            if (saving) e.preventDefault();
-          }}
-          onEscapeKeyDown={(e) => saving && e.preventDefault()}
-        >
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Sale</DialogTitle>
           </DialogHeader>
@@ -502,25 +511,35 @@ export default function SalesPage() {
             className="border rounded-lg px-3 py-2 w-full"
           />
 
-          <ByteDatePicker
-            value={form.date}
-            onChange={(d) => d && setForm({ ...form, date: d })}
-            includeDays
-            formatString="dd-mm-yyyy"
-            hideInput
-          >
-            {({ open, formattedValue }) => (
+          <Popover open={openAddDate} onOpenChange={setOpenAddDate}>
+            <PopoverTrigger asChild>
               <Button
-                type="button"
-                onClick={open}
                 variant="outline"
-                className="justify-start gap-2 cursor-pointer"
+                className="justify-start gap-2 cursor-pointer w-full"
               >
                 <CalendarIcon size={16} />
-                {formattedValue || "Select Date"}
+                {form.date ? format(form.date, "dd-MM-yyyy") : "Select Date"}
               </Button>
-            )}
-          </ByteDatePicker>
+            </PopoverTrigger>
+            <PopoverContent
+              align="center"
+              sideOffset={4}
+              className="p-0 w-auto mx-auto"
+            >
+              <Calendar
+                mode="single"
+                selected={form.date}
+                onSelect={(d) => {
+                  if (d) {
+                    setForm({ ...form, date: d });
+                    setOpenAddDate(false);
+                  }
+                }}
+                initialFocus
+                className="rounded-md border bg-popover p-2 shadow-sm w-full max-w-xs mx-auto [&_.rdp-caption_label]:text-center [&_.rdp-caption]:flex [&_.rdp-caption]:justify-center [&_.rdp-head_row]:text-center [&_.rdp-table]:mx-auto"
+              />
+            </PopoverContent>
+          </Popover>
 
           <DialogFooter>
             <Button
@@ -560,14 +579,7 @@ export default function SalesPage() {
 
       {/* Edit Sale */}
       <Dialog open={openEdit} onOpenChange={(o) => !saving && setOpenEdit(o)}>
-        <DialogContent
-          onInteractOutside={(e) => {
-            const t = e.target as HTMLElement;
-            if (t.closest(".datepicker-dropdown")) e.preventDefault();
-            if (saving) e.preventDefault();
-          }}
-          onEscapeKeyDown={(e) => saving && e.preventDefault()}
-        >
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Sale</DialogTitle>
           </DialogHeader>
@@ -587,30 +599,39 @@ export default function SalesPage() {
             className="border rounded-lg px-3 py-2 w-full"
           />
 
-          <ByteDatePicker
-            value={form.date}
-            onChange={(d) => d && setForm({ ...form, date: d })}
-            includeDays
-            formatString="dd-mm-yyyy"
-            hideInput
-          >
-            {({ open, formattedValue }) => (
+          <Popover open={openEditDate} onOpenChange={setOpenEditDate}>
+            <PopoverTrigger asChild>
               <Button
-                type="button"
-                onClick={open}
                 variant="outline"
-                className="justify-start gap-2 cursor-pointer"
+                className="justify-start gap-2 cursor-pointer w-full"
               >
                 <CalendarIcon size={16} />
-                {formattedValue || "Select Date"}
+                {form.date ? format(form.date, "dd-MM-yyyy") : "Select Date"}
               </Button>
-            )}
-          </ByteDatePicker>
+            </PopoverTrigger>
+            <PopoverContent
+              align="center"
+              sideOffset={4}
+              className="p-0 w-auto mx-auto"
+            >
+              <Calendar
+                mode="single"
+                selected={form.date}
+                onSelect={(d) => {
+                  if (d) {
+                    setForm({ ...form, date: d });
+                    setOpenEditDate(false);
+                  }
+                }}
+                initialFocus
+                className="rounded-md border bg-popover p-2 shadow-sm w-full max-w-xs mx-auto [&_.rdp-caption_label]:text-center [&_.rdp-caption]:flex [&_.rdp-caption]:justify-center [&_.rdp-head_row]:text-center [&_.rdp-table]:mx-auto"
+              />
+            </PopoverContent>
+          </Popover>
 
           <DialogFooter>
             <Button
               variant="outline"
-              className="cursor-pointer"
               onClick={() => setOpenEdit(false)}
               disabled={saving}
             >

@@ -28,6 +28,14 @@ import type { Sale } from "@/lib/types/sale";
 import type { Expenditure } from "@/lib/types/expenditure";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 function formatCurrencyShort(value: number): string {
   if (value >= 1_000_000_000) return `₦${(value / 1_000_000_000).toFixed(1)}B`;
@@ -195,7 +203,7 @@ export default function DashboardHome() {
         />
       </div>
 
-      {/* Payroll  */}
+      {/* Payroll */}
       <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] hover:shadow-md cursor-pointer will-change-transform">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -231,61 +239,54 @@ export default function DashboardHome() {
         </CardContent>
       </Card>
 
-      {/* P&L Table */}
-      <div>
-        <h3 className="text-lg font-semibold mb-2">
-          P & L Summary – {currentYear}
-        </h3>
-        <div className="overflow-x-auto sm:overflow-x-visible">
-          <table className="min-w-[600px] w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-            <thead className="bg-blue-50 dark:bg-blue-900/30 text-gray-800 dark:text-gray-200">
-              <tr>
-                <th className="p-2.5 text-left font-medium">Month</th>
-                <th className="p-2.5 text-left font-medium">Sales</th>
-                <th className="p-2.5 text-left font-medium">Expenditures</th>
-                <th className="p-2.5 text-left font-medium">Net P&L</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pnlTable.map((row, i) => (
-                <tr
-                  key={row.month}
-                  className={`${
-                    i % 2 === 0
-                      ? "bg-white dark:bg-gray-900/40"
-                      : "bg-gray-50 dark:bg-gray-800/30"
-                  } border-t`}
-                >
-                  <td className="p-2.5">{row.month}</td>
-                  <td className="p-2.5">₦{row.sales.toLocaleString()}</td>
-                  <td className="p-2.5">
-                    ₦{row.expenditures.toLocaleString()}
-                  </td>
-                  <td
-                    className={`p-2.5 font-semibold ${
-                      row.pnl < 0 ? "text-red-600" : "text-green-600"
+      {/* ✅ P&L Table (using ShadCN Table) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>P & L Summary – {currentYear}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Month</TableHead>
+                  <TableHead>Sales</TableHead>
+                  <TableHead>Expenditures</TableHead>
+                  <TableHead>Net P&L</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pnlTable.map((row) => (
+                  <TableRow key={row.month}>
+                    <TableCell>{row.month}</TableCell>
+                    <TableCell>₦{row.sales.toLocaleString()}</TableCell>
+                    <TableCell>₦{row.expenditures.toLocaleString()}</TableCell>
+                    <TableCell
+                      className={`font-semibold ${
+                        row.pnl < 0 ? "text-red-600" : "text-green-600"
+                      }`}
+                    >
+                      ₦{row.pnl.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="bg-blue-50 dark:bg-blue-900/30 font-semibold">
+                  <TableCell>Total</TableCell>
+                  <TableCell>₦{yearSales.toLocaleString()}</TableCell>
+                  <TableCell>₦{yearExp.toLocaleString()}</TableCell>
+                  <TableCell
+                    className={`${
+                      yearPnl < 0 ? "text-red-600" : "text-green-600"
                     }`}
                   >
-                    ₦{row.pnl.toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-              <tr className="bg-blue-100 dark:bg-blue-900/40 font-bold text-[15px]">
-                <td className="p-3">Total</td>
-                <td className="p-3">₦{yearSales.toLocaleString()}</td>
-                <td className="p-3">₦{yearExp.toLocaleString()}</td>
-                <td
-                  className={`p-3 ${
-                    yearPnl < 0 ? "text-red-600" : "text-green-600"
-                  }`}
-                >
-                  ₦{yearPnl.toLocaleString()}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+                    ₦{yearPnl.toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -317,27 +318,25 @@ function MetricCard({
             <div className="font-bold text-2xl mb-3">
               ₦{total?.toLocaleString()}
             </div>
-            <div className="cursor-pointer">
-              <ResponsiveContainer width="100%" height={150}>
-                <BarChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis hide />
-                  <Tooltip
-                    formatter={(value: number) => [
-                      formatCurrencyShort(value),
-                      title,
-                    ]}
-                  />
-                  <Bar
-                    dataKey={dataKey}
-                    name={title}
-                    fill={color}
-                    radius={[6, 6, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ResponsiveContainer width="100%" height={150}>
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis hide />
+                <Tooltip
+                  formatter={(value: number) => [
+                    formatCurrencyShort(value),
+                    title,
+                  ]}
+                />
+                <Bar
+                  dataKey={dataKey}
+                  name={title}
+                  fill={color}
+                  radius={[6, 6, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </>
         ) : (
           <p className="text-sm text-[--muted-foreground]">
@@ -400,3 +399,4 @@ function LoadingPlaceholder() {
     </div>
   );
 }
+
