@@ -1,0 +1,27 @@
+name: Payroll Automation
+
+on:
+  schedule:
+    # Runs at 00:10 on the 1st of every month
+    - cron: '10 0 1 * *'
+  workflow_dispatch:
+
+jobs:
+  payroll:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run payroll automation script
+        run: npx ts-node scripts/auto-generate-payroll.ts
