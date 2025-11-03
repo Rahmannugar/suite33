@@ -1,4 +1,4 @@
-import { PrismaClient } from "../lib/generated/prisma";
+import { PrismaClient } from "../lib/generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
@@ -9,7 +9,9 @@ async function main() {
   const month = now.getMonth() + 1;
 
   for (const business of businesses) {
-    const staffList = await prisma.staff.findMany({ where: { businessId: business.id } });
+    const staffList = await prisma.staff.findMany({
+      where: { businessId: business.id },
+    });
     const period = new Date(year, month - 1, 1);
 
     for (const staff of staffList) {
