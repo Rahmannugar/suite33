@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useInventory } from "@/lib/hooks/useInventory";
 import { toast } from "sonner";
-import { Inventory } from "@/lib/types/inventory";
+import type { Inventory } from "@/lib/types/inventory";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectTrigger,
@@ -12,9 +20,21 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationLink,
+} from "@/components/ui/pagination";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, FileDown, FileUp, Trash2, Edit } from "lucide-react";
 
 export default function InventoryPage() {
-  const user = useAuthStore((state) => state.user);
+  const user = useAuthStore((s) => s.user);
   const {
     inventory,
     isLoading,
@@ -30,6 +50,15 @@ export default function InventoryPage() {
     refetchLowStock,
   } = useInventory();
 
+  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const perPage = 10;
+
+  // Filtering
+  const [filterCategory, setFilterCategory] = useState("all");
+
   const categories = useMemo(() => {
     if (!inventory) return [];
     const map = new Map<string, { id: string; name: string }>();
@@ -39,390 +68,490 @@ export default function InventoryPage() {
     return Array.from(map.values());
   }, [inventory]);
 
-  const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [newCategory, setNewCategory] = useState("");
-  const [adding, setAdding] = useState(false);
+  // Sorting & Filtering
+  const filteredInventory = useMemo(() => {
+    const sorted =
+      inventory
+        ?.filter((item) =>
+          filterCategory === "all" ? true : item.categoryId === filterCategory
+        )
+        ?.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        ) ?? [];
+    return sorted;
+  }, [inventory, filterCategory]);
 
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editQuantity, setEditQuantity] = useState("");
-  const [editCategoryId, setEditCategoryId] = useState("");
-  const [editNewCategory, setEditNewCategory] = useState("");
-  const [editing, setEditing] = useState(false);
+  const totalRecords = filteredInventory.length;
+  const totalPages = Math.ceil(totalRecords / perPage);
+  const paginatedItems = filteredInventory.slice(
+    (page - 1) * perPage,
+    page * perPage
+  );
 
-  const [filterCategory, setFilterCategory] = useState<string>("all");
-  const filteredInventory =
-    filterCategory === "all"
-      ? inventory ?? []
-      : (inventory ?? []).filter(
-          (item: Inventory) => item.categoryId === filterCategory
-        );
+  // Add/Edit Dialog States
+  const [openAdd, setOpenAdd] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [editingItem, setEditingItem] = useState<Inventory | null>(null);
 
-  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
+  const [form, setForm] = useState({
+    name: "",
+    quantity: "",
+    categoryId: "",
+    newCategory: "",
+  });
+  const [saving, setSaving] = useState(false);
 
-  async function handleAddItem(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name || (!categoryId && !newCategory)) return;
-    if (!user?.businessId) return;
-    setAdding(true);
-    try {
-      let oldCategoryId = categoryId;
-      if (newCategory) {
-        const res = await fetch("/api/categories", {
-          method: "POST",
-          body: JSON.stringify({
-            name: newCategory.trim().toLowerCase(),
-            businessId: user.businessId,
-          }),
-          headers: { "Content-Type": "application/json" },
-        });
-        const data = await res.json();
-        oldCategoryId = data.category.id;
-      }
-      await addItem.mutateAsync({
-        name,
-        quantity: parseInt(quantity) || 0,
-        categoryId: oldCategoryId,
-        businessId: user.businessId as string,
-      });
-      toast.success("Item added!");
-      setName("");
-      setQuantity("");
-      setCategoryId("");
-      setNewCategory("");
-      refetchLowStock();
-    } catch {
-      toast.error("Failed to add item");
-    } finally {
-      setAdding(false);
-    }
-  }
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  async function handleEditItem(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editId || !editName || (!editCategoryId && !editNewCategory)) return;
-    setEditing(true);
-    try {
-      let oldCategoryId = editCategoryId;
-      if (editNewCategory) {
-        const res = await fetch("/api/categories", {
-          method: "POST",
-          body: JSON.stringify({
-            name: editNewCategory.trim().toLowerCase(),
-            businessId: user?.businessId,
-          }),
-          headers: { "Content-Type": "application/json" },
-        });
-        const data = await res.json();
-        oldCategoryId = data.category.id;
-      }
-      await editItem.mutateAsync({
-        id: editId,
-        name: editName,
-        quantity: parseInt(editQuantity) || 0,
-        categoryId: oldCategoryId,
-      });
-      toast.success("Item updated!");
-      setEditId(null);
-      setEditName("");
-      setEditQuantity("");
-      setEditCategoryId("");
-      setEditNewCategory("");
-      refetchLowStock();
-    } catch {
-      toast.error("Failed to update item");
-    } finally {
-      setEditing(false);
-    }
-  }
+  const handleImportClick = () => fileInputRef.current?.click();
 
-  async function handleDeleteItem(id: string) {
-    try {
-      await deleteItem.mutateAsync(id);
-      toast.success("Item deleted!");
-      refetchLowStock();
-    } catch {
-      toast.error("Failed to delete item");
-    }
-  }
-
-  function handleExportCSV() {
-    exportCSV(filteredInventory);
-  }
-  async function handleExportExcel() {
-    await exportExcel(filteredInventory);
-  }
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !user?.businessId) return;
-    await importCSV.mutateAsync({ file, businessId: user.businessId });
-    toast.success("Imported CSV!");
-    refetchLowStock();
-  }
+  const handleImportChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f || !user?.businessId) return;
+    const promise = f.name.toLowerCase().endsWith(".csv")
+      ? importCSV.mutateAsync({ file: f, businessId: user.businessId })
+      : importExcel.mutateAsync({ file: f, businessId: user.businessId });
+    promise
+      .then(() => {
+        toast.success("Inventory imported successfully");
+        refetchLowStock();
+      })
+      .catch(() => toast.error("Failed to import inventory"))
+      .finally(() => (e.currentTarget.value = ""));
+  };
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Inventory</h2>
-      <div className="flex gap-2 mb-4 items-center">
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="max-w-xs w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition font-medium">
-            <SelectValue>
-              {filterCategory === "all"
-                ? "All Categories"
-                : categories
-                    .find((cat) => cat.id === filterCategory)
-                    ?.name.toUpperCase() ?? ""}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.id}>
-                {cat.name.toUpperCase()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <button
-          type="button"
-          className="px-3 py-2 rounded border border-[--input] bg-blue-50 text-blue-700 font-medium hover:bg-blue-100 transition"
-          onClick={handleExportCSV}
-        >
-          Export CSV
-        </button>
-        <button
-          type="button"
-          className="px-3 py-2 rounded border border-[--input] bg-blue-50 text-blue-700 font-medium hover:bg-blue-100 transition"
-          onClick={handleExportExcel}
-        >
-          Export Excel
-        </button>
-        <label className="px-3 py-2 rounded border border-[--input] bg-blue-50 text-blue-700 font-medium hover:bg-blue-100 transition cursor-pointer">
-          Import CSV
-          <input
-            type="file"
-            accept=".csv"
-            className="hidden"
-            onChange={handleImport}
-          />
-        </label>
-      </div>
-      {canMutate && (
-        <form onSubmit={handleAddItem} className="flex gap-2 mb-4 flex-wrap">
-          <input
-            type="text"
-            placeholder="Item name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="block w-full max-w-xs rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
-            required
-          />
-          <input
-            type="number"
-            placeholder="Quantity"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            className="block w-full max-w-xs rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
-            required
-          />
-          <input
-            type="text"
-            placeholder="New category (optional)"
-            value={newCategory}
-            onChange={(e) => {
-              setNewCategory(e.target.value);
-              if (e.target.value) setCategoryId("");
-            }}
-            className="block w-full max-w-xs rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
-            disabled={!!categoryId}
-          />
-          <Select
-            value={categoryId}
-            onValueChange={(v) => {
-              setCategoryId(v);
-              if (v) setNewCategory("");
-            }}
-            disabled={!!newCategory}
+    <div className="space-y-6">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-2xl font-semibold">Inventory</h2>
+        {canMutate && (
+          <Button
+            onClick={() => setOpenAdd(true)}
+            className="gap-2 cursor-pointer"
           >
-            <SelectTrigger className="max-w-xs w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition font-medium">
-              <SelectValue>
-                {categoryId
-                  ? categories
-                      .find((cat) => cat.id === categoryId)
-                      ?.name.toUpperCase()
-                  : "Select category"}
+            <Plus size={16} /> Add Item
+          </Button>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="w-full md:w-auto">
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger className="w-full md:w-48">
+              <SelectValue placeholder="Filter by Category">
+                {filterCategory === "all"
+                  ? "All Categories"
+                  : categories.find((c) => c.id === filterCategory)?.name ??
+                    "All Categories"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name.toUpperCase()}
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition"
-            disabled={adding}
-          >
-            {adding ? "Adding..." : "Add Item"}
-          </button>
-        </form>
-      )}
-      {isLoading ? (
-        <div>Loading inventory...</div>
-      ) : filteredInventory.length ? (
-        <table className="w-full border rounded">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Quantity</th>
-              <th>Category</th>
-              {canMutate && <th>Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredInventory.map((item: Inventory) => (
-              <tr key={item.id}>
-                <td>{item.name}</td>
-                <td>{item.quantity}</td>
-                <td>{item.category?.name?.toUpperCase() ?? "-"}</td>
-                {canMutate && (
-                  <td>
-                    <button
-                      className="text-blue-600 hover:underline mr-2"
-                      onClick={() => {
-                        setEditId(item.id);
-                        setEditName(item.name);
-                        setEditQuantity(item.quantity.toString());
-                        setEditCategoryId(item.categoryId);
-                        setEditNewCategory("");
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="text-red-600 hover:underline"
-                      onClick={() => handleDeleteItem(item.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <div className="text-sm text-[--muted-foreground] mt-4">
-          Inventory is empty.
         </div>
-      )}
-      {/* Edit Modal */}
-      {editId && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-blue-900/40 rounded-lg p-6 shadow-lg w-full max-w-sm">
-            <form onSubmit={handleEditItem} className="space-y-4">
+
+        <div className="grid grid-cols-2 gap-3 lg:flex lg:items-center lg:justify-end">
+          {canMutate && (
+            <>
               <input
-                type="text"
-                placeholder="Item name"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                required
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx"
+                className="hidden"
+                onChange={handleImportChange}
               />
-              <input
-                type="number"
-                placeholder="Quantity"
-                value={editQuantity}
-                onChange={(e) => setEditQuantity(e.target.value)}
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                required
-              />
-              <input
-                type="text"
-                placeholder="New category (optional)"
-                value={editNewCategory}
-                onChange={(e) => {
-                  setEditNewCategory(e.target.value);
-                  if (e.target.value) setEditCategoryId("");
-                }}
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                disabled={!!editCategoryId}
-              />
-              <Select
-                value={editCategoryId}
-                onValueChange={(v) => {
-                  setEditCategoryId(v);
-                  if (v) setEditNewCategory("");
-                }}
-                disabled={!!editNewCategory}
+              <Button
+                variant="outline"
+                onClick={handleImportClick}
+                className="whitespace-nowrap w-full md:w-auto gap-2 cursor-pointer"
               >
-                <SelectTrigger className="w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition font-medium">
-                  <SelectValue>
-                    {editCategoryId
-                      ? categories
-                          .find((cat) => cat.id === editCategoryId)
-                          ?.name.toUpperCase()
-                      : "Select category"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name.toUpperCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition"
-                  disabled={editing}
-                >
-                  {editing ? "Saving..." : "Save"}
-                </button>
-                <button
-                  type="button"
-                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition"
-                  onClick={() => setEditId(null)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
+                <FileUp size={16} /> Import CSV/Excel
+              </Button>
+
+              <Button
+                variant="outline"
+                className="whitespace-nowrap w-full md:w-auto gap-2 cursor-pointer"
+                onClick={() => {
+                  exportCSV(filteredInventory);
+                  toast.success("CSV exported successfully");
+                }}
+              >
+                <FileDown size={16} /> Export CSV
+              </Button>
+
+              <Button
+                variant="outline"
+                className="whitespace-nowrap w-full md:w-auto gap-2 cursor-pointer"
+                onClick={() => {
+                  exportExcel(filteredInventory);
+                  toast.success("Excel exported successfully");
+                }}
+              >
+                <FileDown size={16} /> Export Excel
+              </Button>
+            </>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardHeader className="py-4">
+          <CardTitle className="text-base font-semibold">
+            Inventory Records
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : totalRecords > 0 ? (
+            <>
+              <table className="w-full border rounded">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="text-left p-3">S/N</th>
+                    <th className="text-left p-3">Name</th>
+                    <th className="text-left p-3">Quantity</th>
+                    <th className="text-left p-3">Category</th>
+                    {canMutate && <th className="text-left p-3">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedItems.map((item, i) => (
+                    <tr key={item.id} className="border-t">
+                      <td className="p-3">{(page - 1) * perPage + i + 1}</td>
+                      <td className="p-3">{item.name}</td>
+                      <td className="p-3">{item.quantity}</td>
+                      <td className="p-3">
+                        {item.category?.name?.toUpperCase() ?? "-"}
+                      </td>
+                      {canMutate && (
+                        <td className="p-3 flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 cursor-pointer"
+                            onClick={() => {
+                              setEditingItem(item);
+                              setForm({
+                                name: item.name,
+                                quantity: item.quantity.toString(),
+                                categoryId: item.categoryId,
+                                newCategory: "",
+                              });
+                              setOpenEdit(true);
+                            }}
+                          >
+                            <Edit size={14} /> Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="gap-1 cursor-pointer"
+                            onClick={async () => {
+                              try {
+                                await deleteItem.mutateAsync(item.id);
+                                toast.success("Item deleted");
+                              } catch {
+                                toast.error("Failed to delete item");
+                              }
+                            }}
+                          >
+                            <Trash2 size={14} /> Delete
+                          </Button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {totalPages > 1 && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        className="cursor-pointer"
+                      />
+                    </PaginationItem>
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          onClick={() => setPage(i + 1)}
+                          isActive={page === i + 1}
+                          className="cursor-pointer"
+                        >
+                          {i + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() =>
+                          setPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        className="cursor-pointer"
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </>
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              Inventory is empty.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Low Stock Section */}
-      <div className="mt-8">
-        <h3 className="text-lg font-semibold mb-2">Low Stock Items</h3>
-        {isLowStockLoading ? (
-          <div>Loading low stock...</div>
-        ) : lowStock?.length ? (
-          <ul className="space-y-1">
-            {lowStock.map((item: Inventory) => (
-              <li
+      {!isLowStockLoading && lowStock?.length > 0 && (
+        <Card className="mt-6 border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <CardTitle className="text-blue-700 dark:text-blue-300">
+              Low Stock Items
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {lowStock.map((item) => (
+              <div
                 key={item.id}
-                className="flex justify-between items-center px-3 py-2 rounded bg-red-50 dark:bg-red-900/30"
+                className="flex justify-between items-center px-3 py-2 rounded bg-blue-50 dark:bg-blue-900/20"
               >
                 <span>
                   {item.name} ({item.quantity}) -{" "}
                   {item.category?.name?.toUpperCase() ?? "-"}
                 </span>
-              </li>
+              </div>
             ))}
-          </ul>
-        ) : (
-          <div className="text-sm text-[--muted-foreground]">
-            No low stock items.
-          </div>
-        )}
-      </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add Dialog */}
+      <Dialog open={openAdd} onOpenChange={(o) => !saving && setOpenAdd(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Item</DialogTitle>
+          </DialogHeader>
+
+          <input
+            type="text"
+            placeholder="Item name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="border rounded-lg px-3 py-2 w-full"
+          />
+          <input
+            type="number"
+            placeholder="Quantity"
+            value={form.quantity}
+            onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+            className="border rounded-lg px-3 py-2 w-full"
+          />
+          <input
+            type="text"
+            placeholder="New category (optional)"
+            value={form.newCategory}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm({
+                ...form,
+                newCategory: val,
+                categoryId: val ? "" : form.categoryId,
+              });
+            }}
+            className="border rounded-lg px-3 py-2 w-full"
+            disabled={!!form.categoryId}
+          />
+          <Select
+            value={form.categoryId}
+            onValueChange={(v) =>
+              setForm({ ...form, categoryId: v, newCategory: "" })
+            }
+            disabled={!!form.newCategory}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOpenAdd(false)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!form.name || (!form.categoryId && !form.newCategory))
+                  return;
+                setSaving(true);
+                try {
+                  let catId = form.categoryId;
+                  if (form.newCategory) {
+                    const res = await fetch("/api/categories", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        name: form.newCategory.trim().toLowerCase(),
+                        businessId: user?.businessId,
+                      }),
+                      headers: { "Content-Type": "application/json" },
+                    });
+                    const data = await res.json();
+                    catId = data.category.id;
+                  }
+                  await addItem.mutateAsync({
+                    name: form.name,
+                    quantity: parseInt(form.quantity) || 0,
+                    categoryId: catId,
+                    businessId: user?.businessId ?? "",
+                  });
+                  toast.success("Item added");
+                  setOpenAdd(false);
+                  setForm({
+                    name: "",
+                    quantity: "",
+                    categoryId: "",
+                    newCategory: "",
+                  });
+                } catch {
+                  toast.error("Failed to add item");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={openEdit} onOpenChange={(o) => !saving && setOpenEdit(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Item</DialogTitle>
+          </DialogHeader>
+
+          <input
+            type="text"
+            placeholder="Item name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="border rounded-lg px-3 py-2 w-full"
+          />
+          <input
+            type="number"
+            placeholder="Quantity"
+            value={form.quantity}
+            onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+            className="border rounded-lg px-3 py-2 w-full"
+          />
+          <input
+            type="text"
+            placeholder="New category (optional)"
+            value={form.newCategory}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm({
+                ...form,
+                newCategory: val,
+                categoryId: val ? "" : form.categoryId,
+              });
+            }}
+            className="border rounded-lg px-3 py-2 w-full"
+            disabled={!!form.categoryId}
+          />
+          <Select
+            value={form.categoryId}
+            onValueChange={(v) =>
+              setForm({ ...form, categoryId: v, newCategory: "" })
+            }
+            disabled={!!form.newCategory}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOpenEdit(false)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!editingItem) return;
+                setSaving(true);
+                try {
+                  let catId = form.categoryId;
+                  if (form.newCategory) {
+                    const res = await fetch("/api/categories", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        name: form.newCategory.trim().toLowerCase(),
+                        businessId: user?.businessId,
+                      }),
+                      headers: { "Content-Type": "application/json" },
+                    });
+                    const data = await res.json();
+                    catId = data.category.id;
+                  }
+                  await editItem.mutateAsync({
+                    id: editingItem.id,
+                    name: form.name,
+                    quantity: parseInt(form.quantity) || 0,
+                    categoryId: catId,
+                  });
+                  toast.success("Item updated");
+                  setOpenEdit(false);
+                  setEditingItem(null);
+                } catch {
+                  toast.error("Failed to update item");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

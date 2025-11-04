@@ -20,6 +20,13 @@ export function useInventory() {
     refetchOnWindowFocus: false,
   });
 
+  const refetchAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+      queryClient.invalidateQueries({ queryKey: ["inventory-low-stock"] }),
+    ]);
+  };
+
   const addItem = useMutation({
     mutationFn: async (payload: {
       name: string;
@@ -29,7 +36,7 @@ export function useInventory() {
     }) => {
       await axios.post("/api/inventory", payload);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+    onSuccess: refetchAll,
   });
 
   const editItem = useMutation({
@@ -41,14 +48,14 @@ export function useInventory() {
     }) => {
       await axios.put(`/api/inventory/${payload.id}`, payload);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+    onSuccess: refetchAll,
   });
 
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
       await axios.delete(`/api/inventory/${id}`);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+    onSuccess: refetchAll,
   });
 
   const importCSV = useMutation({
@@ -80,6 +87,7 @@ export function useInventory() {
         });
       });
     },
+    onSuccess: refetchAll,
   });
 
   const importExcel = useMutation({
@@ -110,6 +118,7 @@ export function useInventory() {
         throw new Error("No valid inventory data found in Excel");
       await axios.post("/api/inventory/import", { items, businessId });
     },
+    onSuccess: refetchAll,
   });
 
   function exportCSV(items: any[]) {

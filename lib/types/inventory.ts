@@ -12,6 +12,8 @@ export const InventorySchema = z.object({
       name: z.string(),
     })
     .optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export type Inventory = z.infer<typeof InventorySchema>;

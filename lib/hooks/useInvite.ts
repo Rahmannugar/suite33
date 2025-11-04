@@ -42,7 +42,6 @@ export function useInvite() {
       }
       setPasswordError("");
 
-      // Sign up with Supabase
       await signUp.mutateAsync({
         email: invite.email,
         password,
