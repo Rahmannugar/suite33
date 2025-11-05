@@ -5,17 +5,41 @@ import ExcelJS from "exceljs";
 import z from "zod";
 import { InventorySchema } from "../types/inventory";
 
-export function useInventory() {
+export function useInventory(user?: { businessId?: string }) {
   const queryClient = useQueryClient();
 
-  const query = useQuery({
-    queryKey: ["inventory"],
+  const inventoryQuery = useQuery({
+    queryKey: ["inventory", user?.businessId],
     queryFn: async () => {
       const { data } = await axios.get("/api/inventory");
       const result = z.array(InventorySchema).safeParse(data.inventory);
       if (!result.success) throw new Error("Invalid inventory data");
       return result.data;
     },
+    enabled: !!user?.businessId,
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+  });
+
+  const lowStockQuery = useQuery({
+    queryKey: ["inventory-low-stock", user?.businessId],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/inventory/low-stock");
+      return data.lowStock;
+    },
+    enabled: !!user?.businessId,
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+  });
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories", user?.businessId],
+    queryFn: async () => {
+      if (!user?.businessId) return [];
+      const { data } = await axios.get(`/api/categories?businessId=${user.businessId}`);
+      return data.categories;
+    },
+    enabled: !!user?.businessId,
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
   });
@@ -24,8 +48,17 @@ export function useInventory() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["inventory"] }),
       queryClient.invalidateQueries({ queryKey: ["inventory-low-stock"] }),
+      queryClient.invalidateQueries({ queryKey: ["categories"] }),
     ]);
   };
+
+  const addCategory = useMutation({
+    mutationFn: async (payload: { name: string; businessId: string }) => {
+      const { data } = await axios.post("/api/categories", payload);
+      return data.category;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["categories"] }),
+  });
 
   const addItem = useMutation({
     mutationFn: async (payload: {
@@ -151,19 +184,14 @@ export function useInventory() {
     URL.revokeObjectURL(url);
   }
 
-  const lowStock = useQuery({
-    queryKey: ["inventory-low-stock"],
-    queryFn: async () => {
-      const { data } = await axios.get("/api/inventory/low-stock");
-      return data.lowStock;
-    },
-    staleTime: 1000 * 60 * 10,
-    refetchOnWindowFocus: false,
-  });
-
   return {
-    inventory: query.data,
-    isLoading: query.isLoading,
+    inventory: inventoryQuery.data,
+    isLoading: inventoryQuery.isLoading,
+    lowStock: lowStockQuery.data,
+    isLowStockLoading: lowStockQuery.isLoading,
+    categories: categoriesQuery.data,
+    isCategoriesLoading: categoriesQuery.isLoading,
+    addCategory,
     addItem,
     editItem,
     deleteItem,
@@ -171,8 +199,6 @@ export function useInventory() {
     importExcel,
     exportCSV,
     exportExcel,
-    lowStock: lowStock.data,
-    isLowStockLoading: lowStock.isLoading,
-    refetchLowStock: lowStock.refetch,
+    refetchLowStock: lowStockQuery.refetch,
   };
 }

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       include: { business: true },
     });
 
-    if (existingUser && existingUser.business?.id) {
+    if (existingUser) {
       return NextResponse.json(
         { error: "This email is already registered to another business." },
         { status: 409 }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       data: { accepted: true },
     });
 
-    const user = await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         id: userId,
         email,
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     await prisma.staff.create({
       data: {
-        user: { connect: { id: userId } },
+        user: { connect: { id: newUser.id } },
         business: { connect: { id: invite.businessId } },
         department: invite.departmentId
           ? { connect: { id: invite.departmentId } }
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const res = NextResponse.json({ success: true, user });
+    const res = NextResponse.json({ success: true, newUser });
     res.cookies.set("user_role", invite.role, {
       path: "/",
       httpOnly: true,
