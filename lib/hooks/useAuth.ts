@@ -18,7 +18,6 @@ export function useAuth() {
     await axios.post("/api/auth/session", { role });
   }
 
-  // Helper: fetch profile, set Zustand, set cookie, and route
   async function handleProfileAndRoute(userId: string, email: string) {
     await syncUserToPrisma({ id: userId, email });
     const { data: profile } = await axios.get("/api/user/profile");
@@ -54,13 +53,15 @@ export function useAuth() {
   }
 
   const signUp = useMutation({
-    mutationFn: async ({ email, password }: Credentials) => {
+    mutationFn: async ({ 
+      email, 
+      password,
+      redirectTo 
+    }: Credentials & { redirectTo?: string }) => {
       const checkRes = await axios.post("/api/auth/check-user", { email });
       if (checkRes.data.exists && checkRes.data.provider === "google") {
-        return Promise.reject(
-          new Error(
-            "This email is linked to a Google account. Please sign in with Google."
-          )
+        throw new Error(
+          "This email is already registered with Google. Please sign in with Google instead."
         );
       }
 
@@ -73,27 +74,15 @@ export function useAuth() {
         email,
         password,
         options: {
-          emailRedirectTo: `${origin}/onboarding/admin`,
+          emailRedirectTo: redirectTo || `${origin}/onboarding/admin`,
         },
       });
 
       if (error) {
-        if (error.message?.toLowerCase().includes("already registered")) {
-          return Promise.reject(
-            new Error(
-              "An account with this email already exists. Please sign in or reset your password."
-            )
-          );
-        }
-        return Promise.reject(
-          new Error("Could not create account. Please try again.")
-        );
+        throw new Error(error.message);
       }
 
-      if (!data.user)
-        return Promise.reject(
-          new Error("Signup succeeded but no user returned from Supabase")
-        );
+      if (!data.user) throw new Error("Failed to create account");
 
       return data.user;
     },

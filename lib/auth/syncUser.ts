@@ -7,20 +7,23 @@ const prisma = new PrismaClient();
 /**
  * Ensures every Supabase user has a matching Prisma User record.
  */
-export async function syncUser(userId: string, email: string) {
+export async function syncUser(
+  userId: string,
+  email: string,
+  role: "ADMIN" | "STAFF" | "SUB_ADMIN" = "ADMIN"
+) {
   try {
     const existing = await prisma.user.findUnique({
       where: { id: userId },
     });
 
-    if (existing) return existing; 
+    if (existing) return existing;
 
-    // Only set role to ADMIN for new users
     const newUser = await prisma.user.create({
       data: {
         id: userId,
         email,
-        role: "ADMIN",
+        role,
       },
     });
 

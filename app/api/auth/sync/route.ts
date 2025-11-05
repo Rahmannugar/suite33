@@ -4,7 +4,7 @@ import { syncUser } from "@/lib/auth/syncUser";
 
 export async function POST(request: NextRequest) {
   try {
-    const { user } = await request.json();
+    const { user, role } = await request.json();
 
     if (!user?.id || !user?.email) {
       return NextResponse.json(
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const syncedUser = await syncUser(user.id, user.email);
+    const syncedUser = await syncUser(user.id, user.email, role ?? "ADMIN");
 
     return NextResponse.json(syncedUser, { status: 200 });
   } catch (err) {

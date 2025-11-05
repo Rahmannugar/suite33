@@ -42,12 +42,19 @@ export function useInvite() {
       }
       setPasswordError("");
 
+      const origin =
+        typeof window !== "undefined"
+          ? window.location.origin
+          : process.env.NEXT_PUBLIC_SITE_URL;
+
+      localStorage.setItem("pending_invite_token", token!);
+
       await signUp.mutateAsync({
         email: invite.email,
         password,
+        redirectTo: `${origin}/auth/invite/confirm?token=${token}`,
       });
 
-      // Always require email confirmation for invited users
       return { needsConfirmation: true };
     },
     onSuccess: () => {},

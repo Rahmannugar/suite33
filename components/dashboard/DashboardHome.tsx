@@ -130,9 +130,7 @@ export default function DashboardHome() {
     <div className="space-y-8">
       {/* Business / User Info*/}
       <div className="rounded-xl border border-[--border] bg-[--card] p-5 flex flex-col sm:flex-row items-center gap-4 shadow-sm">
-        {profileLoading ? (
-          <Skeleton className="h-16 w-16 rounded-full" />
-        ) : businessLogo ? (
+        {businessLogo ? (
           <Image
             src={businessLogo}
             alt="Business Logo"
@@ -290,8 +288,6 @@ export default function DashboardHome() {
     </div>
   );
 }
-
-/* Supporting Components */
 
 function MetricCard({
   title,
