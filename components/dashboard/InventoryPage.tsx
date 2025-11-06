@@ -4,11 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useInventory } from "@/lib/hooks/useInventory";
 import { toast } from "sonner";
-import Papa from "papaparse";
-import ExcelJS from "exceljs";
-import axios from "axios";
 import type { Inventory } from "@/lib/types/inventory";
-
 import {
   Dialog,
   DialogContent,
@@ -60,6 +56,8 @@ export default function InventoryPage() {
     addItem,
     editItem,
     deleteItem,
+    importCSV,
+    importExcel,
     exportCSV,
     exportExcel,
     lowStock,
@@ -71,28 +69,17 @@ export default function InventoryPage() {
 
   const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
 
-  // table state
   const [page, setPage] = useState(1);
   const perPage = 10;
-
-  // filters
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
-
-  // mutation state
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  // dialogs
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-
-  // selection
   const [editingItem, setEditingItem] = useState<Inventory | null>(null);
   const [deletingItem, setDeletingItem] = useState<Inventory | null>(null);
-
-  // form
   const [form, setForm] = useState({
     name: "",
     quantity: "",
@@ -108,7 +95,6 @@ export default function InventoryPage() {
   const truncate = (text: string, max: number) =>
     text.length > max ? text.slice(0, max) + "…" : text;
 
-  // reset page when filters change
   useEffect(() => {
     setPage(1);
   }, [filterCategory, search]);
@@ -133,66 +119,24 @@ export default function InventoryPage() {
     page * perPage
   );
 
-  // Import (local; not from hook)
   async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user?.businessId) return;
-
     const isCSV = file.name.toLowerCase().endsWith(".csv");
 
-    const job = (async () => {
+    try {
       if (isCSV) {
-        const parsed = await new Promise<any[]>((resolve, reject) => {
-          Papa.parse(file, {
-            header: true,
-            complete: (results) => resolve(results.data as any[]),
-            error: reject,
-          });
-        });
-        const valid = parsed.filter((r) => r.name && r.categoryId);
-        if (!valid.length) throw new Error("No valid CSV rows");
-        await axios.post("/api/inventory/import", {
-          items: valid.map((r) => ({
-            name: r.name,
-            quantity: r.quantity ? parseInt(String(r.quantity)) : 0,
-            categoryId: r.categoryId,
-          })),
-          businessId: user.businessId,
-        });
+        await importCSV.mutateAsync({ file, businessId: user.businessId });
       } else {
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(await file.arrayBuffer());
-        const sheet = workbook.worksheets[0];
-        const rows: any[] = [];
-        sheet.eachRow((row, idx) => {
-          if (idx === 1) return;
-          const [name, quantity, categoryId] = (row.values as any[]).slice(1);
-          if (name && categoryId) {
-            rows.push({
-              name,
-              quantity: quantity ? parseInt(String(quantity)) : 0,
-              categoryId,
-            });
-          }
-        });
-        if (!rows.length) throw new Error("No valid Excel rows");
-        await axios.post("/api/inventory/import", {
-          items: rows,
-          businessId: user.businessId,
-        });
+        await importExcel.mutateAsync({ file, businessId: user.businessId });
       }
-    })();
-
-    toast
-      .promise(job, {
-        loading: "Importing...",
-        success: "Inventory imported successfully",
-        error: "Failed to import file",
-      })
-      .finally(() => {
-        e.currentTarget.value = "";
-        refetchLowStock();
-      });
+      toast.success("Inventory imported successfully");
+      refetchLowStock();
+    } catch {
+      toast.error("Failed to import inventory");
+    } finally {
+      e.currentTarget.value = "";
+    }
   }
 
   async function handleAddItem() {
@@ -227,22 +171,6 @@ export default function InventoryPage() {
     } finally {
       setSaving(false);
     }
-  }
-
-  function openEditDialog(item: Inventory) {
-    setEditingItem(item);
-    setForm({
-      name: item.name,
-      quantity: item.quantity.toString(),
-      categoryId: item.categoryId || "none",
-      newCategory: "",
-    });
-    setOpenEdit(true);
-  }
-
-  function openDeleteDialog(item: Inventory) {
-    setDeletingItem(item);
-    setOpenDelete(true);
   }
 
   async function handleEditItem() {
@@ -294,40 +222,21 @@ export default function InventoryPage() {
     }
   }
 
-  function handleExportCSV() {
-    exportCSV(
-      filteredInventory.map((i) => ({
-        Name: i.name,
-        Quantity: i.quantity,
-        Category: i.category?.name ?? "-",
-      }))
-    );
-  }
-
-  function handleExportExcel() {
-    exportExcel(
-      filteredInventory.map((i) => ({
-        Name: i.name,
-        Quantity: i.quantity,
-        Category: i.category?.name ?? "-",
-      }))
-    );
-  }
-
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-6">
-        {/* Toolbar */}
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-2xl font-semibold">Inventory</h2>
           {canMutate && (
-            <Button onClick={() => setOpenAdd(true)} className="gap-2">
+            <Button
+              onClick={() => setOpenAdd(true)}
+              className="gap-2 cursor-pointer"
+            >
               <Plus size={16} /> Add Item
             </Button>
           )}
         </div>
 
-        {/* Filters + Actions */}
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex w-full gap-2">
             <Select value={filterCategory} onValueChange={setFilterCategory}>
@@ -338,12 +247,11 @@ export default function InventoryPage() {
                 <SelectItem value="all">All Categories</SelectItem>
                 {categories?.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.name}
+                    {c.name.toUpperCase()}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-
             <Input
               placeholder="Search items by name…"
               value={search}
@@ -361,21 +269,29 @@ export default function InventoryPage() {
               onChange={handleImportChange}
             />
             <Button
+              className="cursor-pointer"
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
             >
               <FileUp size={16} /> Import CSV/Excel
             </Button>
-            <Button variant="outline" onClick={handleExportCSV}>
+            <Button
+              className="cursor-pointer"
+              variant="outline"
+              onClick={() => exportCSV(filteredInventory)}
+            >
               <FileDown size={16} /> Export CSV
             </Button>
-            <Button variant="outline" onClick={handleExportExcel}>
+            <Button
+              className="cursor-pointer"
+              variant="outline"
+              onClick={() => exportExcel(filteredInventory)}
+            >
               <FileDown size={16} /> Export Excel
             </Button>
           </div>
         </div>
 
-        {/* Table */}
         <Card>
           <CardHeader>
             <CardTitle>Inventory Records</CardTitle>
@@ -414,7 +330,10 @@ export default function InventoryPage() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="inline-block max-w-[200px] truncate">
-                                {truncate(item.category?.name ?? "-", 15)}
+                                {truncate(
+                                  item.category?.name.toUpperCase() ?? "-",
+                                  15
+                                )}
                               </span>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -425,16 +344,30 @@ export default function InventoryPage() {
                         {canMutate && (
                           <td className="p-3 flex gap-2">
                             <Button
+                              className="cursor-pointer"
                               size="sm"
                               variant="outline"
-                              onClick={() => openEditDialog(item)}
+                              onClick={() => {
+                                setEditingItem(item);
+                                setForm({
+                                  name: item.name,
+                                  quantity: item.quantity.toString(),
+                                  categoryId: item.categoryId || "none",
+                                  newCategory: "",
+                                });
+                                setOpenEdit(true);
+                              }}
                             >
                               <Edit size={14} /> Edit
                             </Button>
                             <Button
+                              className="cursor-pointer"
                               size="sm"
                               variant="destructive"
-                              onClick={() => openDeleteDialog(item)}
+                              onClick={() => {
+                                setDeletingItem(item);
+                                setOpenDelete(true);
+                              }}
                             >
                               <Trash2 size={14} /> Delete
                             </Button>
@@ -483,7 +416,6 @@ export default function InventoryPage() {
           </CardContent>
         </Card>
 
-        {/* Low Stock */}
         {!isLowStockLoading && lowStock?.length > 0 && (
           <Card className="mt-6 border-red-200 dark:border-red-950/50 bg-red-50/50 dark:bg-red-950/10">
             <CardHeader>
@@ -498,7 +430,8 @@ export default function InventoryPage() {
                   className="flex justify-between items-center px-3 py-2 rounded bg-red-100/40 dark:bg-red-950/20 text-red-700 dark:text-red-300"
                 >
                   <span className="font-medium">
-                    {i + 1}. {item.name} ({item.category?.name ?? "-"}) –{" "}
+                    {i + 1}. {item.name} (
+                    {item.category?.name.toUpperCase() ?? "-"}) –{" "}
                     {item.quantity} left
                   </span>
                 </div>
@@ -507,20 +440,17 @@ export default function InventoryPage() {
           </Card>
         )}
 
-        {/* Add Dialog */}
         <Dialog
           open={openAdd}
-          onOpenChange={(o) => {
-            if (saving) return;
-            if (!o) resetForm();
-            setOpenAdd(o);
+          onOpenChange={(open) => {
+            if (!open) resetForm();
+            !saving && setOpenAdd(open);
           }}
         >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Item</DialogTitle>
             </DialogHeader>
-
             <Input
               placeholder="Item name"
               value={form.name}
@@ -555,39 +485,38 @@ export default function InventoryPage() {
                 ))}
               </SelectContent>
             </Select>
-
             <DialogFooter>
               <Button
+                className="cursor-pointer"
                 variant="outline"
                 onClick={() => setOpenAdd(false)}
                 disabled={saving}
               >
                 Cancel
               </Button>
-              <Button onClick={handleAddItem} disabled={saving}>
+              <Button
+                className="cursor-pointer"
+                onClick={handleAddItem}
+                disabled={saving}
+              >
                 {saving ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Edit Dialog */}
         <Dialog
           open={openEdit}
-          onOpenChange={(o) => {
-            if (saving) return;
-            if (!o) {
-              resetForm();
-              setEditingItem(null);
-            }
-            setOpenEdit(o);
+          onOpenChange={(open) => {
+            if (!open) resetForm();
+            setEditingItem(null);
+            !saving && setOpenEdit(open);
           }}
         >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Item</DialogTitle>
             </DialogHeader>
-
             <Input
               placeholder="Item name"
               value={form.name}
@@ -622,9 +551,9 @@ export default function InventoryPage() {
                 ))}
               </SelectContent>
             </Select>
-
             <DialogFooter>
               <Button
+                className="cursor-pointer"
                 variant="outline"
                 onClick={() => setOpenEdit(false)}
                 disabled={saving}
@@ -638,14 +567,9 @@ export default function InventoryPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Dialog */}
         <Dialog
           open={openDelete}
-          onOpenChange={(o) => {
-            if (deleting) return;
-            if (!o) setDeletingItem(null);
-            setOpenDelete(o);
-          }}
+          onOpenChange={(o) => !deleting && setOpenDelete(o)}
         >
           <DialogContent>
             <DialogHeader>
@@ -657,6 +581,7 @@ export default function InventoryPage() {
             </p>
             <DialogFooter>
               <Button
+                className="cursor-pointer"
                 variant="outline"
                 onClick={() => setOpenDelete(false)}
                 disabled={deleting}
@@ -664,6 +589,7 @@ export default function InventoryPage() {
                 Cancel
               </Button>
               <Button
+                className="cursor-pointer"
                 variant="destructive"
                 onClick={handleDeleteItem}
                 disabled={deleting}

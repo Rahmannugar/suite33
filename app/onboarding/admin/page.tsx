@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { uploadAvatar } from "@/lib/utils/uploadImage";
-import { ThemeToggle } from "@/components/Toggler";
-import Image from "next/image";
 import axios from "axios";
 import { toast } from "sonner";
-import { Upload, RefreshCw } from "lucide-react";
+import { uploadAvatar } from "@/lib/utils/uploadImage";
+import Image from "next/image";
+import { ThemeToggle } from "@/components/Toggler";
+import { Building2, MapPin, Briefcase, User, Upload, Loader2 } from "lucide-react";
 
 export default function AdminOnboardingPage() {
   const router = useRouter();
@@ -27,6 +27,7 @@ export default function AdminOnboardingPage() {
   const [fullName, setFullName] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isRouting, setIsRouting] = useState(false);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,25 +47,31 @@ export default function AdminOnboardingPage() {
           toast.error("Failed to upload logo.");
         }
       }
-      try {
-        await axios.post("/api/onboarding", {
-          userId: user?.id,
-          fullName,
-          businessName,
-          industry,
-          location,
-          logoUrl,
-        });
-        toast.success("Business profile created!");
-      } catch (err: any) {
-        toast.error(
-          err?.response?.data?.error || "Failed to complete onboarding"
-        );
-        throw err;
-      }
+
+      await axios.post("/api/onboarding", {
+        userId: user?.id,
+        fullName,
+        businessName,
+        industry,
+        location,
+        logoUrl,
+      });
     },
     onSuccess: () => {
+      setFullName("");
+      setBusinessName("");
+      setIndustry("");
+      setLocation("");
+      setLogoFile(null);
+      setLogoPreview(null);
+      toast.success("Business profile created! Signing you in...");
+      setIsRouting(true);
       router.push("/dashboard/admin");
+    },
+    onError: (err: any) => {
+      toast.error(
+        err?.response?.data?.error || "Failed to complete onboarding"
+      );
     },
   });
 
@@ -73,7 +80,7 @@ export default function AdminOnboardingPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background">
       <div className="w-full max-w-lg rounded-xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-lg p-8 relative">
-        {/*Suite33 Logo */}
+        {/* Suite33 Logo */}
         <ThemeToggle />
         <div className="flex justify-center mb-6">
           <Image
@@ -94,10 +101,10 @@ export default function AdminOnboardingPage() {
           />
         </div>
         <h1 className="text-2xl font-bold text-center mb-2">
-          Welcome, <span className="text-[--primary]">{user.email}</span>
+          Welcome, <span className="text-[--primary]">{user?.email}</span>
         </h1>
         <p className="text-sm text-[--muted-foreground] text-center mb-8">
-          Let’s set up your business profile.
+          Let's set up your business profile.
         </p>
 
         <form
@@ -109,6 +116,7 @@ export default function AdminOnboardingPage() {
         >
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
+              <User className="inline mr-2" size={16} />
               Your Full Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -120,98 +128,88 @@ export default function AdminOnboardingPage() {
               className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
             />
           </div>
+
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
+              <Building2 className="inline mr-2" size={16} />
               Business Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               placeholder="e.g. Acme Corp"
               value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
               required
-              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
+              onChange={(e) => setBusinessName(e.target.value)}
+              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
             />
           </div>
-          <div className="flex gap-4">
-            <div className="flex-1 space-y-2">
-              <label className="block text-sm font-medium text-[--muted-foreground]">
-                Industry <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Retail"
-                value={industry}
-                required
-                onChange={(e) => setIndustry(e.target.value)}
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
-              />
-            </div>
-            <div className="flex-1 space-y-2">
-              <label className="block text-sm font-medium text-[--muted-foreground]">
-                Location <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Lagos, Nigeria"
-                value={location}
-                required
-                onChange={(e) => setLocation(e.target.value)}
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
-              />
-            </div>
-          </div>
+
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
-              Business Logo{" "}
-              <span className="text-[--muted-foreground]">(optional)</span>
+              <Briefcase className="inline mr-2" size={16} />
+              Industry (optional)
             </label>
-            <div className="flex items-center gap-3">
-              <input
-                id="logo-upload"
-                type="file"
-                accept="image/*"
-                onChange={handleLogoChange}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => document.getElementById("logo-upload")?.click()}
-                className="p-2 rounded-full border border-[--input] cursor-pointer bg-[--card] hover:bg-[--muted] transition"
-                aria-label={logoPreview ? "Replace logo" : "Upload logo"}
-              >
-                {logoPreview ? <RefreshCw size={20} /> : <Upload size={20} />}
-              </button>
-              {logoPreview && (
+            <input
+              type="text"
+              placeholder="e.g. Technology"
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-[--muted-foreground]">
+              <MapPin className="inline mr-2" size={16} />
+              Location (optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Lagos, Nigeria"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-[--muted-foreground]">
+              <Upload className="inline mr-2" size={16} />
+              Business Logo (optional)
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleLogoChange}
+              className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+            />
+            {logoPreview && (
+              <div className="mt-2">
                 <Image
                   src={logoPreview}
                   alt="Logo Preview"
-                  width={48}
-                  height={48}
-                  className="rounded-full object-cover border border-[--border]"
-                  style={{ width: "48px", height: "48px" }}
-                  unoptimized
-                  priority
+                  width={80}
+                  height={80}
+                  className="rounded-lg object-cover border border-[--border]"
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
-          {submitOnboarding.isError && (
-            <p className="text-sm text-red-500 text-center">
-              {(submitOnboarding.error as Error)?.message ??
-                "Failed to complete onboarding"}
-            </p>
-          )}
+
           <button
             type="submit"
             className={`w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition ${
-              submitOnboarding.isPending
+              submitOnboarding.isPending || isRouting
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer"
             }`}
-            disabled={submitOnboarding.isPending}
+            disabled={submitOnboarding.isPending || isRouting}
           >
-            {submitOnboarding.isPending ? "Setting up..." : "Finish Setup"}
+            {submitOnboarding.isPending || isRouting ? (
+              <Loader2 className="animate-spin mx-auto" size={18} />
+            ) : (
+              "Complete Setup"
+            )}
           </button>
         </form>
       </div>

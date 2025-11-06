@@ -42,7 +42,10 @@ export default function StaffOnboardingPage() {
       });
     },
     onSuccess: () => {
-      toast.success("Onboarding complete!");
+      setFullName("")
+      setFile(null)
+      setPreview(null)
+      toast.success("Onboarding complete! Signing you in...");
       setIsRouting(true);
       router.push("/dashboard/staff");
     },
