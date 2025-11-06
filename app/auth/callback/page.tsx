@@ -28,8 +28,6 @@ function useAuthCallback() {
         setDots((d) => (d === 3 ? 1 : d + 1));
       }, 400);
       return () => clearInterval(interval);
-    } else {
-      setDots(1);
     }
   }, [isError]);
 
@@ -44,17 +42,25 @@ export default function AuthCallbackPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
-      <h1 className="text-lg font-semibold mb-2">
-        {heading}
-        <span aria-live="polite" className="inline-block w-6">
-          {".".repeat(dots)}
-        </span>
-      </h1>
-      <p className="text-sm text-[--muted-foreground]">{subtext}</p>
-      {isError && (
-        <p className="text-xs text-red-500 mt-2">
-          {errorMsg ?? "Something went wrong"}
-        </p>
+      {!isError ? (
+        <>
+          <h1 className="text-lg font-semibold mb-2">
+            {heading}
+            <span aria-live="polite" className="inline-block w-6">
+              {".".repeat(dots)}
+            </span>
+          </h1>
+          <p className="text-sm text-[--muted-foreground]">{subtext}</p>
+        </>
+      ) : (
+        <div className="text-center">
+          <h1 className="text-lg font-semibold mb-2 text-red-600">
+            Authentication Failed
+          </h1>
+          <p className="text-sm text-[--muted-foreground]">
+            {errorMsg ?? "Something went wrong"}
+          </p>
+        </div>
       )}
     </div>
   );

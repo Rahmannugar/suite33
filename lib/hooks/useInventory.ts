@@ -91,6 +91,75 @@ export function useInventory(user?: { businessId?: string }) {
     onSuccess: refetchAll,
   });
 
+  const importCSV = useMutation({
+    mutationFn: async ({
+      file,
+      businessId,
+    }: {
+      file: File;
+      businessId: string;
+    }) => {
+      return new Promise<void>((resolve, reject) => {
+        Papa.parse(file, {
+          header: true,
+          complete: async (results) => {
+            try {
+              const valid = (results.data as any[]).filter(
+                (r) => r.name && r.categoryId
+              );
+              if (!valid.length) throw new Error("No valid CSV rows found");
+              await axios.post("/api/inventory/import", {
+                items: valid.map((r) => ({
+                  name: r.name,
+                  quantity: r.quantity ? parseInt(r.quantity) : 0,
+                  categoryId: r.categoryId,
+                })),
+                businessId,
+              });
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          },
+          error: reject,
+        });
+      });
+    },
+    onSuccess: refetchAll,
+  });
+
+  const importExcel = useMutation({
+    mutationFn: async ({
+      file,
+      businessId,
+    }: {
+      file: File;
+      businessId: string;
+    }) => {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await file.arrayBuffer());
+      const sheet = workbook.worksheets[0];
+      const rows: any[] = [];
+      sheet.eachRow((row, idx) => {
+        if (idx === 1) return;
+        const [name, quantity, categoryId] = (row.values as any[]).slice(1);
+        if (name && categoryId) {
+          rows.push({
+            name,
+            quantity: quantity ? parseInt(String(quantity)) : 0,
+            categoryId,
+          });
+        }
+      });
+      if (!rows.length) throw new Error("No valid Excel rows found");
+      await axios.post("/api/inventory/import", {
+        items: rows,
+        businessId,
+      });
+    },
+    onSuccess: refetchAll,
+  });
+
   function exportCSV(items: any[]) {
     const formatted = items.map((item) => ({
       Name: item.name,
@@ -109,11 +178,11 @@ export function useInventory(user?: { businessId?: string }) {
 
   async function exportExcel(items: any[]) {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Inventory");
-    worksheet.addRow(["Name", "Quantity", "Category"]);
-    items.forEach((item) => {
-      worksheet.addRow([item.name, item.quantity, item.category?.name ?? "-"]);
-    });
+    const sheet = workbook.addWorksheet("Inventory");
+    sheet.addRow(["Name", "Quantity", "Category"]);
+    items.forEach((item) =>
+      sheet.addRow([item.name, item.quantity, item.category?.name ?? "-"])
+    );
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -137,6 +206,8 @@ export function useInventory(user?: { businessId?: string }) {
     addItem,
     editItem,
     deleteItem,
+    importCSV,
+    importExcel,
     exportCSV,
     exportExcel,
     refetchLowStock: lowStockQuery.refetch,

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/lib/stores/authStore";
 import axios from "axios";
 import { toast } from "sonner";
 
@@ -12,6 +13,7 @@ export default function InviteConfirmPage() {
   const token = searchParams.get("token");
   const [dots, setDots] = useState(1);
   const hasProcessed = useRef(false);
+  const setUser = useAuthStore((state) => state.setUser);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -45,8 +47,24 @@ export default function InviteConfirmPage() {
 
         localStorage.removeItem("pending_invite_token");
 
-        toast.success("Account verified! Please sign in to continue.");
-        router.push("/auth/login");
+        const { data: profile } = await axios.get("/api/user/profile");
+
+        setUser({
+          id: profile.id,
+          email: profile.email,
+          role: profile.role,
+          fullName: profile.fullName,
+          businessId: profile.businessId,
+          businessName: profile.businessName,
+          avatarUrl: profile.avatarUrl,
+          departmentId: profile.departmentId,
+          departmentName: profile.departmentName,
+        });
+
+        await axios.post("/api/auth/session", { role: profile.role });
+
+        toast.success("Account verified! Complete your profile.");
+        router.push("/onboarding/staff");
       } catch (error: any) {
         console.error("Error accepting invite:", error);
         localStorage.removeItem("pending_invite_token");
@@ -64,7 +82,7 @@ export default function InviteConfirmPage() {
     }
 
     processInvite();
-  }, [token, router]);
+  }, [token, router, setUser]);
 
   return (
     <div className="min-h-screen flex items-center justify-center text-center">

@@ -42,9 +42,7 @@ export async function POST(request: NextRequest) {
         id: userId,
         email,
         role: invite.role,
-        business: { connect: { id: invite.businessId } },
       },
-      include: { business: true },
     });
 
     await prisma.staff.create({
