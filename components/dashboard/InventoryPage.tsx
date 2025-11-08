@@ -267,42 +267,44 @@ export default function InventoryPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 w-full">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.xlsx"
-              className="hidden"
-              onChange={handleImportChange}
-            />
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="gap-2 cursor-pointer w-full"
-            >
-              <FileUp size={16} /> Import CSV/Excel
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2 cursor-pointer w-full"
-              onClick={() => {
-                exportCSV(filteredInventory);
-                toast.success("CSV exported successfully");
-              }}
-            >
-              <FileDown size={16} /> Export CSV
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2 cursor-pointer w-full"
-              onClick={() => {
-                exportExcel(filteredInventory);
-                toast.success("Excel exported successfully");
-              }}
-            >
-              <FileDown size={16} /> Export Excel
-            </Button>
-          </div>
+          {canMutate && (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 w-full">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx"
+                className="hidden"
+                onChange={handleImportChange}
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-2 cursor-pointer w-full"
+              >
+                <FileUp size={16} /> Import CSV/Excel
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 cursor-pointer w-full"
+                onClick={() => {
+                  exportCSV(filteredInventory);
+                  toast.success("CSV exported successfully");
+                }}
+              >
+                <FileDown size={16} /> Export CSV
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 cursor-pointer w-full"
+                onClick={() => {
+                  exportExcel(filteredInventory);
+                  toast.success("Excel exported successfully");
+                }}
+              >
+                <FileDown size={16} /> Export Excel
+              </Button>
+            </div>
+          )}
         </div>
 
         <Card>

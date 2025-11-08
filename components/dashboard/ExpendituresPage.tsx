@@ -397,60 +397,61 @@ export default function ExpendituresPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.xlsx"
-                className="hidden"
-                onChange={handleImportChange}
-              />
-              <Button
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-2 cursor-pointer w-full"
-              >
-                <FileUp size={16} /> Import CSV/Excel
-              </Button>
-              <Button
-                variant="outline"
-                className="gap-2 cursor-pointer w-full"
-                onClick={() => {
-                  exportCSV(
-                    formatExpendituresExport(filteredExpenditures),
-                    periodLabel
-                  );
-                  toast.success("CSV exported successfully");
-                }}
-              >
-                <FileDown size={16} /> Export CSV
-              </Button>
-              <Button
-                variant="outline"
-                className="gap-2 cursor-pointer w-full"
-                onClick={() => {
-                  exportExcel(
-                    formatExpendituresExport(filteredExpenditures),
-                    periodLabel
-                  );
-                  toast.success("Excel exported successfully");
-                }}
-              >
-                <FileDown size={16} /> Export Excel
-              </Button>
-              <Button
-                className="gap-2 bg-amber-600 text-white hover:bg-amber-700 cursor-pointer w-full"
-                onClick={async () => {
-                  clearInsight();
-                  await handleInsight();
-                }}
-                disabled={insightLoading}
-              >
-                <Lightbulb size={16} />
-                {insightLoading ? "Analyzing..." : "AI Insight"}
-              </Button>
-            </div>
+            {canMutate && (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx"
+                  className="hidden"
+                  onChange={handleImportChange}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-2 cursor-pointer w-full"
+                >
+                  <FileUp size={16} /> Import CSV/Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2 cursor-pointer w-full"
+                  onClick={() => {
+                    exportCSV(
+                      formatExpendituresExport(filteredExpenditures),
+                      periodLabel
+                    );
+                    toast.success("CSV exported successfully");
+                  }}
+                >
+                  <FileDown size={16} /> Export CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2 cursor-pointer w-full"
+                  onClick={() => {
+                    exportExcel(
+                      formatExpendituresExport(filteredExpenditures),
+                      periodLabel
+                    );
+                    toast.success("Excel exported successfully");
+                  }}
+                >
+                  <FileDown size={16} /> Export Excel
+                </Button>
+                <Button
+                  className="gap-2 bg-amber-600 text-white hover:bg-amber-700 cursor-pointer w-full"
+                  onClick={async () => {
+                    clearInsight();
+                    await handleInsight();
+                  }}
+                  disabled={insightLoading}
+                >
+                  <Lightbulb size={16} />
+                  {insightLoading ? "Analyzing..." : "AI Insight"}
+                </Button>
+              </div>
+            )}
           </div>
 
           <TabsContent value={viewMode}>

@@ -18,8 +18,18 @@ export async function GET(request: NextRequest) {
     const record = await prisma.user.findUnique({
       where: { id: user.id },
       include: {
-        business: { select: { id: true, name: true, logoUrl: true } },
-        Staff: { include: { department: true } },
+        Staff: {
+          include: {
+            department: true,
+            business: {
+              select: {
+                id: true,
+                name: true,
+                logoUrl: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -27,15 +37,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const businessDetails = record.Staff?.business;
+
     return NextResponse.json({
       id: record.id,
       email: record.email,
       avatarUrl: record.avatarUrl,
       fullName: record.fullName,
       role: record.role,
-      businessId: record.business?.id ?? null,
-      businessName: record.business?.name ?? null,
-      businessLogo: record.business?.logoUrl ?? null,
+      businessId: record.Staff?.business?.id ?? record.business?.id ?? null,
+      businessName:
+        record.Staff?.business?.name ?? record.business?.name ?? null,
+      businessLogo:
+        record.Staff?.business?.logoUrl ?? record.business?.logoUrl ?? null,
       departmentId: record.Staff?.department?.id ?? null,
       departmentName: record.Staff?.department?.name ?? null,
     });

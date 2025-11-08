@@ -65,14 +65,7 @@ export async function POST(request: NextRequest) {
     const token = uuidv4();
 
     const invite = await prisma.invite.create({
-      data: {
-        email,
-        businessId,
-        departmentId,
-        token,
-        role,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
+      data: { email, businessId, departmentId, token, role },
       include: { business: true, department: true },
     });
 
