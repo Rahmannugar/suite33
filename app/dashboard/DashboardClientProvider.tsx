@@ -30,10 +30,10 @@ function MainContent({ children }: { children: ReactNode }) {
   return (
     <main
       className={`pt-24 pb-10 transition-all px-6 sm:px-8 ${
-        collapsed ? "md:pl-20" : "md:pl-64"
-      } md:ml-6`}
+        collapsed ? "md:pl-28" : "md:pl-72"
+      } 2xl:flex 2xl:justify-center`}
     >
-      {children}
+      <div className="w-full max-w-[1400px]">{children}</div>
     </main>
   );
 }

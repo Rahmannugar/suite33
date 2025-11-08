@@ -68,7 +68,6 @@ export default function InventoryPage() {
   );
 
   const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
-
   const [page, setPage] = useState(1);
   const perPage = 10;
   const [search, setSearch] = useState("");
@@ -175,6 +174,9 @@ export default function InventoryPage() {
 
   async function handleEditItem() {
     if (!editingItem) return;
+    if (!form.name) return toast.error("Enter an item name.");
+    if (form.categoryId === "none" && !form.newCategory)
+      return toast.error("Choose a category or enter a new one.");
     if (form.categoryId !== "none" && form.newCategory)
       return toast.error("Select only one — category or new.");
 
@@ -229,7 +231,11 @@ export default function InventoryPage() {
           <h2 className="text-2xl font-semibold">Inventory</h2>
           {canMutate && (
             <Button
-              onClick={() => setOpenAdd(true)}
+              onClick={() => {
+                resetForm();
+                setEditingItem(null);
+                setOpenAdd(true);
+              }}
               className="gap-2 cursor-pointer"
             >
               <Plus size={16} /> Add Item
@@ -237,7 +243,7 @@ export default function InventoryPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="my-4 flex flex-col gap-4">
           <div className="flex w-full gap-2">
             <Select value={filterCategory} onValueChange={setFilterCategory}>
               <SelectTrigger className="w-48">
@@ -252,15 +258,16 @@ export default function InventoryPage() {
                 ))}
               </SelectContent>
             </Select>
+
             <Input
               placeholder="Search items by name…"
               value={search}
+              className="lg:max-w-sm"
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full"
             />
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 w-full">
             <input
               ref={fileInputRef}
               type="file"
@@ -269,23 +276,29 @@ export default function InventoryPage() {
               onChange={handleImportChange}
             />
             <Button
-              className="cursor-pointer"
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
+              className="gap-2 cursor-pointer w-full"
             >
               <FileUp size={16} /> Import CSV/Excel
             </Button>
             <Button
-              className="cursor-pointer"
               variant="outline"
-              onClick={() => exportCSV(filteredInventory)}
+              className="gap-2 cursor-pointer w-full"
+              onClick={() => {
+                exportCSV(filteredInventory);
+                toast.success("CSV exported successfully");
+              }}
             >
               <FileDown size={16} /> Export CSV
             </Button>
             <Button
-              className="cursor-pointer"
               variant="outline"
-              onClick={() => exportExcel(filteredInventory)}
+              className="gap-2 cursor-pointer w-full"
+              onClick={() => {
+                exportExcel(filteredInventory);
+                toast.success("Excel exported successfully");
+              }}
             >
               <FileDown size={16} /> Export Excel
             </Button>
@@ -293,15 +306,17 @@ export default function InventoryPage() {
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Inventory Records</CardTitle>
+          <CardHeader className="py-4">
+            <CardTitle className="text-base font-semibold">
+              Inventory Records
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-40 w-full" />
             ) : totalRecords > 0 ? (
               <>
-                <table className="w-full border rounded">
+                <table className="w-full border rounded text-sm">
                   <thead className="bg-muted">
                     <tr>
                       <th className="p-3 text-left">S/N</th>
@@ -344,9 +359,9 @@ export default function InventoryPage() {
                         {canMutate && (
                           <td className="p-3 flex gap-2">
                             <Button
-                              className="cursor-pointer"
                               size="sm"
                               variant="outline"
+                              className="gap-1 cursor-pointer"
                               onClick={() => {
                                 setEditingItem(item);
                                 setForm({
@@ -361,9 +376,9 @@ export default function InventoryPage() {
                               <Edit size={14} /> Edit
                             </Button>
                             <Button
-                              className="cursor-pointer"
                               size="sm"
                               variant="destructive"
+                              className="gap-1 cursor-pointer"
                               onClick={() => {
                                 setDeletingItem(item);
                                 setOpenDelete(true);
@@ -417,7 +432,7 @@ export default function InventoryPage() {
         </Card>
 
         {!isLowStockLoading && lowStock?.length > 0 && (
-          <Card className="mt-6 border-red-200 dark:border-red-950/50 bg-red-50/50 dark:bg-red-950/10">
+          <Card className="mt-6 border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/10">
             <CardHeader>
               <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
                 <AlertTriangle size={18} /> Low Stock Items
@@ -430,8 +445,7 @@ export default function InventoryPage() {
                   className="flex justify-between items-center px-3 py-2 rounded bg-red-100/40 dark:bg-red-950/20 text-red-700 dark:text-red-300"
                 >
                   <span className="font-medium">
-                    {i + 1}. {item.name} (
-                    {item.category?.name.toUpperCase() ?? "-"}) –{" "}
+                    {i + 1}. {item.name} ({item.category?.name ?? "-"}) –{" "}
                     {item.quantity} left
                   </span>
                 </div>
@@ -487,17 +501,17 @@ export default function InventoryPage() {
             </Select>
             <DialogFooter>
               <Button
-                className="cursor-pointer"
                 variant="outline"
                 onClick={() => setOpenAdd(false)}
                 disabled={saving}
+                className="cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
-                className="cursor-pointer"
                 onClick={handleAddItem}
                 disabled={saving}
+                className="cursor-pointer"
               >
                 {saving ? "Saving..." : "Save"}
               </Button>
@@ -553,14 +567,18 @@ export default function InventoryPage() {
             </Select>
             <DialogFooter>
               <Button
-                className="cursor-pointer"
                 variant="outline"
                 onClick={() => setOpenEdit(false)}
                 disabled={saving}
+                className="cursor-pointer"
               >
                 Cancel
               </Button>
-              <Button onClick={handleEditItem} disabled={saving}>
+              <Button
+                onClick={handleEditItem}
+                disabled={saving}
+                className="cursor-pointer"
+              >
                 {saving ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
@@ -581,18 +599,18 @@ export default function InventoryPage() {
             </p>
             <DialogFooter>
               <Button
-                className="cursor-pointer"
                 variant="outline"
                 onClick={() => setOpenDelete(false)}
                 disabled={deleting}
+                className="cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
-                className="cursor-pointer"
                 variant="destructive"
                 onClick={handleDeleteItem}
                 disabled={deleting}
+                className="cursor-pointer"
               >
                 {deleting ? "Deleting..." : "Delete"}
               </Button>

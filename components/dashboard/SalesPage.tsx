@@ -520,7 +520,7 @@ export default function SalesPage() {
                                   onClick={() => {
                                     setEditingSale(s);
                                     setForm({
-                                      desc: s.description || "",
+                                      desc: s.description,
                                       amount: s.amount.toString(),
                                       date: new Date(s.date),
                                     });
