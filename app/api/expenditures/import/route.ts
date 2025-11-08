@@ -11,10 +11,12 @@ export async function POST(request: NextRequest) {
     }
     for (const e of expenditures) {
       if (!e.amount) continue;
+      const desc =
+        e.description && e.description.trim() ? e.description : "Expenditures";
       await prisma.expenditure.create({
         data: {
           amount: parseFloat(e.amount),
-          description: e.description,
+          description: desc,
           businessId,
           date: e.date ? new Date(e.date) : new Date(),
         },

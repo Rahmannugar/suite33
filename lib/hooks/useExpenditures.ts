@@ -29,7 +29,7 @@ export function useExpenditures() {
   const addExpenditure = useMutation({
     mutationFn: async (payload: {
       amount: number;
-      description?: string;
+      description: string;
       businessId: string;
       date: Date;
     }) => {
@@ -43,7 +43,7 @@ export function useExpenditures() {
     mutationFn: async (payload: {
       id: string;
       amount: number;
-      description?: string;
+      description: string;
       date: Date;
     }) => {
       await axios.put(`/api/expenditures/${payload.id}`, payload);

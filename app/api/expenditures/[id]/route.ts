@@ -9,6 +9,9 @@ export async function PUT(
 ) {
   try {
     const { amount, description, date } = await request.json();
+    if (!amount || !description) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
     const expenditure = await prisma.expenditure.update({
       where: { id: context.params.id },
       data: { amount, description, date: date ? new Date(date) : undefined },

@@ -11,10 +11,12 @@ export async function POST(request: NextRequest) {
     }
     for (const s of sales) {
       if (!s.amount) continue;
+      const desc =
+        s.description && s.description.trim() ? s.description : "Sales";
       await prisma.sale.create({
         data: {
           amount: parseFloat(s.amount),
-          description: s.description,
+          description: desc,
           businessId,
           date: s.date ? new Date(s.date) : undefined,
         },

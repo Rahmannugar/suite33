@@ -29,7 +29,7 @@ export function useSales() {
   const addSale = useMutation({
     mutationFn: async (payload: {
       amount: number;
-      description?: string;
+      description: string;
       businessId: string;
       date: Date;
     }) => {
@@ -42,7 +42,7 @@ export function useSales() {
     mutationFn: async (payload: {
       id: string;
       amount: number;
-      description?: string;
+      description: string;
       date: Date;
     }) => {
       await axios.put(`/api/sales/${payload.id}`, payload);

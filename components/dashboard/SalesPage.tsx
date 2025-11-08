@@ -231,16 +231,17 @@ export default function SalesPage() {
   async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+    if (!user?.businessId) return;
     try {
       if (f.name.toLowerCase().endsWith(".csv")) {
         await importCSV.mutateAsync({
           file: f,
-          businessId: user?.businessId ?? "",
+          businessId: user?.businessId,
         });
       } else {
         await importExcel.mutateAsync({
           file: f,
-          businessId: user?.businessId ?? "",
+          businessId: user?.businessId,
         });
       }
       toast.success("Sales imported successfully");
@@ -253,7 +254,7 @@ export default function SalesPage() {
 
   async function handleAdd() {
     if (!form.amount) return toast.error("Enter sale amount");
-    if (!form.description) return toast.error("Enter sale description")
+    if (!form.desc) return toast.error("Enter sale description");
     setSaving(true);
     try {
       await addSale.mutateAsync({
@@ -274,6 +275,8 @@ export default function SalesPage() {
 
   async function handleEdit() {
     if (!editingSale) return;
+    if (!form.amount) return toast.error("Enter sale amount");
+    if (!form.desc) return toast.error("Enter sale description");
     if (
       editingSale.description === form.desc &&
       editingSale.amount === parseFloat(form.amount) &&
@@ -318,6 +321,17 @@ export default function SalesPage() {
     }
   }
 
+  function closeAddDialog() {
+    resetForm();
+    setOpenAdd(false);
+  }
+
+  function closeEditDialog() {
+    resetForm();
+    setEditingSale(null);
+    setOpenEdit(false);
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-6">
@@ -325,7 +339,11 @@ export default function SalesPage() {
           <h2 className="text-2xl font-semibold">Sales</h2>
           {canMutate && (
             <Button
-              onClick={() => setOpenAdd(true)}
+              onClick={() => {
+                setEditingSale(null);
+                resetForm();
+                setOpenAdd(true);
+              }}
               className="gap-2 cursor-pointer"
             >
               <Plus size={16} /> Add Sale
@@ -590,8 +608,10 @@ export default function SalesPage() {
         <Dialog
           open={openAdd}
           onOpenChange={(o) => {
-            if (!o) resetForm();
-            !saving && setOpenAdd(o);
+            if (!saving) {
+              if (!o) closeAddDialog();
+              setOpenAdd(o);
+            }
           }}
         >
           <DialogContent>
@@ -640,7 +660,7 @@ export default function SalesPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setOpenAdd(false)}
+                onClick={closeAddDialog}
                 disabled={saving}
                 className="cursor-pointer"
               >
@@ -660,11 +680,10 @@ export default function SalesPage() {
         <Dialog
           open={openEdit}
           onOpenChange={(o) => {
-            if (!o) {
-              resetForm();
-              setEditingSale(null);
+            if (!saving) {
+              if (!o) closeEditDialog();
+              setOpenEdit(o);
             }
-            !saving && setOpenEdit(o);
           }}
         >
           <DialogContent>
@@ -713,7 +732,7 @@ export default function SalesPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setOpenEdit(false)}
+                onClick={closeEditDialog}
                 disabled={saving}
                 className="cursor-pointer"
               >

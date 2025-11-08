@@ -18,7 +18,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { amount, description, businessId, date } = await request.json();
-    if (!amount || !businessId) {
+    if (!amount || !description || !businessId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
     const sale = await prisma.sale.create({
