@@ -16,7 +16,6 @@ export function useInventory(user?: { businessId?: string }) {
       if (!result.success) throw new Error("Invalid inventory data");
       return result.data;
     },
-    enabled: !!user?.businessId,
     staleTime: 1000 * 60 * 10,
   });
 

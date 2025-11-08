@@ -111,7 +111,7 @@ model Sale {
   businessId  String
   business    Business @relation(fields: [businessId], references: [id])
   amount      Float
-  description String?
+  description String   @default("")
   date        DateTime @default(now())
 }
 
@@ -120,7 +120,7 @@ model Expenditure {
   businessId  String
   business    Business @relation(fields: [businessId], references: [id])
   amount      Float
-  description String?
+  description String   @default("")
   date        DateTime @default(now())
 }
 

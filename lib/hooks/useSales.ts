@@ -5,7 +5,7 @@ import ExcelJS from "exceljs";
 import { z } from "zod";
 import { SaleSchema } from "@/lib/types/sale";
 
-type ExportableSale = {
+export type ExportableSale = {
   Description: string;
   Amount: string;
   Date: string;
@@ -107,7 +107,9 @@ export function useSales() {
           sales.push({
             amount,
             description,
-            date: date ? new Date(date).toISOString() : new Date().toISOString(),
+            date: date
+              ? new Date(date).toISOString()
+              : new Date().toISOString(),
           });
         }
       });

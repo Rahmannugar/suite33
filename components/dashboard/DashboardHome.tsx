@@ -23,7 +23,6 @@ import { useExpenditures } from "@/lib/hooks/useExpenditures";
 import { useStaff } from "@/lib/hooks/useStaff";
 import { useInventory } from "@/lib/hooks/useInventory";
 import { usePayroll } from "@/lib/hooks/usePayroll";
-import { useProfile } from "@/lib/hooks/useProfile";
 import type { Sale } from "@/lib/types/sale";
 import type { Expenditure } from "@/lib/types/expenditure";
 import Image from "next/image";
@@ -58,7 +57,6 @@ export default function DashboardHome() {
   const { staff, isLoading: staffLoading } = useStaff();
   const { inventory, isLoading: invLoading } = useInventory();
   const { payroll, isLoading: payrollLoading } = usePayroll();
-  const { profile, isLoading: profileLoading } = useProfile();
 
   const role = user?.role ?? "STAFF";
   const currentYear = new Date().getFullYear();
