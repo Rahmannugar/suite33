@@ -235,7 +235,7 @@ export default function DashboardHome() {
         </CardContent>
       </Card>
 
-      {/* ✅ P&L Table (using ShadCN Table) */}
+      {/* P&L Table */}
       <Card>
         <CardHeader>
           <CardTitle>P & L Summary – {currentYear}</CardTitle>

@@ -5,7 +5,7 @@ import ExcelJS from "exceljs";
 import { ExpenditureSchema } from "@/lib/types/expenditure";
 import { z } from "zod";
 
-type ExportableExpenditure = {
+export type ExportableExpenditure = {
   Description: string;
   Amount: string;
   Date: string;
@@ -146,7 +146,7 @@ export function useExpenditures() {
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(label);
-  worksheet.addRow(["Description", "Amount", "Date"]);
+    worksheet.addRow(["Description", "Amount", "Date"]);
     expenditures.forEach((e) => {
       worksheet.addRow([e.Description, e.Amount, e.Date]);
     });
