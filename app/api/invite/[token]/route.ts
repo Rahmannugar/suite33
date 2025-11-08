@@ -17,9 +17,13 @@ export async function GET(
     });
 
     if (!invite) {
+      return NextResponse.json({ error: "Invalid invite" }, { status: 404 });
+    }
+
+    if (invite.expiresAt < new Date()) {
       return NextResponse.json(
-        { error: "Invalid or expired invite" },
-        { status: 404 }
+        { error: "Invite has expired" },
+        { status: 410 }
       );
     }
 

@@ -171,4 +171,5 @@ model Invite {
   role         Role        @default(STAFF)
   accepted     Boolean     @default(false)
   createdAt    DateTime    @default(now())
+  expiresAt    DateTime    @default(dbgenerated("NOW() + interval '7 days'"))
 }
