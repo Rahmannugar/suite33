@@ -287,17 +287,6 @@ export default function ExpendituresPage() {
     if (!editingExpenditure) return;
     if (!form.amount) return toast.error("Enter expenditure amount");
     if (!form.desc) return toast.error("Enter expenditure description");
-    if (
-      editingExpenditure.description === form.desc &&
-      editingExpenditure.amount === parseFloat(form.amount) &&
-      new Date(editingExpenditure.date).getTime() ===
-        new Date(form.date).getTime()
-    ) {
-      setOpenEdit(false);
-      setEditingExpenditure(null);
-      resetForm();
-      return;
-    }
     setSaving(true);
     try {
       await editExpenditure.mutateAsync({
@@ -307,9 +296,9 @@ export default function ExpendituresPage() {
         date: form.date,
       });
       toast.success("Expenditure updated");
-      setOpenEdit(false);
-      setEditingExpenditure(null);
       resetForm();
+      setEditingExpenditure(null);
+      setOpenEdit(false);
     } catch {
       toast.error("Failed to update expenditure");
     } finally {
@@ -330,17 +319,6 @@ export default function ExpendituresPage() {
       setDeletingExpenditure(null);
       setOpenDelete(false);
     }
-  }
-
-  function closeAddDialog() {
-    resetForm();
-    setOpenAdd(false);
-  }
-
-  function closeEditDialog() {
-    resetForm();
-    setEditingExpenditure(null);
-    setOpenEdit(false);
   }
 
   return (
@@ -623,15 +601,7 @@ export default function ExpendituresPage() {
           </TabsContent>
         </Tabs>
 
-        <Dialog
-          open={openAdd}
-          onOpenChange={(o) => {
-            if (!saving) {
-              if (!o) closeAddDialog();
-              setOpenAdd(o);
-            }
-          }}
-        >
+        <Dialog open={openAdd} onOpenChange={setOpenAdd}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Expenditure</DialogTitle>
@@ -678,7 +648,10 @@ export default function ExpendituresPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={closeAddDialog}
+                onClick={() => {
+                  resetForm();
+                  setOpenAdd(false);
+                }}
                 disabled={saving}
                 className="cursor-pointer"
               >
@@ -695,15 +668,7 @@ export default function ExpendituresPage() {
           </DialogContent>
         </Dialog>
 
-        <Dialog
-          open={openEdit}
-          onOpenChange={(o) => {
-            if (!saving) {
-              if (!o) closeEditDialog();
-              setOpenEdit(o);
-            }
-          }}
-        >
+        <Dialog open={openEdit} onOpenChange={setOpenEdit}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Expenditure</DialogTitle>
@@ -750,9 +715,13 @@ export default function ExpendituresPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={closeEditDialog}
-                disabled={saving}
+                onClick={() => {
+                  resetForm();
+                  setEditingExpenditure(null);
+                  setOpenEdit(false);
+                }}
                 className="cursor-pointer"
+                disabled={saving}
               >
                 Cancel
               </Button>
@@ -767,10 +736,7 @@ export default function ExpendituresPage() {
           </DialogContent>
         </Dialog>
 
-        <Dialog
-          open={openDelete}
-          onOpenChange={(o) => !deleting && setOpenDelete(o)}
-        >
+        <Dialog open={openDelete} onOpenChange={setOpenDelete}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Delete Expenditure</DialogTitle>
@@ -781,6 +747,7 @@ export default function ExpendituresPage() {
                 variant="outline"
                 className="cursor-pointer"
                 onClick={() => setOpenDelete(false)}
+                disabled={deleting}
               >
                 Cancel
               </Button>

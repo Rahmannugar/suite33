@@ -324,7 +324,6 @@ export default function SalesPage() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-2xl font-semibold">Sales</h2>
           {canMutate && (
@@ -341,14 +340,12 @@ export default function SalesPage() {
           )}
         </div>
 
-        {/* Main Tabs */}
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
           <TabsList className="w-fit">
             <TabsTrigger value="monthly">Monthly</TabsTrigger>
             <TabsTrigger value="yearly">Yearly</TabsTrigger>
           </TabsList>
 
-          {/* Filters + Buttons */}
           <div className="my-4 flex flex-col gap-4">
             <div className="flex w-full gap-2">
               <ByteDatePicker
@@ -379,7 +376,6 @@ export default function SalesPage() {
               />
             </div>
 
-            {/* Import / Export / Insight */}
             {canMutate && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                 <input
@@ -431,9 +427,7 @@ export default function SalesPage() {
             )}
           </div>
 
-          {/* Chart + Table + Pagination + Insights */}
           <TabsContent value={viewMode}>
-            {/* Chart */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base font-semibold">
@@ -465,7 +459,6 @@ export default function SalesPage() {
               </CardContent>
             </Card>
 
-            {/* Table */}
             <Card className="mt-6">
               <CardHeader className="py-4">
                 <CardTitle className="text-base font-semibold">
@@ -585,7 +578,6 @@ export default function SalesPage() {
               </CardContent>
             </Card>
 
-            {/* Insight */}
             {insight && (
               <Card
                 ref={insightRef}
@@ -604,16 +596,7 @@ export default function SalesPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Dialogs */}
-
-        {/* Add */}
-        <Dialog
-          open={openAdd}
-          onOpenChange={(open) => {
-            if (!open && !saving) resetForm();
-            setOpenAdd(open);
-          }}
-        >
+        <Dialog open={openAdd} onOpenChange={setOpenAdd}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Sale</DialogTitle>
@@ -660,7 +643,10 @@ export default function SalesPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setOpenAdd(false)}
+                onClick={() => {
+                  resetForm();
+                  setOpenAdd(false);
+                }}
                 disabled={saving}
                 className="cursor-pointer"
               >
@@ -677,17 +663,7 @@ export default function SalesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit */}
-        <Dialog
-          open={openEdit}
-          onOpenChange={(open) => {
-            if (!open && !saving) {
-              resetForm();
-              setEditingSale(null);
-            }
-            setOpenEdit(open);
-          }}
-        >
+        <Dialog open={openEdit} onOpenChange={setOpenEdit}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Sale</DialogTitle>
@@ -734,7 +710,11 @@ export default function SalesPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setOpenEdit(false)}
+                onClick={() => {
+                  resetForm();
+                  setEditingSale(null);
+                  setOpenEdit(false);
+                }}
                 disabled={saving}
                 className="cursor-pointer"
               >
@@ -751,13 +731,7 @@ export default function SalesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete */}
-        <Dialog
-          open={openDelete}
-          onOpenChange={(open) => {
-            if (!deleting) setOpenDelete(open);
-          }}
-        >
+        <Dialog open={openDelete} onOpenChange={setOpenDelete}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Delete Sale</DialogTitle>
@@ -768,6 +742,7 @@ export default function SalesPage() {
                 variant="outline"
                 onClick={() => setOpenDelete(false)}
                 className="cursor-pointer"
+                disabled={deleting}
               >
                 Cancel
               </Button>
