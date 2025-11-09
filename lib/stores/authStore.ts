@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { User } from "../types/user";
 
 interface AuthState {
@@ -11,9 +11,28 @@ interface AuthState {
 
 const SIX_HOURS = 6 * 60 * 60 * 1000;
 
+const customStorage = {
+  getItem: (name: string) => {
+    const str = localStorage.getItem(name);
+    if (!str) return null;
+
+    const data = JSON.parse(str);
+    const now = Date.now();
+
+    if (data.state?.lastSigned && now - data.state.lastSigned > SIX_HOURS) {
+      localStorage.removeItem(name);
+      return null;
+    }
+
+    return str;
+  },
+  setItem: (name: string, value: string) => localStorage.setItem(name, value),
+  removeItem: (name: string) => localStorage.removeItem(name),
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       loading: false,
       lastSigned: null,
@@ -21,15 +40,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "suite33-user",
+      storage: createJSONStorage(() => customStorage),
       partialize: (state) => ({
         user: state.user,
         lastSigned: state.lastSigned,
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state?.lastSigned && Date.now() - state.lastSigned > SIX_HOURS) {
-          return { user: null, lastSigned: null };
-        }
-      },
     }
   )
 );

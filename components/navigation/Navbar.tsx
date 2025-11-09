@@ -27,7 +27,7 @@ export default function Navbar() {
     router.push("/auth/login");
   };
 
-  // Close navbar on scroll (allow scroll instead of locking it)
+  // Close navbar on scroll
   useEffect(() => {
     const handleScroll = () => {
       if (open) setOpen(false);
