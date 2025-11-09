@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import Link from "next/link";
-import { toast } from "sonner";
-import { useAuthStore } from "@/lib/stores/authStore";
 import { useDepartments } from "@/lib/hooks/useDepartments";
 import { useStaff } from "@/lib/hooks/useStaff";
-import type { Department } from "@/lib/types/department";
-import type { Staff } from "@/lib/types/staff";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { useState, useMemo } from "react";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -16,8 +16,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectTrigger,
@@ -33,17 +31,14 @@ import {
   PaginationNext,
   PaginationLink,
 } from "@/components/ui/pagination";
-import { UserPlus, Trash2, ArrowRightLeft, ChevronRight } from "lucide-react";
+
+function formatDeptName(name: string) {
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
 
 export default function DepartmentManager() {
-  const user = useAuthStore((s) => s.user);
-  const {
-    departments,
-    isLoading: loadingDepts,
-    createDepartment,
-    editDepartment,
-    deleteDepartment,
-  } = useDepartments();
+  const { departments, createDepartment, editDepartment, deleteDepartment } =
+    useDepartments();
   const {
     staff,
     isLoading: loadingStaff,
@@ -51,463 +46,489 @@ export default function DepartmentManager() {
     demoteStaff,
     moveStaff,
     removeStaff,
-    deleteStaff,
   } = useStaff();
-
+  const user = useAuthStore((s) => s.user);
   const canAdmin = user?.role === "ADMIN";
 
   const [search, setSearch] = useState("");
   const [selectedDept, setSelectedDept] = useState("all");
-  const [creatingDept, setCreatingDept] = useState(false);
-  const [newDept, setNewDept] = useState("");
+  const [page, setPage] = useState(1);
+  const perPage = 10;
 
-  const [dialog, setDialog] = useState<{
+  const [openDialog, setOpenDialog] = useState<{
     type:
       | null
       | "create"
-      | "rename"
-      | "deleteDept"
       | "move"
-      | "removeDept"
-      | "removeBiz"
+      | "unassign"
+      | "remove"
       | "promote"
       | "demote";
     targetId?: string;
-    data?: any;
   }>({ type: null });
 
+  const [form, setForm] = useState({
+    deptName: "",
+    moveDeptId: "",
+  });
   const [saving, setSaving] = useState(false);
-  const perPage = 10;
-  const [page, setPage] = useState(1);
 
-  useEffect(() => setPage(1), [selectedDept, search]);
+  const normalizedSearch = search.trim().toLowerCase();
 
-  const filteredDepartments = useMemo(() => {
-    if (!departments) return [];
-    if (selectedDept === "all") return departments;
-    if (selectedDept === "none") return [];
-    return departments.filter((d) => d.id === selectedDept);
-  }, [departments, selectedDept]);
+  const filteredStaff = useMemo(() => {
+    if (!staff) return [];
+    let base = staff;
+    if (selectedDept === "none") base = staff.filter((s) => !s.departmentId);
+    else if (selectedDept !== "all")
+      base = staff.filter((s) => s.departmentId === selectedDept);
+    if (normalizedSearch)
+      base = base.filter(
+        (s) =>
+          s.user.fullName?.toLowerCase().includes(normalizedSearch) ||
+          s.user.email?.toLowerCase().includes(normalizedSearch)
+      );
+    return base;
+  }, [staff, selectedDept, normalizedSearch]);
 
-  const staffWithoutDept = useMemo(
-    () => staff?.filter((s) => !s.departmentId) ?? [],
-    [staff]
+  const totalPages = Math.ceil(filteredStaff.length / perPage);
+  const paginatedStaff = filteredStaff.slice(
+    (page - 1) * perPage,
+    page * perPage
   );
 
-  const searchFilter = (text: string) => {
-    const val = search.trim().toLowerCase();
-    return !val ? true : text.toLowerCase().includes(val);
-  };
-
-  async function handleConfirm() {
-    if (!dialog.type) return;
+  async function handleCreateDept() {
+    if (!form.deptName.trim()) return toast.error("Enter a department name");
+    if (!user?.businessId) return toast.error("Missing business");
     setSaving(true);
     try {
-      switch (dialog.type) {
-        case "create":
-          if (!newDept.trim()) return toast.error("Enter department name");
-          await createDepartment.mutateAsync({
-            name: newDept.trim(),
-            businessId: user?.businessId ?? "",
-          });
-          toast.success("Department created");
-          setNewDept("");
-          break;
-        case "rename":
-          await editDepartment.mutateAsync({
-            id: dialog.targetId!,
-            name: dialog.data?.trim(),
-          });
-          toast.success("Department renamed");
-          break;
-        case "deleteDept":
-          await deleteDepartment.mutateAsync(dialog.targetId!);
-          toast.success("Department deleted");
-          break;
-        case "move":
-          await moveStaff.mutateAsync({
-            staffId: dialog.data.staffId,
-            departmentId: dialog.data.newDeptId,
-          });
-          toast.success("Staff moved");
-          break;
-        case "removeDept":
-          await removeStaff.mutateAsync({ staffId: dialog.targetId! });
-          toast.success("Removed from department");
-          break;
-        case "removeBiz":
-          await deleteStaff.mutateAsync({
-            staffId: dialog.targetId!,
-            userId: dialog.data.userId,
-          });
-          toast.success("Staff removed from business");
-          break;
-        case "promote":
-          await promoteStaff.mutateAsync({ staffId: dialog.targetId! });
-          toast.success("Promoted to Assistant Admin");
-          break;
-        case "demote":
-          await demoteStaff.mutateAsync({ staffId: dialog.targetId! });
-          toast.success("Demoted to Staff");
-          break;
-      }
+      await createDepartment.mutateAsync({
+        name: form.deptName.trim().toLowerCase(),
+        businessId: user.businessId,
+      });
+      toast.success("Department created");
+      setForm({ ...form, deptName: "" });
+      setOpenDialog({ type: null });
     } catch {
-      toast.error("Action failed");
+      toast.error("Failed to create department");
     } finally {
       setSaving(false);
-      setDialog({ type: null });
     }
   }
 
-  function StaffRow({ s, depts }: { s: Staff; depts: Department[] }) {
-    const name = s.user.fullName || s.user.email;
-    const role = s.user.role === "SUB_ADMIN" ? "Assistant Admin" : "Staff";
-    return (
-      <li className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b py-2">
-        <div className="flex flex-col">
-          <span className="font-medium">{name}</span>
-          <span className="text-sm text-blue-700">{s.user.email}</span>
-          <span className="text-xs text-muted-foreground">{role}</span>
-        </div>
-        {canAdmin && (
-          <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
-            <Button
-              variant="outline"
-              size="sm"
-              className="cursor-pointer hover:bg-blue-50"
-              onClick={() =>
-                setDialog({
-                  type: "move",
-                  data: { staffId: s.id, newDeptId: "" },
-                })
-              }
-            >
-              <ArrowRightLeft size={14} /> Move
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="cursor-pointer hover:bg-blue-50"
-              onClick={() => setDialog({ type: "removeDept", targetId: s.id })}
-            >
-              <Trash2 size={14} /> Remove
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="cursor-pointer hover:bg-blue-50"
-              onClick={() =>
-                setDialog({
-                  type: "removeBiz",
-                  targetId: s.id,
-                  data: { userId: s.user.id },
-                })
-              }
-            >
-              Delete
-            </Button>
-            {s.user.role === "SUB_ADMIN" ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer hover:bg-blue-50"
-                onClick={() => setDialog({ type: "demote", targetId: s.id })}
-              >
-                Demote
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer hover:bg-blue-50"
-                onClick={() => setDialog({ type: "promote", targetId: s.id })}
-              >
-                Promote
-              </Button>
-            )}
-          </div>
-        )}
-      </li>
-    );
+  async function handleMoveStaff() {
+    if (!openDialog.targetId || !form.moveDeptId)
+      return toast.error("Select a department");
+    setSaving(true);
+    try {
+      await moveStaff.mutateAsync({
+        staffId: openDialog.targetId,
+        departmentId: form.moveDeptId,
+      });
+      toast.success("Staff moved");
+      setOpenDialog({ type: null });
+    } catch {
+      toast.error("Failed to move staff");
+    } finally {
+      setSaving(false);
+    }
   }
 
+  async function handleUnassignStaff() {
+    if (!openDialog.targetId) return;
+    setSaving(true);
+    try {
+      await removeStaff.mutateAsync({ staffId: openDialog.targetId });
+      toast.success("Staff unassigned");
+      setOpenDialog({ type: null });
+    } catch {
+      toast.error("Failed to unassign staff");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemoveFromBusiness() {
+    if (!openDialog.targetId) return;
+    setSaving(true);
+    try {
+      await fetch("/api/staff/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId: openDialog.targetId }),
+      });
+      toast.success("Staff removed from business");
+      setOpenDialog({ type: null });
+    } catch {
+      toast.error("Failed to remove staff");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePromote() {
+    if (!openDialog.targetId) return;
+    setSaving(true);
+    try {
+      await promoteStaff.mutateAsync({ staffId: openDialog.targetId });
+      toast.success("Promoted to Assistant Admin");
+      setOpenDialog({ type: null });
+    } catch {
+      toast.error("Failed to promote");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDemote() {
+    if (!openDialog.targetId) return;
+    setSaving(true);
+    try {
+      await demoteStaff.mutateAsync({ staffId: openDialog.targetId });
+      toast.success("Demoted to Staff");
+      setOpenDialog({ type: null });
+    } catch {
+      toast.error("Failed to demote");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const headerLabel =
+    selectedDept === "all"
+      ? "All Staff"
+      : selectedDept === "none"
+      ? "Staff Without a Department"
+      : `${formatDeptName(
+          departments?.find((d) => d.id === selectedDept)?.name ?? ""
+        )} Staff`;
+
   return (
-    <div className="space-y-8">
-      {canAdmin && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">
-              Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row gap-2 items-center">
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button
-                  className="gap-2 cursor-pointer"
-                  onClick={() => setDialog({ type: "create" })}
-                >
-                  <UserPlus size={16} /> New Department
-                </Button>
-                <Link href="/dashboard/admin/invite">
-                  <Button variant="outline" className="gap-2 cursor-pointer">
-                    Invite Staff <ChevronRight size={16} />
-                  </Button>
-                </Link>
-              </div>
-              <div className="flex gap-2 w-full">
-                <Select value={selectedDept} onValueChange={setSelectedDept}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filter department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments?.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name.toUpperCase()}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="none">No Department</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder="Search staff by name or email..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-2xl font-semibold">Department Management</h2>
+        {canAdmin && (
+          <div className="flex gap-2">
+            <Button
+              className="cursor-pointer"
+              onClick={() => setOpenDialog({ type: "create" })}
+            >
+              New Department
+            </Button>
+            <Link href="/dashboard/admin/invite">
+              <Button className="cursor-pointer" variant="outline">
+                Invite Staff
+              </Button>
+            </Link>
+          </div>
+        )}
+      </div>
 
-      {loadingDepts || loadingStaff ? (
-        <div className="text-sm text-muted-foreground">Loading data...</div>
-      ) : (
-        <>
-          {filteredDepartments.map((dept) => {
-            const filteredStaff =
-              dept.staff?.filter(
-                (s) =>
-                  searchFilter(s.user.fullName || "") ||
-                  searchFilter(s.user.email || "")
-              ) ?? [];
-            const totalPages = Math.ceil(filteredStaff.length / perPage);
-            const paginated = filteredStaff.slice(
-              (page - 1) * perPage,
-              page * perPage
-            );
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Input
+          placeholder="Search staff by name or email…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full sm:max-w-sm"
+        />
+        <Select value={selectedDept} onValueChange={setSelectedDept}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Filter by department" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Departments</SelectItem>
+            {departments?.map((d) => (
+              <SelectItem key={d.id} value={d.id}>
+                {formatDeptName(d.name)}
+              </SelectItem>
+            ))}
+            <SelectItem value="none">No Department</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-            return (
-              <Card key={dept.id} className="border-blue-100">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-sm font-semibold text-blue-800">
-                    {dept.name.toUpperCase()}
-                  </CardTitle>
-                  {canAdmin && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setDialog({
-                            type: "rename",
-                            targetId: dept.id,
-                            data: dept.name,
-                          })
-                        }
-                      >
-                        Rename
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() =>
-                          setDialog({ type: "deleteDept", targetId: dept.id })
-                        }
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {filteredStaff.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No staff found.
-                    </p>
-                  ) : (
-                    <ul className="divide-y">
-                      {paginated.map((s) => (
-                        <StaffRow key={s.id} s={s} depts={departments ?? []} />
-                      ))}
-                    </ul>
-                  )}
-                  {totalPages > 1 && (
-                    <Pagination className="mt-3">
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={() => setPage((p) => Math.max(1, p - 1))}
-                            className="cursor-pointer"
-                          />
-                        </PaginationItem>
-                        {Array.from({ length: totalPages }, (_, i) => (
-                          <PaginationItem key={i}>
-                            <PaginationLink
-                              onClick={() => setPage(i + 1)}
-                              isActive={page === i + 1}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold">
+            {headerLabel}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingStaff ? (
+            <p className="text-sm text-muted-foreground">Loading staff...</p>
+          ) : paginatedStaff.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No staff found.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border rounded">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="p-3 text-left">S/N</th>
+                    <th className="p-3 text-left">Full Name</th>
+                    <th className="p-3 text-left">Email</th>
+                    <th className="p-3 text-left">Role</th>
+                    {canAdmin && <th className="p-3 text-left">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedStaff.map((s, i) => (
+                    <tr key={s.id} className="border-t hover:bg-muted/50">
+                      <td className="p-3">{(page - 1) * perPage + i + 1}</td>
+                      <td className="p-3 font-medium">
+                        {s.user.fullName || "—"}
+                      </td>
+                      <td className="p-3">{s.user.email}</td>
+                      <td className="p-3 capitalize">
+                        {s.user.role === "SUB_ADMIN"
+                          ? "Assistant Admin"
+                          : "Staff"}
+                      </td>
+                      {canAdmin && (
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="cursor-pointer"
+                              onClick={() =>
+                                setOpenDialog({ type: "move", targetId: s.id })
+                              }
                             >
-                              {i + 1}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={() =>
-                              setPage((p) => Math.min(totalPages, p + 1))
-                            }
-                            className="cursor-pointer"
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          {(selectedDept === "none" || selectedDept === "all") && (
-            <Card className="border-blue-100">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-blue-800">
-                  STAFF WITHOUT DEPARTMENT
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {staffWithoutDept.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No unassigned staff.
-                  </p>
-                ) : (
-                  <ul className="divide-y">
-                    {staffWithoutDept.map((s) => (
-                      <StaffRow key={s.id} s={s} depts={departments ?? []} />
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+                              Move
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="cursor-pointer"
+                              onClick={() =>
+                                setOpenDialog({
+                                  type: "unassign",
+                                  targetId: s.id,
+                                })
+                              }
+                            >
+                              Unassign
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="cursor-pointer"
+                              onClick={() =>
+                                setOpenDialog({
+                                  type: "remove",
+                                  targetId: s.id,
+                                })
+                              }
+                            >
+                              Remove
+                            </Button>
+                            {s.user.role === "SUB_ADMIN" ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="cursor-pointer"
+                                onClick={() =>
+                                  setOpenDialog({
+                                    type: "demote",
+                                    targetId: s.id,
+                                  })
+                                }
+                              >
+                                Demote
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="cursor-pointer"
+                                onClick={() =>
+                                  setOpenDialog({
+                                    type: "promote",
+                                    targetId: s.id,
+                                  })
+                                }
+                              >
+                                Promote
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </>
-      )}
+
+          {totalPages > 1 && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="cursor-pointer"
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      onClick={() => setPage(i + 1)}
+                      isActive={page === i + 1}
+                      className="cursor-pointer"
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    className="cursor-pointer"
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog
-        open={!!dialog.type}
-        onOpenChange={() => !saving && setDialog({ type: null })}
+        open={openDialog.type === "create"}
+        onOpenChange={() => setOpenDialog({ type: null })}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {dialog.type === "create" && "Create Department"}
-              {dialog.type === "rename" && "Rename Department"}
-              {dialog.type === "deleteDept" && "Delete Department"}
-              {dialog.type === "move" && "Move Staff to Department"}
-              {dialog.type === "removeDept" && "Remove from Department"}
-              {dialog.type === "removeBiz" && "Remove from Business"}
-              {dialog.type === "promote" && "Promote Staff"}
-              {dialog.type === "demote" && "Demote Staff"}
-            </DialogTitle>
+            <DialogTitle>Create Department</DialogTitle>
           </DialogHeader>
-
-          {dialog.type === "create" && (
-            <Input
-              placeholder="Department name"
-              value={newDept}
-              onChange={(e) => setNewDept(e.target.value)}
-            />
-          )}
-
-          {dialog.type === "rename" && (
-            <Input
-              placeholder="New name"
-              value={dialog.data ?? ""}
-              onChange={(e) =>
-                setDialog((d) => ({ ...d, data: e.target.value }))
-              }
-            />
-          )}
-
-          {dialog.type === "move" && (
-            <Select
-              value={dialog.data?.newDeptId ?? ""}
-              onValueChange={(v) =>
-                setDialog((d) => ({
-                  ...d,
-                  data: { ...d.data, newDeptId: v },
-                }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments?.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {["deleteDept", "removeDept", "removeBiz"].includes(
-            dialog.type ?? ""
-          ) && (
-            <p className="text-sm text-muted-foreground">
-              {dialog.type === "deleteDept" &&
-                "Are you sure you want to delete this department?"}
-              {dialog.type === "removeDept" &&
-                "Are you sure you want to remove this staff from their department?"}
-              {dialog.type === "removeBiz" &&
-                "Are you sure you want to remove this staff from the business? This cannot be undone."}
-            </p>
-          )}
-
-          {["promote", "demote"].includes(dialog.type ?? "") && (
-            <p className="text-sm text-muted-foreground">
-              {dialog.type === "promote"
-                ? "Promote this staff to Assistant Admin?"
-                : "Demote this staff to regular Staff?"}
-            </p>
-          )}
-
+          <Input
+            placeholder="Department name"
+            value={form.deptName}
+            onChange={(e) => setForm({ ...form, deptName: e.target.value })}
+          />
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDialog({ type: null })}
-              disabled={saving}
+              className="cursor-pointer"
+              onClick={() => setOpenDialog({ type: null })}
             >
               Cancel
             </Button>
             <Button
-              variant={
-                ["deleteDept", "removeDept", "removeBiz"].includes(
-                  dialog.type ?? ""
-                )
-                  ? "destructive"
-                  : "default"
-              }
-              onClick={handleConfirm}
+              className="cursor-pointer"
+              onClick={handleCreateDept}
               disabled={saving}
             >
-              {saving ? "Processing..." : "Confirm"}
+              {saving ? "Saving..." : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={openDialog.type === "move"}
+        onOpenChange={() => setOpenDialog({ type: null })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move Staff</DialogTitle>
+          </DialogHeader>
+          <Select
+            value={form.moveDeptId}
+            onValueChange={(v) => setForm({ ...form, moveDeptId: v })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select department" />
+            </SelectTrigger>
+            <SelectContent>
+              {departments?.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {formatDeptName(d.name)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => setOpenDialog({ type: null })}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="cursor-pointer"
+              onClick={handleMoveStaff}
+              disabled={saving}
+            >
+              {saving ? "Moving..." : "Move"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {[
+        {
+          type: "unassign",
+          title: "Unassign Staff",
+          action: handleUnassignStaff,
+          label: "Unassign",
+        },
+        {
+          type: "remove",
+          title: "Remove Staff from Business",
+          action: handleRemoveFromBusiness,
+          label: "Remove",
+        },
+        {
+          type: "promote",
+          title: "Promote Staff",
+          action: handlePromote,
+          label: "Promote",
+        },
+        {
+          type: "demote",
+          title: "Demote Staff",
+          action: handleDemote,
+          label: "Demote",
+        },
+      ].map(
+        (d) =>
+          openDialog.type === d.type && (
+            <Dialog
+              key={d.type}
+              open
+              onOpenChange={() => setOpenDialog({ type: null })}
+            >
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{d.title}</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  {d.type === "remove"
+                    ? "This will permanently remove the staff from your business."
+                    : "Are you sure you want to perform this action?"}
+                </p>
+                <DialogFooter>
+                  <Button
+                    className="cursor-pointer"
+                    variant="outline"
+                    onClick={() => setOpenDialog({ type: null })}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="cursor-pointer"
+                    variant={d.type === "remove" ? "destructive" : "default"}
+                    onClick={d.action}
+                    disabled={saving}
+                  >
+                    {saving ? "Processing..." : d.label}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )
+      )}
     </div>
   );
 }

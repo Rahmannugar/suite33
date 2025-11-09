@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isRouting, setIsRouting] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +46,10 @@ export default function LoginPage() {
       { email, password },
       {
         onSuccess: () => {
+          setEmail("");
+          setPassword("");
           toast.success("Sign in successful!");
+          setIsRouting(true);
           router.push("/dashboard");
         },
       }
@@ -127,13 +131,13 @@ export default function LoginPage() {
           <button
             type="submit"
             className={`w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition ${
-              signIn.isPending
+              signIn.isPending || isRouting
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer"
             }`}
-            disabled={signIn.isPending}
+            disabled={signIn.isPending || isRouting}
           >
-            {signIn.isPending ? (
+            {signIn.isPending || isRouting ? (
               <Loader2 className="animate-spin mx-auto" size={18} />
             ) : (
               "Sign In"

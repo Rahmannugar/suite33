@@ -45,6 +45,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { set } from "zod";
 
 export default function InventoryPage() {
   const user = useAuthStore((s) => s.user);
@@ -447,7 +448,8 @@ export default function InventoryPage() {
                   className="flex justify-between items-center px-3 py-2 rounded bg-red-100/40 dark:bg-red-950/20 text-red-700 dark:text-red-300"
                 >
                   <span className="font-medium">
-                    {i + 1}. {item.name} ({item.category?.name ?? "-"}) –{" "}
+                    {i + 1}. {item.name} (
+                    {item.category?.name.toUpperCase() ?? "-"}) –{" "}
                     {item.quantity} left
                   </span>
                 </div>
@@ -459,8 +461,8 @@ export default function InventoryPage() {
         <Dialog
           open={openAdd}
           onOpenChange={(open) => {
-            if (!open) resetForm();
-            !saving && setOpenAdd(open);
+            if (!saving) setOpenAdd(open);
+            if (!open && !saving) resetForm();
           }}
         >
           <DialogContent>
