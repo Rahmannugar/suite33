@@ -18,17 +18,25 @@ export function useStaff() {
     refetchOnWindowFocus: false,
   });
 
+  const invalidateAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["staff"] }),
+      queryClient.invalidateQueries({ queryKey: ["departments"] }),
+    ]);
+  };
+
   const promoteStaff = useMutation({
     mutationFn: async ({ staffId }: { staffId: string }) => {
       await axios.post("/api/staff/promote", { staffId, role: "SUB_ADMIN" });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["staff"] }),
+    onSuccess: invalidateAll,
   });
 
   const demoteStaff = useMutation({
     mutationFn: async ({ staffId }: { staffId: string }) => {
       await axios.post("/api/staff/promote", { staffId, role: "STAFF" });
     },
+    onSuccess: invalidateAll,
   });
 
   const moveStaff = useMutation({
@@ -41,14 +49,27 @@ export function useStaff() {
     }) => {
       await axios.post("/api/staff/move", { staffId, departmentId });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["staff"] }),
+    onSuccess: invalidateAll,
   });
 
   const removeStaff = useMutation({
     mutationFn: async ({ staffId }: { staffId: string }) => {
       await axios.post("/api/staff/remove", { staffId });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["staff"] }),
+    onSuccess: invalidateAll,
+  });
+
+  const deleteStaff = useMutation({
+    mutationFn: async ({
+      staffId,
+      userId,
+    }: {
+      staffId: string;
+      userId: string;
+    }) => {
+      await axios.post("/api/staff/delete", { staffId, userId });
+    },
+    onSuccess: invalidateAll,
   });
 
   return {
@@ -58,5 +79,6 @@ export function useStaff() {
     demoteStaff,
     moveStaff,
     removeStaff,
+    deleteStaff,
   };
 }

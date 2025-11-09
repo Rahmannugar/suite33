@@ -6,8 +6,25 @@ import { useDepartments } from "@/lib/hooks/useDepartments";
 import { useStaff } from "@/lib/hooks/useStaff";
 import { useAuthStore } from "@/lib/stores/authStore";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 export default function DepartmentManager() {
   const {
@@ -25,27 +42,39 @@ export default function DepartmentManager() {
     moveStaff,
     removeStaff,
   } = useStaff();
-  const user = useAuthStore((state) => state.user);
+  const user = useAuthStore((s) => s.user);
 
   const [newDeptName, setNewDeptName] = useState("");
   const [creating, setCreating] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
-  const [deletingStaffId, setDeletingStaffId] = useState<string | null>(null);
   const [editDeptName, setEditDeptName] = useState("");
-  const [editingDept, setEditingDept] = useState(false);
+  const [editingDeptSaving, setEditingDeptSaving] = useState(false);
+  const [deletingDeptId, setDeletingDeptId] = useState<string | null>(null);
+  const [deletingDeptSaving, setDeletingDeptSaving] = useState(false);
 
-  async function handleCreateDepartment(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newDeptName.trim()) return;
-    if (!user?.businessId) return;
+  const [deletingStaffId, setDeletingStaffId] = useState<string | null>(null);
 
+  const canAdmin = user?.role === "ADMIN";
+
+  const deptsById = useMemo(() => {
+    const map: Record<string, Department> = {};
+    (departments ?? []).forEach((d) => (map[d.id] = d));
+    return map;
+  }, [departments]);
+
+  async function handleCreateDepartment() {
+    if (!newDeptName.trim()) return toast.error("Enter department name");
+    if (!user?.businessId) return toast.error("Missing business");
     setCreating(true);
     try {
       await createDepartment.mutateAsync({
-        name: newDeptName,
+        name: newDeptName.trim(),
         businessId: user.businessId,
       });
-      toast.success("Department created!");
+      toast.success("Department created");
       setNewDeptName("");
     } catch {
       toast.error("Failed to create department");
@@ -54,30 +83,71 @@ export default function DepartmentManager() {
     }
   }
 
-  async function handleEditDepartment(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingDeptId || !editDeptName.trim()) return;
-    setEditingDept(true);
+  function openEditDepartment(id: string, name: string) {
+    setEditingDeptId(id);
+    setEditDeptName(name);
+    setEditOpen(true);
+  }
+
+  async function handleSaveDepartment() {
+    if (!editingDeptId || !editDeptName.trim())
+      return toast.error("Enter department name");
+    setEditingDeptSaving(true);
     try {
       await editDepartment.mutateAsync({
         id: editingDeptId,
-        name: editDeptName,
+        name: editDeptName.trim(),
       });
-      toast.success("Department name updated!");
+      toast.success("Department updated");
+      setEditOpen(false);
       setEditingDeptId(null);
       setEditDeptName("");
     } catch {
       toast.error("Failed to update department");
     } finally {
-      setEditingDept(false);
+      setEditingDeptSaving(false);
     }
   }
 
-  async function handleDeleteStaff(staffId: string, userId: string) {
+  function openDeleteDepartment(id: string) {
+    setDeletingDeptId(id);
+    setDeleteOpen(true);
+  }
+
+  async function handleDeleteDepartment() {
+    if (!deletingDeptId) return;
+    setDeletingDeptSaving(true);
+    try {
+      await deleteDepartment.mutateAsync(deletingDeptId);
+      toast.success("Department deleted");
+      setDeleteOpen(false);
+      setDeletingDeptId(null);
+    } catch {
+      toast.error("Failed to delete department");
+    } finally {
+      setDeletingDeptSaving(false);
+    }
+  }
+
+  async function handleMoveStaff(staffId: string, value: string) {
+    try {
+      if (value === "none") {
+        await removeStaff.mutateAsync({ staffId });
+        toast.success("Removed from department");
+      } else {
+        await moveStaff.mutateAsync({ staffId, departmentId: value });
+        toast.success("Staff moved");
+      }
+    } catch {
+      toast.error("Failed to update staff");
+    }
+  }
+
+  async function handleRemoveFromDepartment(staffId: string) {
     setDeletingStaffId(staffId);
     try {
       await removeStaff.mutateAsync({ staffId });
-      toast.success("Staff removed from department!");
+      toast.success("Removed from department");
     } catch {
       toast.error("Failed to remove staff");
     } finally {
@@ -85,208 +155,296 @@ export default function DepartmentManager() {
     }
   }
 
+  async function handlePromote(staffId: string) {
+    try {
+      await promoteStaff.mutateAsync({ staffId });
+      toast.success("Promoted to Assistant Admin");
+    } catch {
+      toast.error("Failed to promote");
+    }
+  }
+
+  async function handleDemote(staffId: string) {
+    try {
+      await demoteStaff.mutateAsync({ staffId });
+      toast.success("Demoted to Staff");
+    } catch {
+      toast.error("Failed to demote");
+    }
+  }
+
   return (
     <div className="space-y-8">
-      {user?.role === "ADMIN" && (
-        <form onSubmit={handleCreateDepartment} className="flex gap-2 mb-6">
-          <input
-            type="text"
-            placeholder="New department name"
-            value={newDeptName}
-            onChange={(e) => setNewDeptName(e.target.value)}
-            className="border rounded px-3 py-2"
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-            disabled={creating}
-          >
-            {creating ? "Creating..." : "Create Department"}
-          </button>
-          <Link href={`/dashboard/admin/invite`}>Invite Staff</Link>
-        </form>
+      {canAdmin && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold">
+              Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                placeholder="New department name"
+                value={newDeptName}
+                onChange={(e) => setNewDeptName(e.target.value)}
+                className="sm:max-w-sm"
+              />
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full sm:w-auto">
+                <Button
+                  onClick={handleCreateDepartment}
+                  disabled={creating}
+                  className="w-full"
+                >
+                  {creating ? "Creating..." : "Create Department"}
+                </Button>
+                <Link href={`/dashboard/admin/invite`} className="w-full">
+                  <Button variant="outline" className="w-full">
+                    Invite Staff
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {loadingDepts ? (
-          <div>Loading departments...</div>
-        ) : departments?.length ? (
-          departments.map((dept: Department) => (
-            <div key={dept.id} className="border rounded-lg p-4">
-              <div className="font-semibold mb-2">
-                {editingDeptId === dept.id ? (
-                  <form onSubmit={handleEditDepartment} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={editDeptName}
-                      onChange={(e) => setEditDeptName(e.target.value)}
-                      className="border rounded px-2 py-1 text-sm"
-                      autoFocus
-                    />
-                    <button
-                      type="submit"
-                      className="bg-blue-600 text-white px-3 py-1 rounded text-xs"
-                      disabled={editingDept}
-                    >
-                      {editingDept ? "Saving..." : "Save"}
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs px-2 py-1 rounded bg-gray-100"
-                      onClick={() => {
-                        setEditingDeptId(null);
-                        setEditDeptName("");
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </form>
-                ) : (
-                  <>
-                    {dept.name}
-                    {user?.role === "ADMIN" && (
-                      <button
-                        className="ml-2 text-xs text-blue-600 underline"
-                        onClick={() => {
-                          setEditingDeptId(dept.id);
-                          setEditDeptName(dept.name);
-                        }}
-                      >
-                        Edit
-                      </button>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold">Departments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingDepts ? (
+            <div className="text-sm text-muted-foreground">
+              Loading departments...
+            </div>
+          ) : (departments?.length ?? 0) === 0 ? (
+            <div className="text-sm text-muted-foreground">
+              No departments yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {departments?.map((dept) => (
+                <Card key={dept.id} className="border-blue-100">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                    <CardTitle className="text-sm font-semibold">
+                      {dept.name}
+                    </CardTitle>
+                    {canAdmin && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDepartment(dept.id, dept.name)}
+                        >
+                          Rename
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => openDeleteDepartment(dept.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     )}
-                  </>
-                )}
-              </div>
-              <div className="mb-2 text-xs text-gray-500">
-                Staff: {dept.staff?.length ?? 0}
-              </div>
-              {user?.role === "ADMIN" && (
-                <button
-                  className="text-red-600 text-xs mb-2"
-                  onClick={() => {
-                    deleteDepartment.mutate(dept.id, {
-                      onSuccess: () => toast.success("Department deleted!"),
-                      onError: () => toast.error("Failed to delete department"),
-                    });
-                  }}
-                >
-                  Delete Department
-                </button>
-              )}
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="text-xs text-muted-foreground">
+                      Staff: {dept.staff?.length ?? 0}
+                    </div>
+                    <ul className="space-y-2">
+                      {(dept.staff?.length ?? 0) === 0 && (
+                        <li className="text-xs text-muted-foreground">
+                          No staff in this department.
+                        </li>
+                      )}
+                      {dept.staff?.map((s: Staff) => (
+                        <li
+                          key={s.id}
+                          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="text-sm">
+                            {s.user.fullName || s.user.email}
+                          </div>
+                          {canAdmin && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 w-full sm:w-auto">
+                              <Select
+                                value={s.departmentId ?? "none"}
+                                onValueChange={(v) => handleMoveStaff(s.id, v)}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue placeholder="Department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {departments?.map((d) => (
+                                    <SelectItem key={d.id} value={d.id}>
+                                      {d.name}
+                                    </SelectItem>
+                                  ))}
+                                  <SelectItem value="none">
+                                    No department
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRemoveFromDepartment(s.id)}
+                                disabled={deletingStaffId === s.id}
+                              >
+                                {deletingStaffId === s.id
+                                  ? "Removing..."
+                                  : "Remove"}
+                              </Button>
+                              {s.user.role === "SUB_ADMIN" ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDemote(s.id)}
+                                >
+                                  Demote
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePromote(s.id)}
+                                >
+                                  Promote
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-              <ul className="space-y-1">
-                {(dept.staff?.length ?? 0) === 0 && (
-                  <li className="text-xs text-[--muted-foreground]">
-                    No staff in this department.
-                  </li>
-                )}
-                {dept.staff?.map((s: Staff) => (
-                  <li key={s.id} className="flex items-center gap-2">
-                    <span>{s.user.fullName || s.user.email}</span>
-                    {user?.role === "ADMIN" && (
-                      <>
-                        <select
-                          value={s.departmentId ?? dept.id}
-                          onChange={async (e) => {
-                            const newDeptId = e.target.value;
-                            await moveStaff.mutateAsync({
-                              staffId: s.id,
-                              departmentId: newDeptId,
-                            });
-                            toast.success("Staff moved!");
-                          }}
-                          className="border rounded px-2 py-1 text-xs"
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold">
+            Staff without Department
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingStaff ? (
+            <div className="text-sm text-muted-foreground">
+              Loading staff...
+            </div>
+          ) : (staff?.filter((s) => !s.departmentId).length ?? 0) === 0 ? (
+            <div className="text-sm text-muted-foreground">
+              All staff are assigned.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {staff
+                ?.filter((s) => !s.departmentId)
+                .map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="text-sm">
+                      {s.user.fullName || s.user.email}
+                    </div>
+                    {canAdmin && (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full sm:w-auto">
+                        <Select
+                          value="none"
+                          onValueChange={(v) => handleMoveStaff(s.id, v)}
                         >
-                          {departments?.map((d: Department) => (
-                            <option key={d.id} value={d.id}>
-                              {d.name}
-                            </option>
-                          ))}
-                          <option value="">No department</option>
-                        </select>
-                        <button
-                          className="text-red-600 text-xs"
-                          onClick={() => handleDeleteStaff(s.id, s.user.id)}
-                          disabled={deletingStaffId === s.id}
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder="Assign to department" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {departments?.map((d) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="none">No department</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePromote(s.id)}
                         >
-                          {deletingStaffId === s.id ? "Removing..." : "Remove"}
-                        </button>
-                        {s.user.role === "SUB_ADMIN" && (
-                          <button
-                            className="text-yellow-600 text-xs"
-                            onClick={async () => {
-                              await demoteStaff.mutateAsync({ staffId: s.id });
-                              toast.success("Demoted to Staff!");
-                            }}
-                          >
-                            Demote to Staff
-                          </button>
-                        )}
-                      </>
+                          Promote
+                        </Button>
+                      </div>
                     )}
                   </li>
                 ))}
-              </ul>
-            </div>
-          ))
-        ) : (
-          <div className="text-sm text-[--muted-foreground]">
-            No departments yet.
-          </div>
-        )}
-      </div>
-      <div>
-        <h2 className="font-semibold mb-2">Staff without Department</h2>
-        <ul className="space-y-1">
-          {loadingStaff ? (
-            <div>Loading staff...</div>
-          ) : staff?.filter((s: Staff) => !s.departmentId).length === 0 ? (
-            <li className="text-xs text-[--muted-foreground]">
-              All staff are assigned to departments.
-            </li>
-          ) : (
-            staff
-              ?.filter((s: Staff) => !s.departmentId)
-              .map((s: Staff) => (
-                <li key={s.id} className="flex items-center gap-2">
-                  <span>{s.user.fullName || s.user.email}</span>
-                  {user?.role === "ADMIN" && (
-                    <>
-                      <select
-                        value=""
-                        onChange={async (e) => {
-                          const newDeptId = e.target.value;
-                          await moveStaff.mutateAsync({
-                            staffId: s.id,
-                            departmentId: newDeptId,
-                          });
-                          toast.success("Staff moved to department!");
-                        }}
-                        className="border rounded px-2 py-1 text-xs"
-                      >
-                        <option value="">Assign to department</option>
-                        {departments?.map((d: Department) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className="text-blue-600 text-xs"
-                        onClick={() =>
-                          promoteStaff.mutateAsync({ staffId: s.id })
-                        }
-                      >
-                        Promote to Assistant Admin
-                      </button>
-                    </>
-                  )}
-                </li>
-              ))
+            </ul>
           )}
-        </ul>
-      </div>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(o) => !editingDeptSaving && setEditOpen(o)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Department</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={editDeptName}
+            onChange={(e) => setEditDeptName(e.target.value)}
+            placeholder="Department name"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditOpen(false)}
+              disabled={editingDeptSaving}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveDepartment} disabled={editingDeptSaving}>
+              {editingDeptSaving ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(o) => !deletingDeptSaving && setDeleteOpen(o)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Department</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete this department?
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              disabled={deletingDeptSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteDepartment}
+              disabled={deletingDeptSaving}
+            >
+              {deletingDeptSaving ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

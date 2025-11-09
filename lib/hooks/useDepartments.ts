@@ -18,28 +18,32 @@ export function useDepartments() {
     refetchOnWindowFocus: false,
   });
 
+  const invalidateAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["departments"] }),
+      queryClient.invalidateQueries({ queryKey: ["staff"] }),
+    ]);
+  };
+
   const createDepartment = useMutation({
     mutationFn: async (payload: { name: string; businessId: string }) => {
       await axios.post("/api/departments/create", payload);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["departments"] }),
+    onSuccess: invalidateAll,
   });
 
   const editDepartment = useMutation({
     mutationFn: async (payload: { id: string; name: string }) => {
       await axios.put(`/api/departments/${payload.id}`, { name: payload.name });
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["departments"] }),
+    onSuccess: invalidateAll,
   });
 
   const deleteDepartment = useMutation({
     mutationFn: async (departmentId: string) => {
       await axios.delete(`/api/departments/${departmentId}`);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["departments"] }),
+    onSuccess: invalidateAll,
   });
 
   return {
