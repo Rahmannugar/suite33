@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/lib/generated/prisma";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/prisma/config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +10,7 @@ export async function POST(request: NextRequest) {
     const period = new Date(year, month - 1, 1);
 
     const staffList = await prisma.staff.findMany({ where: { departmentId } });
-    const staffIds = staffList.map((s) => s.id);
+    const staffIds = staffList.map((s: any) => s.id);
 
     await prisma.payroll.updateMany({
       where: {

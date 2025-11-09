@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import DashboardClientProvider from "./DashboardClientProvider";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/prisma/config";
 
 export const generateMetadata = () => ({
   title: "Dashboard",
@@ -22,7 +22,6 @@ export default async function DashboardLayout({
     redirect("/auth/login");
   }
 
-  const prisma = new PrismaClient();
   const profile = await prisma.user.findUnique({
     where: { id: user.id },
     include: { business: true },

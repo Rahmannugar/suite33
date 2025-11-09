@@ -121,7 +121,7 @@ export default function SignupPage() {
 
               {signUp.isError && (
                 <p className="text-sm text-red-500">
-                  {(signUp.error as Error)?.message ?? "Something went wrong"}
+                  Something went wrong. Pls try again!
                 </p>
               )}
 

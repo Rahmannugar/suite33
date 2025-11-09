@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/lib/generated/prisma";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/prisma/config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,5 +26,5 @@ export async function POST(request: NextRequest) {
       { error: "Failed to import sales" },
       { status: 500 }
     );
-  }
+  }  
 }

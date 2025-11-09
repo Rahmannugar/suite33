@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/prisma/config";
 import { supabaseServer } from "@/lib/supabase/server";
-
-const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,6 +16,7 @@ export async function GET(request: NextRequest) {
     const record = await prisma.user.findUnique({
       where: { id: user.id },
       include: {
+        business: true,
         Staff: {
           include: {
             department: true,

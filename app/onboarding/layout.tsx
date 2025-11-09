@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/prisma/config";
 
 export default async function OnboardingLayout({
   children,
@@ -16,7 +16,6 @@ export default async function OnboardingLayout({
     redirect("/auth/login");
   }
 
-  const prisma = new PrismaClient();
   const profile = await prisma.user.findUnique({
     where: { id: user.id },
     include: { business: true },

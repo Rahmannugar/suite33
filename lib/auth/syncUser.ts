@@ -1,8 +1,6 @@
 "use server";
 
-import { PrismaClient } from "@/lib/generated/prisma";
-
-const prisma = new PrismaClient();
+import { prisma } from "../../prisma/config";
 
 /**
  * Ensures every Supabase user has a matching Prisma User record.
@@ -28,8 +26,11 @@ export async function syncUser(
     });
 
     return newUser;
-  } catch (error) {
+  } catch (error: unknown) {
+    
     console.error("syncUser error:", error);
-    throw new Error("Failed to sync user to database");
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    throw new Error(`Failed to sync user to database: ${errorMessage}`);
   }
 }
