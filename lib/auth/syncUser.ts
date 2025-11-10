@@ -27,10 +27,9 @@ export async function syncUser(
 
     return newUser;
   } catch (error: unknown) {
-    
     console.error("syncUser error:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
-    throw new Error(`Failed to sync user to database: ${errorMessage}`);
+    throw new Error(`Something went wrong: ${errorMessage}`);
   }
 }

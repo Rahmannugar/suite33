@@ -53,10 +53,10 @@ export function useAuth() {
   }
 
   const signUp = useMutation({
-    mutationFn: async ({ 
-      email, 
+    mutationFn: async ({
+      email,
       password,
-      redirectTo 
+      redirectTo,
     }: Credentials & { redirectTo?: string }) => {
       const checkRes = await axios.post("/api/auth/check-user", { email });
       if (checkRes.data.exists && checkRes.data.provider === "google") {
@@ -98,6 +98,10 @@ export function useAuth() {
             "This email is linked to a Google account. Please sign in with Google."
           )
         );
+      }
+
+      if (!checkRes.data.exists) {
+        throw new Error("No account found with this email address");
       }
 
       const { data, error } = await supabaseClient.auth.signInWithPassword({

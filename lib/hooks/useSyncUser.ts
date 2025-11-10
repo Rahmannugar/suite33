@@ -16,7 +16,7 @@ export async function syncUserToPrisma(user: {
     return res.data;
   } catch (err: any) {
     throw new Error(
-      err?.response?.data?.error || "Failed to sync user with Prisma"
+      err?.response?.data?.error || "Something went wrong"
     );
   }
 }

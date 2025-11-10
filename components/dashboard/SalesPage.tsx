@@ -264,8 +264,8 @@ export default function SalesPage() {
         date: form.date,
       });
       toast.success("Sale added");
-      resetForm();
       setOpenAdd(false);
+      resetForm();
     } catch {
       toast.error("Failed to add sale");
     } finally {

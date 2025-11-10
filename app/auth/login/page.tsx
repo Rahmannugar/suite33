@@ -124,7 +124,7 @@ export default function LoginPage() {
 
           {signIn.isError && (
             <p className="text-sm text-red-500">
-              Something went wrong. Pls try again!
+              {(signIn.error as Error)?.message ?? "Something went wrong"}
             </p>
           )}
 

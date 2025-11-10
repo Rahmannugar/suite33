@@ -274,8 +274,8 @@ export default function ExpendituresPage() {
         date: form.date,
       });
       toast.success("Expenditure added");
-      resetForm();
       setOpenAdd(false);
+      resetForm();
     } catch {
       toast.error("Failed to add expenditure");
     } finally {

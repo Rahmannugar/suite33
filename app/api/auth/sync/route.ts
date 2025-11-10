@@ -27,6 +27,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(syncedUser, { status: 200 });
   } catch (err) {
     console.error("Sync error:", err);
-    return NextResponse.json({ error: "Failed to sync user" }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
