@@ -5,7 +5,6 @@ import { supabaseServer } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   try {
     const supabase = await supabaseServer(true);
-
     const { data, error } = await supabase.auth.getUser();
     const user = data?.user;
 
@@ -20,13 +19,7 @@ export async function GET(request: NextRequest) {
         Staff: {
           include: {
             department: true,
-            business: {
-              select: {
-                id: true,
-                name: true,
-                logoUrl: true,
-              },
-            },
+            business: true
           },
         },
       },
@@ -36,7 +29,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const businessDetails = record.Staff?.business;
+    // Get the business details from either admin's business or staff's business
+    const business = record.business || record.Staff?.business;
 
     return NextResponse.json({
       id: record.id,
@@ -44,11 +38,11 @@ export async function GET(request: NextRequest) {
       avatarUrl: record.avatarUrl,
       fullName: record.fullName,
       role: record.role,
-      businessId: record.Staff?.business?.id ?? record.business?.id ?? null,
-      businessName:
-        record.Staff?.business?.name ?? record.business?.name ?? null,
-      businessLogo:
-        record.Staff?.business?.logoUrl ?? record.business?.logoUrl ?? null,
+      businessId: business?.id ?? null,
+      businessName: business?.name ?? null,
+      businessLogo: business?.logoUrl ?? null,
+      industry: business?.industry ?? null,
+      location: business?.location ?? null,
       departmentId: record.Staff?.department?.id ?? null,
       departmentName: record.Staff?.department?.name ?? null,
     });

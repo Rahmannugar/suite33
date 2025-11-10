@@ -59,6 +59,19 @@ export function useInventory(user?: { businessId?: string }) {
       queryClient.invalidateQueries({ queryKey: ["categories"] }),
   });
 
+  const renameCategory = useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) =>
+      axios.put(`/api/categories/${id}`, { name }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["categories"] }),
+  });
+
+  const deleteCategory = useMutation({
+    mutationFn: async (id: string) => axios.delete(`/api/categories/${id}`),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["categories"] }),
+  });
+
   const addItem = useMutation({
     mutationFn: async (payload: {
       name: string;
@@ -202,6 +215,8 @@ export function useInventory(user?: { businessId?: string }) {
     categories: categoriesQuery.data,
     isCategoriesLoading: categoriesQuery.isLoading,
     addCategory,
+    renameCategory,
+    deleteCategory,
     addItem,
     editItem,
     deleteItem,

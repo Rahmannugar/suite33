@@ -45,7 +45,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { set } from "zod";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function InventoryPage() {
   const user = useAuthStore((s) => s.user);
@@ -57,6 +57,8 @@ export default function InventoryPage() {
     addItem,
     editItem,
     deleteItem,
+    renameCategory,
+    deleteCategory,
     importCSV,
     importExcel,
     exportCSV,
@@ -78,15 +80,19 @@ export default function InventoryPage() {
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openRenameCategory, setOpenRenameCategory] = useState(false);
+  const [openDeleteCategory, setOpenDeleteCategory] = useState(false);
   const [editingItem, setEditingItem] = useState<Inventory | null>(null);
   const [deletingItem, setDeletingItem] = useState<Inventory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [form, setForm] = useState({
     name: "",
     quantity: "",
     categoryId: "none",
     newCategory: "",
   });
-
+  const [categoryName, setCategoryName] = useState("");
+  const [showCategories, setShowCategories] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetForm = () =>
@@ -95,9 +101,7 @@ export default function InventoryPage() {
   const truncate = (text: string, max: number) =>
     text.length > max ? text.slice(0, max) + "…" : text;
 
-  useEffect(() => {
-    setPage(1);
-  }, [filterCategory, search]);
+  useEffect(() => setPage(1), [filterCategory, search]);
 
   const normalizedSearch = search.trim().toLowerCase();
 
@@ -123,7 +127,6 @@ export default function InventoryPage() {
     const file = e.target.files?.[0];
     if (!file || !user?.businessId) return;
     const isCSV = file.name.toLowerCase().endsWith(".csv");
-
     try {
       if (isCSV) {
         await importCSV.mutateAsync({ file, businessId: user.businessId });
@@ -145,7 +148,6 @@ export default function InventoryPage() {
       return toast.error("Choose a category or enter a new one.");
     if (form.categoryId !== "none" && form.newCategory)
       return toast.error("Select only one category.");
-
     setSaving(true);
     try {
       let catId = form.categoryId === "none" ? "" : form.categoryId;
@@ -180,7 +182,6 @@ export default function InventoryPage() {
       return toast.error("Choose a category or enter a new one.");
     if (form.categoryId !== "none" && form.newCategory)
       return toast.error("Select only one — category or new.");
-
     setSaving(true);
     try {
       let catId = form.categoryId === "none" ? "" : form.categoryId;
@@ -225,6 +226,47 @@ export default function InventoryPage() {
     }
   }
 
+  async function handleRenameCategory() {
+    if (!selectedCategory || !categoryName.trim())
+      return toast.error("Enter a category name");
+    setSaving(true);
+    try {
+      await renameCategory.mutateAsync({
+        id: selectedCategory.id,
+        name: categoryName.trim().toLowerCase(),
+      });
+      toast.success("Category renamed");
+      setOpenRenameCategory(false);
+      setSelectedCategory(null);
+      setCategoryName("");
+    } catch {
+      toast.error("Failed to rename category");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteCategory() {
+    if (!selectedCategory) return;
+    setDeleting(true);
+    try {
+      await deleteCategory.mutateAsync(selectedCategory.id);
+      toast.success("Category deleted");
+      setOpenDeleteCategory(false);
+      setSelectedCategory(null);
+    } catch (err: any) {
+      if (err.response?.status === 400) {
+        toast.error(
+          "Cannot delete category in use. Remove or reassign its items first."
+        );
+      } else {
+        toast.error("Failed to delete category");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-6">
@@ -259,7 +301,6 @@ export default function InventoryPage() {
                 ))}
               </SelectContent>
             </Select>
-
             <Input
               placeholder="Search items by name…"
               value={search}
@@ -307,87 +348,99 @@ export default function InventoryPage() {
             </div>
           )}
         </div>
+<Card> <CardHeader className="py-4"> <CardTitle className="text-base font-semibold"> Inventory Records </CardTitle> </CardHeader> <CardContent> {isLoading ? ( <Skeleton className="h-40 w-full" /> ) : totalRecords > 0 ? ( <table className="w-full border rounded text-sm"> <thead className="bg-muted"> <tr> <th className="p-3 text-left">S/N</th> <th className="p-3 text-left">Name</th> <th className="p-3 text-left">Quantity</th> <th className="p-3 text-left">Category</th> {canMutate && <th className="p-3 text-left">Actions</th>} </tr> </thead> <tbody> {paginatedItems.map((item, i) => ( <tr key={item.id} className="border-t"> <td className="p-3">{(page - 1) * perPage + i + 1}</td> <td className="p-3">{truncate(item.name, 20)}</td> <td className="p-3">{item.quantity}</td> <td className="p-3"> {item.category?.name?.toUpperCase() ?? "-"} </td> {canMutate && ( <td className="p-3 flex gap-2"> <Button size="sm" variant="outline" className="gap-1 cursor-pointer" onClick={() => { setEditingItem(item); setForm({ name: item.name, quantity: item.quantity.toString(), categoryId: item.categoryId || "none", newCategory: "", }); setOpenEdit(true); }} > <Edit size={14} /> Edit </Button> <Button size="sm" variant="destructive" className="gap-1 cursor-pointer" onClick={() => { setDeletingItem(item); setOpenDelete(true); }} > <Trash2 size={14} /> Delete </Button> </td> )} </tr> ))} </tbody> </table> ) : ( <p className="text-sm text-muted-foreground">No items found.</p> )} </CardContent> </Card>
+php-template
+Copy code
+    {!isLowStockLoading && lowStock?.length > 0 && (
+      <Card className="mt-6 border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/10">
+        <CardHeader>
+          <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
+            <AlertTriangle size={18} /> Low Stock Items
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {lowStock.map((item: Inventory, i: number) => (
+            <div
+              key={item.id}
+              className="flex justify-between items-center px-3 py-2 rounded bg-red-100/40 dark:bg-red-950/20 text-red-700 dark:text-red-300"
+            >
+              <span className="font-medium">
+                {i + 1}. {item.name} (
+                {item.category?.name.toUpperCase() ?? "-"}) –{" "}
+                {item.quantity} left
+              </span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    )}
 
-        <Card>
-          <CardHeader className="py-4">
-            <CardTitle className="text-base font-semibold">
-              Inventory Records
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-40 w-full" />
-            ) : totalRecords > 0 ? (
-              <>
+    <div className="flex justify-end">
+      <Button
+        variant="outline"
+        onClick={() => setShowCategories((v) => !v)}
+        className="cursor-pointer mt-4"
+      >
+        {showCategories ? "Hide Categories" : "View Categories"}
+      </Button>
+    </div>
+
+    <AnimatePresence>
+      {showCategories && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.3 }}
+          className="overflow-hidden"
+        >
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">
+                Categories
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {categories?.length ? (
                 <table className="w-full border rounded text-sm">
                   <thead className="bg-muted">
                     <tr>
                       <th className="p-3 text-left">S/N</th>
                       <th className="p-3 text-left">Name</th>
-                      <th className="p-3 text-left">Quantity</th>
-                      <th className="p-3 text-left">Category</th>
-                      {canMutate && <th className="p-3 text-left">Actions</th>}
+                      {canMutate && (
+                        <th className="p-3 text-left">Actions</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedItems.map((item, i) => (
-                      <tr key={item.id} className="border-t">
-                        <td className="p-3">{(page - 1) * perPage + i + 1}</td>
-                        <td className="p-3">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-block max-w-[220px] truncate">
-                                {truncate(item.name, 20)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>{item.name}</TooltipContent>
-                          </Tooltip>
-                        </td>
-                        <td className="p-3">{item.quantity}</td>
-                        <td className="p-3">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-block max-w-[200px] truncate">
-                                {truncate(
-                                  item.category?.name.toUpperCase() ?? "-",
-                                  15
-                                )}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {item.category?.name ?? "-"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </td>
+                    {categories.map((c: any, i: number) => (
+                      <tr key={c.id} className="border-t">
+                        <td className="p-3">{i + 1}</td>
+                        <td className="p-3">{c.name.toUpperCase()}</td>
                         {canMutate && (
                           <td className="p-3 flex gap-2">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="gap-1 cursor-pointer"
+                              className="cursor-pointer"
                               onClick={() => {
-                                setEditingItem(item);
-                                setForm({
-                                  name: item.name,
-                                  quantity: item.quantity.toString(),
-                                  categoryId: item.categoryId || "none",
-                                  newCategory: "",
-                                });
-                                setOpenEdit(true);
+                                setSelectedCategory(c);
+                                setCategoryName(c.name);
+                                setOpenRenameCategory(true);
                               }}
                             >
-                              <Edit size={14} /> Edit
+                              Rename
                             </Button>
                             <Button
                               size="sm"
                               variant="destructive"
-                              className="gap-1 cursor-pointer"
+                              className="cursor-pointer"
                               onClick={() => {
-                                setDeletingItem(item);
-                                setOpenDelete(true);
+                                setSelectedCategory(c);
+                                setOpenDeleteCategory(true);
                               }}
                             >
-                              <Trash2 size={14} /> Delete
+                              Delete
                             </Button>
                           </td>
                         )}
@@ -395,233 +448,228 @@ export default function InventoryPage() {
                     ))}
                   </tbody>
                 </table>
-
-                {totalPages > 1 && (
-                  <Pagination className="mt-4">
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => setPage((p) => Math.max(1, p - 1))}
-                          className="cursor-pointer"
-                        />
-                      </PaginationItem>
-                      {Array.from({ length: totalPages }, (_, i) => (
-                        <PaginationItem key={i}>
-                          <PaginationLink
-                            onClick={() => setPage(i + 1)}
-                            isActive={page === i + 1}
-                            className="cursor-pointer"
-                          >
-                            {i + 1}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ))}
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() =>
-                            setPage((p) => Math.min(totalPages, p + 1))
-                          }
-                          className="cursor-pointer"
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">No items found.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {!isLowStockLoading && lowStock?.length > 0 && (
-          <Card className="mt-6 border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/10">
-            <CardHeader>
-              <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
-                <AlertTriangle size={18} /> Low Stock Items
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {lowStock.map((item: Inventory, i: number) => (
-                <div
-                  key={item.id}
-                  className="flex justify-between items-center px-3 py-2 rounded bg-red-100/40 dark:bg-red-950/20 text-red-700 dark:text-red-300"
-                >
-                  <span className="font-medium">
-                    {i + 1}. {item.name} (
-                    {item.category?.name.toUpperCase() ?? "-"}) –{" "}
-                    {item.quantity} left
-                  </span>
-                </div>
-              ))}
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No categories found.
+                </p>
+              )}
             </CardContent>
           </Card>
-        )}
+        </motion.div>
+      )}
+    </AnimatePresence>
 
-        <Dialog
-          open={openAdd}
-          onOpenChange={(open) => {
-            if (!saving) setOpenAdd(open);
-            if (!open && !saving) resetForm();
-          }}
+    <Dialog open={openAdd} onOpenChange={setOpenAdd}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Item</DialogTitle>
+        </DialogHeader>
+        <Input
+          placeholder="Item name"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
+        <Input
+          type="number"
+          placeholder="Quantity"
+          value={form.quantity}
+          onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+        />
+        <Input
+          placeholder="New category (optional)"
+          value={form.newCategory}
+          onChange={(e) =>
+            setForm({ ...form, newCategory: e.target.value })
+          }
+        />
+        <Select
+          value={form.categoryId}
+          onValueChange={(v) => setForm({ ...form, categoryId: v })}
         >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Item</DialogTitle>
-            </DialogHeader>
-            <Input
-              placeholder="Item name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            <Input
-              type="number"
-              placeholder="Quantity"
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-            />
-            <Input
-              placeholder="New category (optional)"
-              value={form.newCategory}
-              onChange={(e) =>
-                setForm({ ...form, newCategory: e.target.value })
-              }
-            />
-            <Select
-              value={form.categoryId}
-              onValueChange={(v) => setForm({ ...form, categoryId: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {categories?.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setOpenAdd(false)}
-                disabled={saving}
-                className="cursor-pointer"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAddItem}
-                disabled={saving}
-                className="cursor-pointer"
-              >
-                {saving ? "Saving..." : "Save"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          <SelectTrigger>
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            {categories?.map((c: any) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setOpenAdd(false)}
+            disabled={saving}
+            className="cursor-pointer"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAddItem}
+            disabled={saving}
+            className="cursor-pointer"
+          >
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
-        <Dialog
-          open={openEdit}
-          onOpenChange={(open) => {
-            if (!open) resetForm();
-            setEditingItem(null);
-            !saving && setOpenEdit(open);
-          }}
+    <Dialog open={openEdit} onOpenChange={setOpenEdit}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Item</DialogTitle>
+        </DialogHeader>
+        <Input
+          placeholder="Item name"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
+        <Input
+          type="number"
+          placeholder="Quantity"
+          value={form.quantity}
+          onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+        />
+        <Input
+          placeholder="New category (optional)"
+          value={form.newCategory}
+          onChange={(e) =>
+            setForm({ ...form, newCategory: e.target.value })
+          }
+        />
+        <Select
+          value={form.categoryId}
+          onValueChange={(v) => setForm({ ...form, categoryId: v })}
         >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Item</DialogTitle>
-            </DialogHeader>
-            <Input
-              placeholder="Item name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            <Input
-              type="number"
-              placeholder="Quantity"
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-            />
-            <Input
-              placeholder="New category (optional)"
-              value={form.newCategory}
-              onChange={(e) =>
-                setForm({ ...form, newCategory: e.target.value })
-              }
-            />
-            <Select
-              value={form.categoryId}
-              onValueChange={(v) => setForm({ ...form, categoryId: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {categories?.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setOpenEdit(false)}
-                disabled={saving}
-                className="cursor-pointer"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleEditItem}
-                disabled={saving}
-                className="cursor-pointer"
-              >
-                {saving ? "Saving..." : "Save"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          <SelectTrigger>
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            {categories?.map((c: any) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              resetForm();
+              setEditingItem(null);
+              setOpenEdit(false);
+            }}
+            disabled={saving}
+            className="cursor-pointer"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleEditItem}
+            disabled={saving}
+            className="cursor-pointer"
+          >
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
-        <Dialog
-          open={openDelete}
-          onOpenChange={(o) => !deleting && setOpenDelete(o)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Item</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete this item? This action cannot be
-              undone.
-            </p>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setOpenDelete(false)}
-                disabled={deleting}
-                className="cursor-pointer"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteItem}
-                disabled={deleting}
-                className="cursor-pointer"
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </TooltipProvider>
-  );
+    <Dialog open={openDelete} onOpenChange={setOpenDelete}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Item</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Are you sure you want to delete this item? This action cannot be
+          undone.
+        </p>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setOpenDelete(false)}
+            disabled={deleting}
+            className="cursor-pointer"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDeleteItem}
+            disabled={deleting}
+            className="cursor-pointer"
+          >
+            {deleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={openRenameCategory} onOpenChange={setOpenRenameCategory}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rename Category</DialogTitle>
+        </DialogHeader>
+        <Input
+          placeholder="New name"
+          value={categoryName}
+          onChange={(e) => setCategoryName(e.target.value)}
+        />
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setOpenRenameCategory(false)}
+            disabled={saving}
+            className="cursor-pointer"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleRenameCategory}
+            disabled={saving}
+            className="cursor-pointer"
+          >
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={openDeleteCategory} onOpenChange={setOpenDeleteCategory}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Category</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Are you sure you want to delete this category?
+        </p>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setOpenDeleteCategory(false)}
+            disabled={deleting}
+            className="cursor-pointer"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDeleteCategory}
+            disabled={deleting}
+            className="cursor-pointer"
+          >
+            {deleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </div>
+</TooltipProvider>
+);
 }
