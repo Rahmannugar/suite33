@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { verifyOrgRole } from "@/lib/auth/checkRole";
+import { verifyBusiness } from "@/lib/auth/checkBusiness";
 
 export async function PUT(
   request: NextRequest,
   context: { params: { id: string } }
 ) {
   try {
-    const { name, quantity, categoryId, userId } = await request.json();
+    const { name, quantity, categoryId, userId, businessId } =
+      await request.json();
+
+    if (!name || !categoryId || !userId || !businessId) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    const businessUnauthorized = await verifyBusiness(userId, businessId);
+    if (businessUnauthorized) return businessUnauthorized;
+
     const unauthorized = await verifyOrgRole(userId);
     if (unauthorized) return unauthorized;
 
@@ -29,7 +39,15 @@ export async function DELETE(
   context: { params: { id: string } }
 ) {
   try {
-    const { userId } = await request.json();
+    const { userId, businessId } = await request.json();
+
+    if (!userId || !businessId) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    const businessUnauthorized = await verifyBusiness(userId, businessId);
+    if (businessUnauthorized) return businessUnauthorized;
+
     const unauthorized = await verifyOrgRole(userId);
     if (unauthorized) return unauthorized;
 

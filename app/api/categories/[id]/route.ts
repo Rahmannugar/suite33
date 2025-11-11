@@ -1,24 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { verifyOrgRole } from "@/lib/auth/checkRole";
+import { verifyBusiness } from "@/lib/auth/checkBusiness";
 
 export async function PUT(
   request: NextRequest,
   context: { params: { id: string } }
 ) {
   try {
-    const { name, userId } = await request.json();
+    const { name, userId, businessId } = await request.json();
+
+    if (!name || !userId || !businessId) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    const businessUnauthorized = await verifyBusiness(userId, businessId);
+    if (businessUnauthorized) return businessUnauthorized;
+
     const unauthorized = await verifyOrgRole(userId);
     if (unauthorized) return unauthorized;
 
-    if (!name)
-      return NextResponse.json({ error: "Missing name" }, { status: 400 });
     const category = await prisma.category.update({
       where: { id: context.params.id },
       data: { name: name.trim().toLowerCase() },
     });
     return NextResponse.json({ category });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
       { error: "Failed to update category" },
       { status: 500 }
@@ -31,7 +38,15 @@ export async function DELETE(
   context: { params: { id: string } }
 ) {
   try {
-    const { userId } = await request.json();
+    const { userId, businessId } = await request.json();
+
+    if (!userId || !businessId) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    const businessUnauthorized = await verifyBusiness(userId, businessId);
+    if (businessUnauthorized) return businessUnauthorized;
+
     const unauthorized = await verifyOrgRole(userId);
     if (unauthorized) return unauthorized;
 
@@ -47,7 +62,7 @@ export async function DELETE(
     }
     await prisma.category.delete({ where: { id: context.params.id } });
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
       { error: "Failed to delete category" },
       { status: 500 }

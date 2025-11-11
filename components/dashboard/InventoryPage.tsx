@@ -71,28 +71,42 @@ export default function InventoryPage() {
   );
 
   const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
+
   const [page, setPage] = useState(1);
   const perPage = 10;
+
+  const [catPage, setCatPage] = useState(1);
+  const catPerPage = 10;
+
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+
   const [openRenameCategory, setOpenRenameCategory] = useState(false);
   const [openDeleteCategory, setOpenDeleteCategory] = useState(false);
+
   const [editingItem, setEditingItem] = useState<Inventory | null>(null);
   const [deletingItem, setDeletingItem] = useState<Inventory | null>(null);
+
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
+
   const [form, setForm] = useState({
     name: "",
     quantity: "",
     categoryId: "none",
     newCategory: "",
   });
+
   const [categoryName, setCategoryName] = useState("");
+
   const [showCategories, setShowCategories] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetForm = () =>
@@ -103,17 +117,26 @@ export default function InventoryPage() {
 
   useEffect(() => setPage(1), [filterCategory, search]);
 
+  useEffect(() => setCatPage(1), [showCategories, categories?.length]);
+
   const normalizedSearch = search.trim().toLowerCase();
 
   const filteredInventory = useMemo(() => {
     const base = inventory ?? [];
-    return base.filter((item) => {
-      const byCat =
-        filterCategory === "all" || item.categoryId === filterCategory;
-      const bySearch =
-        !normalizedSearch || item.name.toLowerCase().includes(normalizedSearch);
-      return byCat && bySearch;
-    });
+    return base
+      .filter((item: Inventory) => {
+        const byCat =
+          filterCategory === "all" || item.categoryId === filterCategory;
+        const bySearch =
+          !normalizedSearch ||
+          item.name.toLowerCase().includes(normalizedSearch);
+        return byCat && bySearch;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt || 0).getTime() -
+          new Date(b.createdAt || 0).getTime()
+      );
   }, [inventory, filterCategory, normalizedSearch]);
 
   const totalRecords = filteredInventory.length;
@@ -123,15 +146,40 @@ export default function InventoryPage() {
     page * perPage
   );
 
+  const sortedCategories = useMemo(() => {
+    return (categories ?? [])
+      .slice()
+      .sort(
+        (a: any, b: any) =>
+          new Date(a.createdAt || 0).getTime() -
+          new Date(b.createdAt || 0).getTime()
+      );
+  }, [categories]);
+
+  const totalCat = sortedCategories.length;
+  const totalCatPages = Math.ceil(totalCat / catPerPage);
+  const paginatedCategories = sortedCategories.slice(
+    (catPage - 1) * catPerPage,
+    catPage * catPerPage
+  );
+
   async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !user?.businessId) return;
+    if (!file || !user?.businessId || !user?.id) return;
     const isCSV = file.name.toLowerCase().endsWith(".csv");
     try {
       if (isCSV) {
-        await importCSV.mutateAsync({ file, businessId: user.businessId });
+        await importCSV.mutateAsync({
+          file,
+          businessId: user.businessId,
+          userId: user.id,
+        });
       } else {
-        await importExcel.mutateAsync({ file, businessId: user.businessId });
+        await importExcel.mutateAsync({
+          file,
+          businessId: user.businessId,
+          userId: user.id,
+        });
       }
       toast.success("Inventory imported successfully");
       refetchLowStock();
@@ -155,14 +203,15 @@ export default function InventoryPage() {
         const newCat = await addCategory.mutateAsync({
           name: form.newCategory.trim().toLowerCase(),
           businessId: user?.businessId ?? "",
+          userId: user?.id ?? "",
         });
-        catId = newCat.id;
       }
       await addItem.mutateAsync({
         name: form.name,
         quantity: parseInt(form.quantity) || 0,
         categoryId: catId,
         businessId: user?.businessId ?? "",
+        userId: user?.id ?? "",
       });
       toast.success("Item added");
       resetForm();
@@ -189,6 +238,7 @@ export default function InventoryPage() {
         const newCat = await addCategory.mutateAsync({
           name: form.newCategory.trim().toLowerCase(),
           businessId: user?.businessId ?? "",
+          userId: user?.id ?? "",
         });
         catId = newCat.id;
       }
@@ -197,6 +247,8 @@ export default function InventoryPage() {
         name: form.name,
         quantity: parseInt(form.quantity) || 0,
         categoryId: catId,
+        businessId: user?.businessId ?? "",
+        userId: user?.id ?? "",
       });
       toast.success("Item updated");
       resetForm();
@@ -214,7 +266,11 @@ export default function InventoryPage() {
     if (!deletingItem) return;
     setDeleting(true);
     try {
-      await deleteItem.mutateAsync(deletingItem.id);
+      await deleteItem.mutateAsync({
+        id: deletingItem.id,
+        businessId: user?.businessId ?? "",
+        userId: user?.id ?? "",
+      });
       toast.success("Item deleted");
       refetchLowStock();
     } catch {
@@ -348,79 +404,130 @@ export default function InventoryPage() {
             </div>
           )}
         </div>
+
         <Card>
-          {" "}
           <CardHeader className="py-4">
             <CardTitle className="text-base font-semibold">
-              {" "}
-              Inventory Records{" "}
+              Inventory Records
             </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-40 w-full" />
             ) : totalRecords > 0 ? (
-              <table className="w-full border rounded text-sm">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="p-3 text-left">S/N</th>
-                    <th className="p-3 text-left">Name</th>
-                    <th className="p-3 text-left">Quantity</th>
-                    <th className="p-3 text-left">Category</th>
-                    {canMutate && <th className="p-3 text-left">Actions</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedItems.map((item, i) => (
-                    <tr key={item.id} className="border-t">
-                      <td className="p-3">{(page - 1) * perPage + i + 1}</td>
-                      <td className="p-3">{truncate(item.name, 20)}</td>
-                      <td className="p-3">{item.quantity}</td>
-                      <td className="p-3">
-                        {item.category?.name?.toUpperCase() ?? "-"}
-                      </td>
-                      {canMutate && (
-                        <td className="p-3 flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1 cursor-pointer"
-                            onClick={() => {
-                              setEditingItem(item);
-                              setForm({
-                                name: item.name,
-                                quantity: item.quantity.toString(),
-                                categoryId: item.categoryId || "none",
-                                newCategory: "",
-                              });
-                              setOpenEdit(true);
-                            }}
-                          >
-                            <Edit size={14} /> Edit
-                          </Button>{" "}
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="gap-1 cursor-pointer"
-                            onClick={() => {
-                              setDeletingItem(item);
-                              setOpenDelete(true);
-                            }}
-                          >
-                            {" "}
-                            <Trash2 size={14} /> Delete{" "}
-                          </Button>{" "}
-                        </td>
-                      )}{" "}
+              <>
+                <table className="w-full border rounded text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="p-3 text-left">S/N</th>
+                      <th className="p-3 text-left">Name</th>
+                      <th className="p-3 text-left">Quantity</th>
+                      <th className="p-3 text-left">Category</th>
+                      {canMutate && <th className="p-3 text-left">Actions</th>}
                     </tr>
-                  ))}{" "}
-                </tbody>{" "}
-              </table>
+                  </thead>
+                  <tbody>
+                    {paginatedItems.map((item, i) => (
+                      <tr key={item.id} className="border-t">
+                        <td className="p-3">{(page - 1) * perPage + i + 1}</td>
+                        <td className="p-3">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-block max-w-[220px] truncate">
+                                {truncate(item.name, 20)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{item.name}</TooltipContent>
+                          </Tooltip>
+                        </td>
+                        <td className="p-3">{item.quantity}</td>
+                        <td className="p-3">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-block max-w-[220px] truncate">
+                                {item.category?.name?.toUpperCase() ?? "-"}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {item.category?.name ?? "-"}
+                            </TooltipContent>
+                          </Tooltip>
+                        </td>
+                        {canMutate && (
+                          <td className="p-3 flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1 cursor-pointer"
+                              onClick={() => {
+                                setEditingItem(item);
+                                setForm({
+                                  name: item.name,
+                                  quantity: item.quantity.toString(),
+                                  categoryId: item.categoryId || "none",
+                                  newCategory: "",
+                                });
+                                setOpenEdit(true);
+                              }}
+                            >
+                              <Edit size={14} /> Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="gap-1 cursor-pointer"
+                              onClick={() => {
+                                setDeletingItem(item);
+                                setOpenDelete(true);
+                              }}
+                            >
+                              <Trash2 size={14} /> Delete
+                            </Button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {totalPages > 1 && (
+                  <Pagination className="mt-4">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                          className="cursor-pointer"
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: totalPages }, (_, i) => (
+                        <PaginationItem key={i}>
+                          <PaginationLink
+                            onClick={() => setPage(i + 1)}
+                            isActive={page === i + 1}
+                            className="cursor-pointer"
+                          >
+                            {i + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() =>
+                            setPage((p) => Math.min(totalPages, p + 1))
+                          }
+                          className="cursor-pointer"
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">No items found.</p>
-            )}{" "}
-          </CardContent>{" "}
+            )}
+          </CardContent>
         </Card>
+
         {!isLowStockLoading && lowStock?.length > 0 && (
           <Card className="mt-6 border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/10">
             <CardHeader>
@@ -448,7 +555,10 @@ export default function InventoryPage() {
         <div className="flex justify-end">
           <Button
             variant="outline"
-            onClick={() => setShowCategories((v) => !v)}
+            onClick={() => {
+              setShowCategories((v) => !v);
+              setCatPage(1);
+            }}
             className="cursor-pointer mt-4"
           >
             {showCategories ? "Hide Categories" : "View Categories"}
@@ -471,53 +581,102 @@ export default function InventoryPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {categories?.length ? (
-                    <table className="w-full border rounded text-sm">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="p-3 text-left">S/N</th>
-                          <th className="p-3 text-left">Name</th>
-                          {canMutate && (
-                            <th className="p-3 text-left">Actions</th>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {categories.map((c: any, i: number) => (
-                          <tr key={c.id} className="border-t">
-                            <td className="p-3">{i + 1}</td>
-                            <td className="p-3">{c.name.toUpperCase()}</td>
+                  {totalCat ? (
+                    <>
+                      <table className="w-full border rounded text-sm">
+                        <thead className="bg-muted">
+                          <tr>
+                            <th className="p-3 text-left">S/N</th>
+                            <th className="p-3 text-left">Name</th>
                             {canMutate && (
-                              <td className="p-3 flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="cursor-pointer"
-                                  onClick={() => {
-                                    setSelectedCategory(c);
-                                    setCategoryName(c.name);
-                                    setOpenRenameCategory(true);
-                                  }}
-                                >
-                                  Rename
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  className="cursor-pointer"
-                                  onClick={() => {
-                                    setSelectedCategory(c);
-                                    setOpenDeleteCategory(true);
-                                  }}
-                                >
-                                  Delete
-                                </Button>
-                              </td>
+                              <th className="p-3 text-left">Actions</th>
                             )}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {paginatedCategories.map((c: any, i: number) => (
+                            <tr key={c.id} className="border-t">
+                              <td className="p-3">
+                                {(catPage - 1) * catPerPage + i + 1}
+                              </td>
+                              <td className="p-3">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-block max-w-[240px] truncate">
+                                      {c.name.toUpperCase()}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{c.name}</TooltipContent>
+                                </Tooltip>
+                              </td>
+                              {canMutate && (
+                                <td className="p-3 flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="cursor-pointer"
+                                    onClick={() => {
+                                      setSelectedCategory(c);
+                                      setCategoryName(c.name);
+                                      setOpenRenameCategory(true);
+                                    }}
+                                  >
+                                    Rename
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="cursor-pointer"
+                                    onClick={() => {
+                                      setSelectedCategory(c);
+                                      setOpenDeleteCategory(true);
+                                    }}
+                                  >
+                                    Delete
+                                  </Button>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {totalCatPages > 1 && (
+                        <Pagination className="mt-4">
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious
+                                onClick={() =>
+                                  setCatPage((p) => Math.max(1, p - 1))
+                                }
+                                className="cursor-pointer"
+                              />
+                            </PaginationItem>
+                            {Array.from({ length: totalCatPages }, (_, i) => (
+                              <PaginationItem key={i}>
+                                <PaginationLink
+                                  onClick={() => setCatPage(i + 1)}
+                                  isActive={catPage === i + 1}
+                                  className="cursor-pointer"
+                                >
+                                  {i + 1}
+                                </PaginationLink>
+                              </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                              <PaginationNext
+                                onClick={() =>
+                                  setCatPage((p) =>
+                                    Math.min(totalCatPages, p + 1)
+                                  )
+                                }
+                                className="cursor-pointer"
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      )}
+                    </>
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       No categories found.
@@ -571,7 +730,10 @@ export default function InventoryPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setOpenAdd(false)}
+                onClick={() => {
+                  resetForm();
+                  setOpenAdd(false);
+                }}
                 disabled={saving}
                 className="cursor-pointer"
               >
@@ -694,7 +856,11 @@ export default function InventoryPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setOpenRenameCategory(false)}
+                onClick={() => {
+                  setOpenRenameCategory(false);
+                  setSelectedCategory(null);
+                  setCategoryName("");
+                }}
                 disabled={saving}
                 className="cursor-pointer"
               >
@@ -722,7 +888,10 @@ export default function InventoryPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setOpenDeleteCategory(false)}
+                onClick={() => {
+                  setOpenDeleteCategory(false);
+                  setSelectedCategory(null);
+                }}
                 disabled={deleting}
                 className="cursor-pointer"
               >

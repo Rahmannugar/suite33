@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { verifyOrgRole } from "@/lib/auth/checkRole";
+import { verifyBusiness } from "@/lib/auth/checkBusiness";
 
 export async function POST(request: NextRequest) {
   try {
     const { name, businessId, userId } = await request.json();
-    const unauthorized = await verifyOrgRole(userId);
-    if (unauthorized) return unauthorized;
 
     if (!name || !businessId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
+
+    const businessUnauthorized = await verifyBusiness(userId, businessId);
+    if (businessUnauthorized) return businessUnauthorized;
+
+    const unauthorized = await verifyOrgRole(userId);
+    if (unauthorized) return unauthorized;
 
     const category = await prisma.category.create({
       data: { name: name.trim().toLowerCase(), businessId },
@@ -26,9 +31,18 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const businessId = request.nextUrl.searchParams.get("businessId");
-  if (!businessId) {
-    return NextResponse.json({ error: "Missing businessId" }, { status: 400 });
+  const userId = request.nextUrl.searchParams.get("userId");
+
+  if (!businessId || !userId) {
+    return NextResponse.json(
+      { error: "Missing businessId or userId" },
+      { status: 400 }
+    );
   }
+
+  const businessUnauthorized = await verifyBusiness(userId, businessId);
+  if (businessUnauthorized) return businessUnauthorized;
+
   try {
     const categories = await prisma.category.findMany({
       where: { businessId },
