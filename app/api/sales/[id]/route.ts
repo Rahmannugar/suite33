@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
+import { verifyOrgRole } from "@/lib/auth/checkRole";
 
 export async function PUT(
   request: NextRequest,
   context: { params: { id: string } }
 ) {
   try {
-    const { amount, description, date } = await request.json();
+    const { amount, description, date, userId } = await request.json();
+
+    const unauthorized = await verifyOrgRole(userId);
+    if (unauthorized) return unauthorized;
+
     if (!amount || !description) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
@@ -28,6 +33,10 @@ export async function DELETE(
   context: { params: { id: string } }
 ) {
   try {
+    const { userId } = await request.json();
+    const unauthorized = await verifyOrgRole(userId);
+    if (unauthorized) return unauthorized;
+
     await prisma.sale.delete({ where: { id: context.params.id } });
     return NextResponse.json({ success: true });
   } catch (error) {

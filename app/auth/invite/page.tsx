@@ -130,8 +130,7 @@ export default function AcceptInvitePage() {
             />
             <button
               type="button"
-              tabIndex={-1}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[--muted-foreground] hover:text-blue-600 transition"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[--muted-foreground] hover:text-blue-600 transition z-10"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >

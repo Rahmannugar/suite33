@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { validatePassword } from "../utils/validation";
 import axios from "axios";
 
 export function useInvite() {
   const params = useSearchParams();
-  const router = useRouter();
   const { signUp } = useAuth();
   const token = params.get("token");
 

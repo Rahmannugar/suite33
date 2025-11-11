@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
+import { verifyOrgRole } from "@/lib/auth/checkRole";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { name } = await request.json();
+    const { name, userId } = await request.json();
+    const unauthorized = await verifyOrgRole(userId);
+    if (unauthorized) return unauthorized;
+
     if (!name)
       return NextResponse.json({ error: "Missing name" }, { status: 400 });
     const category = await prisma.category.update({
-      where: { id: params.id },
+      where: { id: context.params.id },
       data: { name: name.trim().toLowerCase() },
     });
     return NextResponse.json({ category });
@@ -24,11 +28,15 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const { userId } = await request.json();
+    const unauthorized = await verifyOrgRole(userId);
+    if (unauthorized) return unauthorized;
+
     const items = await prisma.inventory.findMany({
-      where: { categoryId: params.id },
+      where: { categoryId: context.params.id },
       select: { id: true },
     });
     if (items.length > 0) {
@@ -37,7 +45,7 @@ export async function DELETE(
         { status: 400 }
       );
     }
-    await prisma.category.delete({ where: { id: params.id } });
+    await prisma.category.delete({ where: { id: context.params.id } });
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(

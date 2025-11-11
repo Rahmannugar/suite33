@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
+import { verifyOrgRole } from "@/lib/auth/checkRole";
 
 export async function POST(request: NextRequest) {
   try {
-    const { sales, businessId } = await request.json();
+    const { sales, businessId, userId } = await request.json();
+    const unauthorized = await verifyOrgRole(userId);
+    if (unauthorized) return unauthorized;
+
     if (!Array.isArray(sales) || !businessId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
@@ -26,5 +30,5 @@ export async function POST(request: NextRequest) {
       { error: "Failed to import sales" },
       { status: 500 }
     );
-  }  
+  }
 }

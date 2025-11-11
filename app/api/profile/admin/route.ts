@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
+import { verifyAdminRole } from "@/lib/auth/checkRole";
 
 export async function PUT(request: NextRequest) {
   try {
@@ -10,6 +11,9 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const unauthorized = await verifyAdminRole(userId);
+    if (unauthorized) return unauthorized;
 
     if (logoUrl) {
       await prisma.user.update({

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
+import { verifyOrgRole } from "@/lib/auth/checkRole";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, businessId } = await request.json();
+    const { name, businessId, userId } = await request.json();
+    const unauthorized = await verifyOrgRole(userId);
+    if (unauthorized) return unauthorized;
+
     if (!name || !businessId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }

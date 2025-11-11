@@ -5,7 +5,7 @@ import ExcelJS from "exceljs";
 import z from "zod";
 import { InventorySchema } from "../types/inventory";
 
-export function useInventory(user?: { businessId?: string }) {
+export function useInventory(user?: { businessId?: string; id?: string }) {
   const queryClient = useQueryClient();
 
   const inventoryQuery = useQuery({
@@ -52,7 +52,10 @@ export function useInventory(user?: { businessId?: string }) {
 
   const addCategory = useMutation({
     mutationFn: async (payload: { name: string; businessId: string }) => {
-      const { data } = await axios.post("/api/categories", payload);
+      const { data } = await axios.post("/api/categories", {
+        ...payload,
+        userId: user?.id,
+      });
       return data.category;
     },
     onSuccess: () =>
@@ -61,13 +64,16 @@ export function useInventory(user?: { businessId?: string }) {
 
   const renameCategory = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) =>
-      axios.put(`/api/categories/${id}`, { name }),
+      axios.put(`/api/categories/${id}`, { name, userId: user?.id }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["categories"] }),
   });
 
   const deleteCategory = useMutation({
-    mutationFn: async (id: string) => axios.delete(`/api/categories/${id}`),
+    mutationFn: async (id: string) =>
+      axios.delete(`/api/categories/${id}`, {
+        data: { userId: user?.id },
+      }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["categories"] }),
   });
@@ -79,7 +85,10 @@ export function useInventory(user?: { businessId?: string }) {
       categoryId: string;
       businessId: string;
     }) => {
-      await axios.post("/api/inventory", payload);
+      await axios.post("/api/inventory", {
+        ...payload,
+        userId: user?.id,
+      });
     },
     onSuccess: refetchAll,
   });
@@ -91,14 +100,19 @@ export function useInventory(user?: { businessId?: string }) {
       quantity: number;
       categoryId: string;
     }) => {
-      await axios.put(`/api/inventory/${payload.id}`, payload);
+      await axios.put(`/api/inventory/${payload.id}`, {
+        ...payload,
+        userId: user?.id,
+      });
     },
     onSuccess: refetchAll,
   });
 
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
-      await axios.delete(`/api/inventory/${id}`);
+      await axios.delete(`/api/inventory/${id}`, {
+        data: { userId: user?.id },
+      });
     },
     onSuccess: refetchAll,
   });
@@ -127,6 +141,7 @@ export function useInventory(user?: { businessId?: string }) {
                   categoryId: r.categoryId,
                 })),
                 businessId,
+                userId: user?.id,
               });
               resolve();
             } catch (err) {
@@ -167,6 +182,7 @@ export function useInventory(user?: { businessId?: string }) {
       await axios.post("/api/inventory/import", {
         items: rows,
         businessId,
+        userId: user?.id,
       });
     },
     onSuccess: refetchAll,
