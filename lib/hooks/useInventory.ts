@@ -5,6 +5,11 @@ import z from "zod";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
 
+export function findSimilarCategory(categories: any[], searchName: string) {
+  const normalized = searchName.trim().toLowerCase();
+  return categories.find((cat) => cat.name.toLowerCase() === normalized);
+}
+
 export function useInventory(user?: { businessId?: string; id?: string }) {
   const queryClient = useQueryClient();
 
@@ -65,8 +70,13 @@ export function useInventory(user?: { businessId?: string; id?: string }) {
       name: string;
       businessId: string;
       userId: string;
+      newCategory?: string;
     }) => {
-      const { data } = await axios.post("/api/categories", payload);
+      const { data } = await axios.post("/api/categories", {
+        name: payload.newCategory || payload.name,
+        businessId: payload.businessId,
+        userId: payload.userId,
+      });
       return data.category;
     },
     onSuccess: () =>

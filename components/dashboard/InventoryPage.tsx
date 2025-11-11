@@ -78,6 +78,9 @@ export default function InventoryPage() {
   const [catPage, setCatPage] = useState(1);
   const catPerPage = 10;
 
+  const [lowStockPage, setLowStockPage] = useState(1);
+  const lowStockPerPage = 10;
+
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
 
@@ -118,6 +121,8 @@ export default function InventoryPage() {
   useEffect(() => setPage(1), [filterCategory, search]);
 
   useEffect(() => setCatPage(1), [showCategories, categories?.length]);
+
+  useEffect(() => setLowStockPage(1), [lowStock?.length]);
 
   const normalizedSearch = search.trim().toLowerCase();
 
@@ -163,6 +168,24 @@ export default function InventoryPage() {
     catPage * catPerPage
   );
 
+  const sortedLowStock = useMemo(() => {
+    if (!lowStock) return [];
+    return [...lowStock].sort((a, b) => {
+      if (a.quantity !== b.quantity) return a.quantity - b.quantity;
+      return (
+        new Date(a.createdAt || 0).getTime() -
+        new Date(b.createdAt || 0).getTime()
+      );
+    });
+  }, [lowStock]);
+
+  const totalLowStock = sortedLowStock.length;
+  const totalLowStockPages = Math.ceil(totalLowStock / lowStockPerPage);
+  const paginatedLowStock = sortedLowStock.slice(
+    (lowStockPage - 1) * lowStockPerPage,
+    lowStockPage * lowStockPerPage
+  );
+
   async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user?.businessId || !user?.id) return;
@@ -198,13 +221,15 @@ export default function InventoryPage() {
       return toast.error("Select only one category.");
     setSaving(true);
     try {
-      let catId = form.categoryId === "none" ? "" : form.categoryId;
-      if (form.newCategory) {
-        const newCat = await addCategory.mutateAsync({
-          name: form.newCategory.trim().toLowerCase(),
+      let catId = form.categoryId;
+
+      if (form.categoryId === "none" && form.newCategory) {
+        const category = await addCategory.mutateAsync({
+          name: form.newCategory.trim(),
           businessId: user?.businessId ?? "",
           userId: user?.id ?? "",
         });
+        catId = category.id;
       }
       await addItem.mutateAsync({
         name: form.name,
@@ -528,7 +553,7 @@ export default function InventoryPage() {
           </CardContent>
         </Card>
 
-        {!isLowStockLoading && lowStock?.length > 0 && (
+        {!isLowStockLoading && totalLowStock > 0 && (
           <Card className="mt-6 border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/10">
             <CardHeader>
               <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
@@ -536,7 +561,7 @@ export default function InventoryPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {lowStock.map((item: Inventory, i: number) => (
+              {paginatedLowStock.map((item: Inventory, i: number) => (
                 <div
                   key={item.id}
                   className="flex justify-between items-center px-3 py-2 rounded bg-red-100/40 dark:bg-red-950/20 text-red-700 dark:text-red-300"
@@ -548,6 +573,43 @@ export default function InventoryPage() {
                   </span>
                 </div>
               ))}
+
+              {totalLowStockPages > 1 && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() =>
+                          setLowStockPage((p) => Math.max(1, p - 1))
+                        }
+                        className="cursor-pointer"
+                      />
+                    </PaginationItem>
+                    {Array.from({ length: totalLowStockPages }, (_, i) => (
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          onClick={() => setLowStockPage(i + 1)}
+                          isActive={lowStockPage === i + 1}
+                          className="cursor-pointer"
+                        >
+                          {i + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      {" "}
+                      <PaginationNext
+                        onClick={() =>
+                          setLowStockPage((p) =>
+                            Math.min(totalLowStockPages, p + 1)
+                          )
+                        }
+                        className="cursor-pointer"
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
             </CardContent>
           </Card>
         )}

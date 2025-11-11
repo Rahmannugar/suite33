@@ -17,8 +17,21 @@ export async function POST(request: NextRequest) {
     const unauthorized = await verifyOrgRole(userId);
     if (unauthorized) return unauthorized;
 
+    const normalizedName = name.trim().toLowerCase();
+
+    const existing = await prisma.category.findFirst({
+      where: {
+        name: normalizedName,
+        businessId,
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json({ category: existing });
+    }
+
     const category = await prisma.category.create({
-      data: { name: name.trim().toLowerCase(), businessId },
+      data: { name: normalizedName, businessId },
     });
     return NextResponse.json({ category });
   } catch (error) {
