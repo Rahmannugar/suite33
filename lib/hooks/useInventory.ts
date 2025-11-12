@@ -1,25 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { InventorySchema } from "../types/inventory";
-import z from "zod";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
+import { InventorySchema } from "../types/inventory";
+import { z } from "zod";
 
 export function findSimilarCategory(categories: any[], searchName: string) {
   const normalized = searchName.trim().toLowerCase();
   return categories.find((cat) => cat.name.toLowerCase() === normalized);
 }
 
-export function useInventory(user?: { businessId?: string; id?: string }) {
+export function useInventory() {
   const queryClient = useQueryClient();
 
   const inventoryQuery = useQuery({
-    queryKey: ["inventory", user?.businessId, user?.id],
+    queryKey: ["inventory"],
     queryFn: async () => {
-      if (!user?.businessId || !user?.id) return [];
-      const { data } = await axios.get(
-        `/api/inventory?businessId=${user.businessId}&userId=${user.id}`
-      );
+      const { data } = await axios.get("/api/inventory");
       const result = z.array(InventorySchema).safeParse(data.inventory);
       if (!result.success) throw new Error("Invalid inventory data");
       return result.data;
@@ -28,24 +25,20 @@ export function useInventory(user?: { businessId?: string; id?: string }) {
   });
 
   const lowStockQuery = useQuery({
-    queryKey: ["inventory-low-stock", user?.businessId, user?.id],
+    queryKey: ["inventory-low-stock"],
     queryFn: async () => {
-      if (!user?.businessId || !user?.id) return [];
-      const { data } = await axios.get(
-        `/api/inventory/low-stock?businessId=${user.businessId}&userId=${user.id}`
-      );
-      return data.lowStock;
+      const { data } = await axios.get("/api/inventory/low-stock");
+      const result = z.array(InventorySchema).safeParse(data.lowStock);
+      if (!result.success) throw new Error("Invalid low stock data");
+      return result.data;
     },
     staleTime: 1000 * 60 * 10,
   });
 
   const categoriesQuery = useQuery({
-    queryKey: ["categories", user?.businessId, user?.id],
+    queryKey: ["categories"],
     queryFn: async () => {
-      if (!user?.businessId || !user?.id) return [];
-      const { data } = await axios.get(
-        `/api/categories?businessId=${user.businessId}&userId=${user.id}`
-      );
+      const { data } = await axios.get("/api/categories");
       return data.categories;
     },
     staleTime: 1000 * 60 * 10,
@@ -53,63 +46,35 @@ export function useInventory(user?: { businessId?: string; id?: string }) {
 
   const refetchAll = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: ["inventory", user?.businessId, user?.id],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["categories", user?.businessId, user?.id],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["inventory-low-stock", user?.businessId, user?.id],
-      }),
+      queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+      queryClient.invalidateQueries({ queryKey: ["inventory-low-stock"] }),
+      queryClient.invalidateQueries({ queryKey: ["categories"] }),
     ]);
   };
 
   const addCategory = useMutation({
-    mutationFn: async (payload: {
-      name: string;
-      businessId: string;
-      userId: string;
-      newCategory?: string;
-    }) => {
+    mutationFn: async (payload: { name: string; newCategory?: string }) => {
+      const categoryName = payload.newCategory || payload.name;
       const { data } = await axios.post("/api/categories", {
-        name: payload.newCategory || payload.name,
-        businessId: payload.businessId,
-        userId: payload.userId,
+        name: categoryName,
       });
       return data.category;
     },
     onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["categories", user?.businessId, user?.id],
-      }),
+      queryClient.invalidateQueries({ queryKey: ["categories"] }),
   });
 
   const renameCategory = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) =>
-      axios.put(`/api/categories/${id}`, {
-        name,
-        userId: user?.id,
-        businessId: user?.businessId,
-      }),
+      axios.put(`/api/categories/${id}`, { name }),
     onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["categories", user?.businessId, user?.id],
-      }),
+      queryClient.invalidateQueries({ queryKey: ["categories"] }),
   });
 
   const deleteCategory = useMutation({
-    mutationFn: async (id: string) =>
-      axios.delete(`/api/categories/${id}`, {
-        data: {
-          userId: user?.id,
-          businessId: user?.businessId,
-        },
-      }),
+    mutationFn: async (id: string) => axios.delete(`/api/categories/${id}`),
     onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["categories", user?.businessId, user?.id],
-      }),
+      queryClient.invalidateQueries({ queryKey: ["categories"] }),
   });
 
   const addItem = useMutation({
@@ -117,8 +82,6 @@ export function useInventory(user?: { businessId?: string; id?: string }) {
       name: string;
       quantity: number;
       categoryId: string;
-      businessId: string;
-      userId: string;
     }) => {
       await axios.post("/api/inventory", payload);
     },
@@ -131,8 +94,6 @@ export function useInventory(user?: { businessId?: string; id?: string }) {
       name: string;
       quantity: number;
       categoryId: string;
-      businessId: string;
-      userId: string;
     }) => {
       await axios.put(`/api/inventory/${payload.id}`, payload);
     },
@@ -140,42 +101,53 @@ export function useInventory(user?: { businessId?: string; id?: string }) {
   });
 
   const deleteItem = useMutation({
-    mutationFn: async (payload: {
-      id: string;
-      businessId: string;
-      userId: string;
-    }) =>
-      axios.delete(`/api/inventory/${payload.id}`, {
-        data: payload,
-      }),
+    mutationFn: async (payload: { id: string }) =>
+      axios.delete(`/api/inventory/${payload.id}`),
     onSuccess: refetchAll,
   });
 
   const importCSV = useMutation({
-    mutationFn: async ({
-      file,
-      businessId,
-      userId,
-    }: {
-      file: File;
-      businessId: string;
-      userId: string;
-    }) => {
+    mutationFn: async ({ file }: { file: File }) => {
       return new Promise<void>((resolve, reject) => {
         Papa.parse(file, {
           header: true,
+          skipEmptyLines: true,
           complete: async (results: any) => {
-            const items = results.data;
-            if (!Array.isArray(items) || !businessId || !userId) {
-              reject(new Error("Invalid import data"));
-              return;
+            try {
+              const categories = categoriesQuery.data ?? [];
+              const items = [];
+
+              for (const row of results.data) {
+                const categoryName = row.Category || row.category;
+                const name = row.Name || row.name;
+                const quantity = row.Quantity || row.quantity;
+
+                if (!name || !categoryName) continue;
+
+                let category = findSimilarCategory(categories, categoryName);
+
+                if (!category) {
+                  const res = await axios.post("/api/categories", {
+                    name: categoryName,
+                  });
+                  category = res.data.category;
+                  categories.push(category);
+                }
+
+                items.push({
+                  name,
+                  quantity: quantity ? parseInt(quantity) : 0,
+                  categoryId: category.id,
+                });
+              }
+
+              if (!items.length) throw new Error("No valid items found in CSV");
+
+              await axios.post("/api/inventory/import", { items });
+              resolve();
+            } catch (err: any) {
+              reject(err);
             }
-            await axios.post("/api/inventory/import", {
-              items,
-              businessId,
-              userId,
-            });
-            resolve();
           },
           error: (err: any) => reject(err),
         });
@@ -185,48 +157,57 @@ export function useInventory(user?: { businessId?: string; id?: string }) {
   });
 
   const importExcel = useMutation({
-    mutationFn: async ({
-      file,
-      businessId,
-      userId,
-    }: {
-      file: File;
-      businessId: string;
-      userId: string;
-    }) => {
+    mutationFn: async ({ file }: { file: File }) => {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await file.arrayBuffer());
-      const sheet = workbook.worksheets[0];
-      const rows: any[] = [];
-      sheet.eachRow((row, idx) => {
-        if (idx === 1) return;
-        const [name, quantity, categoryId] = (row.values as any[]).slice(1);
-        if (name && categoryId) {
-          rows.push({
-            name,
-            quantity: quantity ? parseInt(String(quantity)) : 0,
-            categoryId,
+      const worksheet = workbook.worksheets[0];
+
+      const categories = categoriesQuery.data ?? [];
+      const items: any[] = [];
+
+      worksheet.eachRow(async (row, rowNumber) => {
+        if (rowNumber === 1) return;
+
+        const name = row.getCell(1).value;
+        const categoryName = row.getCell(2).value;
+        const quantity = row.getCell(3).value;
+
+        if (!name || !categoryName) return;
+
+        let category = findSimilarCategory(categories, String(categoryName));
+
+        if (!category) {
+          const res = await axios.post("/api/categories", {
+            name: String(categoryName),
           });
+          category = res.data.category;
+          categories.push(category);
         }
+
+        items.push({
+          name: String(name),
+          quantity: quantity ? parseInt(String(quantity)) : 0,
+          categoryId: category.id,
+        });
       });
-      if (!rows.length) throw new Error("No valid Excel rows found");
-      await axios.post("/api/inventory/import", {
-        items: rows,
-        businessId,
-        userId,
-      });
+
+      if (!items.length) throw new Error("No valid items found in Excel file");
+
+      await axios.post("/api/inventory/import", { items });
     },
     onSuccess: refetchAll,
   });
 
   function exportCSV(items: any[], label = "Inventory") {
-    if (!items.length) return;
-    const exportable = items.map((item) => ({
+    if (!items.length) throw new Error("No inventory to export");
+
+    const exportData = items.map((item) => ({
       Name: item.name,
+      Category: item.category?.name ?? "",
       Quantity: item.quantity,
-      Category: item.category?.name.toUpperCase() || "",
     }));
-    const csv = Papa.unparse(exportable);
+
+    const csv = Papa.unparse(exportData);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -237,18 +218,25 @@ export function useInventory(user?: { businessId?: string; id?: string }) {
   }
 
   async function exportExcel(items: any[], label = "Inventory") {
-    if (!items.length) return;
+    if (!items.length) throw new Error("No inventory to export");
+
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(label);
-    worksheet.addRow(["Name", "Quantity", "Category"]);
+    const worksheet = workbook.addWorksheet("Inventory");
+
+    worksheet.columns = [
+      { header: "Name", key: "name", width: 30 },
+      { header: "Category", key: "category", width: 20 },
+      { header: "Quantity", key: "quantity", width: 15 },
+    ];
+
     items.forEach((item) =>
-      worksheet.addRow([
-        item.name,
-        item.quantity,
-        item.category?.name.toUpperCase() || "",
-      ])
+      worksheet.addRow({
+        name: item.name,
+        category: item.category?.name ?? "",
+        quantity: item.quantity,
+      })
     );
-    worksheet.columns.forEach((col) => (col.width = 20));
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -264,10 +252,11 @@ export function useInventory(user?: { businessId?: string; id?: string }) {
   return {
     inventory: inventoryQuery.data,
     isLoading: inventoryQuery.isLoading,
+    categories: categoriesQuery.data,
     lowStock: lowStockQuery.data,
     isLowStockLoading: lowStockQuery.isLoading,
-    categories: categoriesQuery.data,
-    isCategoriesLoading: categoriesQuery.isLoading,
+    refetchLowStock: () =>
+      queryClient.invalidateQueries({ queryKey: ["inventory-low-stock"] }),
     addCategory,
     renameCategory,
     deleteCategory,
@@ -278,6 +267,5 @@ export function useInventory(user?: { businessId?: string; id?: string }) {
     importExcel,
     exportCSV,
     exportExcel,
-    refetchLowStock: lowStockQuery.refetch,
   };
 }

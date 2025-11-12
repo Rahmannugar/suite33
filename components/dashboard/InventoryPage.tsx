@@ -66,9 +66,7 @@ export default function InventoryPage() {
     lowStock,
     isLowStockLoading,
     refetchLowStock,
-  } = useInventory(
-    user ? { businessId: user.businessId ?? undefined, id: user.id } : undefined
-  );
+  } = useInventory();
 
   const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
 
@@ -194,14 +192,10 @@ export default function InventoryPage() {
       if (isCSV) {
         await importCSV.mutateAsync({
           file,
-          businessId: user.businessId,
-          userId: user.id,
         });
       } else {
         await importExcel.mutateAsync({
           file,
-          businessId: user.businessId,
-          userId: user.id,
         });
       }
       toast.success("Inventory imported successfully");
@@ -226,8 +220,6 @@ export default function InventoryPage() {
       if (form.categoryId === "none" && form.newCategory) {
         const category = await addCategory.mutateAsync({
           name: form.newCategory.trim(),
-          businessId: user?.businessId ?? "",
-          userId: user?.id ?? "",
         });
         catId = category.id;
       }
@@ -235,8 +227,6 @@ export default function InventoryPage() {
         name: form.name,
         quantity: parseInt(form.quantity) || 0,
         categoryId: catId,
-        businessId: user?.businessId ?? "",
-        userId: user?.id ?? "",
       });
       toast.success("Item added");
       resetForm();
@@ -262,8 +252,6 @@ export default function InventoryPage() {
       if (form.newCategory) {
         const newCat = await addCategory.mutateAsync({
           name: form.newCategory.trim().toLowerCase(),
-          businessId: user?.businessId ?? "",
-          userId: user?.id ?? "",
         });
         catId = newCat.id;
       }
@@ -272,8 +260,6 @@ export default function InventoryPage() {
         name: form.name,
         quantity: parseInt(form.quantity) || 0,
         categoryId: catId,
-        businessId: user?.businessId ?? "",
-        userId: user?.id ?? "",
       });
       toast.success("Item updated");
       resetForm();
@@ -293,8 +279,6 @@ export default function InventoryPage() {
     try {
       await deleteItem.mutateAsync({
         id: deletingItem.id,
-        businessId: user?.businessId ?? "",
-        userId: user?.id ?? "",
       });
       toast.success("Item deleted");
       refetchLowStock();

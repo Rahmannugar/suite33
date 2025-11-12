@@ -55,9 +55,7 @@ export default function DashboardHome() {
   const { sales, isLoading: salesLoading } = useSales();
   const { expenditures, isLoading: expLoading } = useExpenditures();
   const { staff, isLoading: staffLoading } = useStaff();
-  const { inventory, isLoading: invLoading } = useInventory(
-    user ? { businessId: user.businessId ?? undefined, id: user.id } : undefined
-  );
+  const { inventory, isLoading: invLoading } = useInventory();
   const { payroll, isLoading: payrollLoading } = usePayroll();
 
   const role = user?.role ?? "STAFF";

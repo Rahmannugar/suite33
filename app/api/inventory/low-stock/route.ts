@@ -1,23 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
-import { verifyBusiness } from "@/lib/auth/checkBusiness";
+import { supabaseServer } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const threshold = 5;
-  const businessId = request.nextUrl.searchParams.get("businessId");
-  const userId = request.nextUrl.searchParams.get("userId");
-
-  if (!businessId || !userId) {
-    return NextResponse.json(
-      { error: "Missing businessId or userId" },
-      { status: 400 }
-    );
-  }
-
-  const businessUnauthorized = await verifyBusiness(userId, businessId);
-  if (businessUnauthorized) return businessUnauthorized;
 
   try {
+    const supabase = await supabaseServer(true);
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const profile = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      include: {
+        business: true,
+        Staff: { select: { businessId: true } },
+      },
+    });
+
+    const businessId = profile?.business?.id || profile?.Staff?.businessId;
+
+    if (!businessId) {
+      return NextResponse.json({ error: "No business found" }, { status: 403 });
+    }
+
     const lowStock = await prisma.inventory.findMany({
       where: {
         businessId,
@@ -25,8 +34,10 @@ export async function GET(request: NextRequest) {
       },
       include: { category: true },
     });
+
     return NextResponse.json({ lowStock });
   } catch (error) {
+    console.error("Low stock fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch low stock items" },
       { status: 500 }

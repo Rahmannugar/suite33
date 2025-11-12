@@ -1,29 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
-import { verifyOrgRole } from "@/lib/auth/checkRole";
-import { verifyBusiness } from "@/lib/auth/checkBusiness";
+import { supabaseServer } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
-  const businessId = request.nextUrl.searchParams.get("businessId");
-  const userId = request.nextUrl.searchParams.get("userId");
-
-  if (!businessId || !userId) {
-    return NextResponse.json(
-      { error: "Missing businessId or userId" },
-      { status: 400 }
-    );
-  }
-
-  const businessUnauthorized = await verifyBusiness(userId, businessId);
-  if (businessUnauthorized) return businessUnauthorized;
-
   try {
+    const supabase = await supabaseServer(true);
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const profile = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      include: {
+        business: true,
+        Staff: { select: { businessId: true } },
+      },
+    });
+
+    const businessId = profile?.business?.id || profile?.Staff?.businessId;
+
+    if (!businessId) {
+      return NextResponse.json({ error: "No business found" }, { status: 403 });
+    }
+
     const inventory = await prisma.inventory.findMany({
       where: { businessId },
       include: { category: true },
     });
+
     return NextResponse.json({ inventory });
   } catch (error) {
+    console.error("Inventory fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch inventory" },
       { status: 500 }
@@ -33,24 +42,47 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, quantity, categoryId, businessId, userId } =
-      await request.json();
+    const { name, quantity, categoryId } = await request.json();
 
-    if (!name || !categoryId || !businessId || !userId) {
+    if (!name || !categoryId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    const businessUnauthorized = await verifyBusiness(userId, businessId);
-    if (businessUnauthorized) return businessUnauthorized;
+    const supabase = await supabaseServer(true);
+    const { data, error } = await supabase.auth.getUser();
 
-    const unauthorized = await verifyOrgRole(userId);
-    if (unauthorized) return unauthorized;
+    if (error || !data?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const profile = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      include: {
+        business: true,
+        Staff: { select: { businessId: true } },
+      },
+    });
+
+    if (profile?.role !== "ADMIN" && profile?.role !== "SUB_ADMIN") {
+      return NextResponse.json(
+        { error: "Only admins and sub-admins can add inventory" },
+        { status: 403 }
+      );
+    }
+
+    const businessId = profile?.business?.id || profile?.Staff?.businessId;
+
+    if (!businessId) {
+      return NextResponse.json({ error: "No business found" }, { status: 403 });
+    }
 
     const item = await prisma.inventory.create({
       data: { name, quantity, categoryId, businessId },
     });
+
     return NextResponse.json({ item });
   } catch (error) {
+    console.error("Inventory creation error:", error);
     return NextResponse.json(
       { error: "Failed to add inventory" },
       { status: 500 }
