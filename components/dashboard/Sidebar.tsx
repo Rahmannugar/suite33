@@ -36,8 +36,6 @@ const adminLinks: SidebarLink[] = [
   { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
 ];
 
-const subAdminLinks = adminLinks.filter((l) => l.label !== "Settings");
-
 const staffLinks: SidebarLink[] = [
   { href: "/dashboard/staff", label: "Overview", icon: Home },
   { href: "/dashboard/staff/sales", label: "Sales", icon: TrendingUp },
@@ -51,6 +49,8 @@ const staffLinks: SidebarLink[] = [
   { href: "/dashboard/staff/payroll", label: "Payroll", icon: BadgeDollarSign },
   { href: "/dashboard/staff/kpi", label: "KPIs", icon: Target },
 ];
+
+const subAdminLinks = staffLinks;
 
 function getLinksByRole(role?: string) {
   if (role === "ADMIN") return adminLinks;
@@ -139,7 +139,9 @@ export default function Sidebar() {
         aria-hidden={!mobileOpen}
       >
         <div className="relative flex items-center h-16 px-4">
-          <div className="font-bold text-lg text-blue-600 dark:text-blue-300">Suite33</div>
+          <div className="font-bold text-lg text-blue-600 dark:text-blue-300">
+            Suite33
+          </div>
           <button
             aria-label="Close sidebar"
             onClick={() => setMobileOpen(false)}

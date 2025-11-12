@@ -104,9 +104,7 @@ export default function SalesPage() {
     exportCSV,
     exportExcel,
     getInsight,
-  } = useSales(
-    user ? { businessId: user.businessId ?? undefined, id: user.id } : undefined
-  );
+  } = useSales();
 
   const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
   const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
@@ -212,8 +210,6 @@ export default function SalesPage() {
       const res = await getInsight.mutateAsync({
         year: date?.getFullYear() ?? new Date().getFullYear(),
         month: viewMode === "monthly" ? (date?.getMonth() ?? 0) + 1 : undefined,
-        businessId: user?.businessId ?? "",
-        userId: user?.id ?? "",
       });
       const refined = String(res.insight || "")
         .replace(/\*\*/g, "")
@@ -239,14 +235,10 @@ export default function SalesPage() {
       if (f.name.toLowerCase().endsWith(".csv")) {
         await importCSV.mutateAsync({
           file: f,
-          businessId: user?.businessId ?? "",
-          userId: user?.id ?? "",
         });
       } else {
         await importExcel.mutateAsync({
           file: f,
-          businessId: user?.businessId,
-          userId: user.id,
         });
       }
       toast.success("Sales imported successfully");
@@ -265,8 +257,6 @@ export default function SalesPage() {
       await addSale.mutateAsync({
         amount: parseFloat(form.amount),
         description: form.desc,
-        businessId: user?.businessId ?? "",
-        userId: user?.id ?? "",
         date: form.date,
       });
       toast.success("Sale added");
@@ -300,8 +290,6 @@ export default function SalesPage() {
         amount: parseFloat(form.amount),
         description: form.desc,
         date: form.date,
-        businessId: user?.businessId ?? "",
-        userId: user?.id ?? "",
       });
       toast.success("Sale updated");
       setOpenEdit(false);
@@ -318,11 +306,7 @@ export default function SalesPage() {
     if (!deletingSale) return;
     setDeleting(true);
     try {
-      await deleteSale.mutateAsync({
-        id: deletingSale.id,
-        businessId: user?.businessId ?? "",
-        userId: user?.id ?? "",
-      });
+      await deleteSale.mutateAsync(deletingSale.id);
       toast.success("Sale deleted");
     } catch {
       toast.error("Failed to delete sale");

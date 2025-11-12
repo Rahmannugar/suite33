@@ -52,9 +52,7 @@ function getEmptyText(feature: string, role: string) {
 
 export default function DashboardHome() {
   const user = useAuthStore((state) => state.user);
-  const { sales, isLoading: salesLoading } = useSales(
-    user ? { businessId: user.businessId ?? undefined, id: user.id } : undefined
-  );
+  const { sales, isLoading: salesLoading } = useSales();
   const { expenditures, isLoading: expLoading } = useExpenditures(
     user ? { businessId: user.businessId ?? undefined, id: user.id } : undefined
   );

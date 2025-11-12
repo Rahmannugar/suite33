@@ -11,16 +11,13 @@ export type ExportableSale = {
   Date: string;
 };
 
-export function useSales(user?: { businessId?: string; id?: string }) {
+export function useSales() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["sales", user?.businessId, user?.id],
+    queryKey: ["sales"],
     queryFn: async () => {
-      if (!user?.businessId || !user?.id) return [];
-      const { data } = await axios.get(
-        `/api/sales?businessId=${user.businessId}&userId=${user.id}`
-      );
+      const { data } = await axios.get("/api/sales");
       const result = z.array(SaleSchema).safeParse(data.sales);
       if (!result.success) throw new Error("Invalid sales data");
       return result.data;
@@ -33,15 +30,13 @@ export function useSales(user?: { businessId?: string; id?: string }) {
     mutationFn: async (payload: {
       amount: number;
       description: string;
-      businessId: string;
-      userId: string;
       date: Date;
     }) => {
       await axios.post("/api/sales", payload);
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["sales", user?.businessId, user?.id],
+        queryKey: ["sales"],
       }),
   });
 
@@ -51,57 +46,44 @@ export function useSales(user?: { businessId?: string; id?: string }) {
       amount: number;
       description: string;
       date: Date;
-      userId: string;
-      businessId: string;
     }) => {
       await axios.put(`/api/sales/${payload.id}`, payload);
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["sales", user?.businessId, user?.id],
+        queryKey: ["sales"],
       }),
   });
 
   const deleteSale = useMutation({
-    mutationFn: async (payload: {
-      id: string;
-      userId: string;
-      businessId: string;
-    }) =>
-      axios.delete(`/api/sales/${payload.id}`, {
-        data: payload,
-      }),
+    mutationFn: async (id: string) => {
+      await axios.delete(`/api/sales/${id}`);
+    },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["sales", user?.businessId, user?.id],
+        queryKey: ["sales"],
       }),
   });
 
   const importCSV = useMutation({
-    mutationFn: async ({
-      file,
-      businessId,
-      userId,
-    }: {
-      file: File;
-      businessId: string;
-      userId: string;
-    }) => {
+    mutationFn: async ({ file }: { file: File }) => {
       return new Promise<void>((resolve, reject) => {
         Papa.parse(file, {
           header: true,
+          skipEmptyLines: true,
           complete: async (results: any) => {
-            const sales = results.data;
-            if (!Array.isArray(sales) || !businessId || !userId) {
-              reject(new Error("Invalid import data"));
-              return;
+            try {
+              const sales = results.data.map((row: any) => ({
+                amount: row.Amount || row.amount,
+                description: row.Description || row.description || "Sales",
+                date: row.Date || row.date,
+              }));
+              if (!sales.length) throw new Error("No valid sales found in CSV");
+              await axios.post("/api/sales/import", { sales });
+              resolve();
+            } catch (err: any) {
+              reject(err);
             }
-            await axios.post("/api/sales/import", {
-              sales,
-              businessId,
-              userId,
-            });
-            resolve();
           },
           error: (err: any) => reject(err),
         });
@@ -109,45 +91,34 @@ export function useSales(user?: { businessId?: string; id?: string }) {
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["sales", user?.businessId, user?.id],
+        queryKey: ["sales"],
       }),
   });
 
   const importExcel = useMutation({
-    mutationFn: async ({
-      file,
-      businessId,
-      userId,
-    }: {
-      file: File;
-      businessId: string;
-      userId: string;
-    }) => {
+    mutationFn: async ({ file }: { file: File }) => {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await file.arrayBuffer());
       const worksheet = workbook.worksheets[0];
       const sales: any[] = [];
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return;
-        const values = row.values;
-        if (!values || typeof values !== "object") return;
-        const arr = Array.isArray(values) ? values : Object.values(values);
-        const [, description, amount, date] = arr;
-        if (description && amount) {
-          sales.push({ description, amount: Number(amount) || 0, date });
-        }
+        const amount = row.getCell(2).value;
+        const description = row.getCell(1).value || "Sales";
+        const date = row.getCell(3).value;
+        if (amount) sales.push({ amount, description, date });
       });
-      if (!sales.length) throw new Error("No sales found in Excel file");
-      await axios.post("/api/sales/import", { sales, businessId, userId });
+      if (!sales.length) throw new Error("No valid sales found in Excel file");
+      await axios.post("/api/sales/import", { sales });
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["sales", user?.businessId, user?.id],
+        queryKey: ["sales"],
       }),
   });
 
   function exportCSV(sales: ExportableSale[], label: string) {
-    if (!sales.length) return;
+    if (!sales.length) throw new Error("No sales to export");
     const csv = Papa.unparse(sales);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -159,12 +130,15 @@ export function useSales(user?: { businessId?: string; id?: string }) {
   }
 
   async function exportExcel(sales: ExportableSale[], label: string) {
-    if (!sales.length) return;
+    if (!sales.length) throw new Error("No sales to export");
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(label);
-    worksheet.addRow(["Description", "Amount", "Date"]);
-    sales.forEach((s) => worksheet.addRow([s.Description, s.Amount, s.Date]));
-    worksheet.columns.forEach((col) => (col.width = 20));
+    const worksheet = workbook.addWorksheet("Sales");
+    worksheet.columns = [
+      { header: "Description", key: "Description", width: 30 },
+      { header: "Amount", key: "Amount", width: 15 },
+      { header: "Date", key: "Date", width: 15 },
+    ];
+    sales.forEach((s) => worksheet.addRow(s));
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -178,14 +152,9 @@ export function useSales(user?: { businessId?: string; id?: string }) {
   }
 
   const getInsight = useMutation({
-    mutationFn: async (payload: {
-      year: number;
-      month?: number;
-      businessId: string;
-      userId: string;
-    }) => {
+    mutationFn: async (payload: { year: number; month?: number }) => {
       const { data } = await axios.post("/api/sales/insight", payload);
-      return data;
+      return data.insight;
     },
   });
 
