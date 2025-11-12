@@ -60,14 +60,8 @@ export function useStaff() {
   });
 
   const deleteStaff = useMutation({
-    mutationFn: async ({
-      staffId,
-      userId,
-    }: {
-      staffId: string;
-      userId: string;
-    }) => {
-      await axios.post("/api/staff/delete", { staffId, userId });
+    mutationFn: async ({ staffId }: { staffId: string }) => {
+      await axios.post("/api/staff/delete", { staffId });
     },
     onSuccess: invalidateAll,
   });

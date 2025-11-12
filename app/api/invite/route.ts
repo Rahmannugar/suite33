@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { v4 as uuidv4 } from "uuid";
-import { verifyAdminRole } from "@/lib/auth/checkRole";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,9 +13,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const unauthorized = await verifyAdminRole(adminId);
-    if (unauthorized) return unauthorized;
 
     // Check invite limit for this admin
     const now = new Date();

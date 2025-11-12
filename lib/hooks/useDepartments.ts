@@ -26,8 +26,8 @@ export function useDepartments() {
   };
 
   const createDepartment = useMutation({
-    mutationFn: async (payload: { name: string; businessId: string }) => {
-      await axios.post("/api/departments/create", payload);
+    mutationFn: async (payload: { name: string }) => {
+      await axios.post("/api/departments", payload);
     },
     onSuccess: invalidateAll,
   });
