@@ -107,7 +107,9 @@ export default function ExpendituresPage() {
     exportCSV,
     exportExcel,
     getInsight,
-  } = useExpenditures();
+  } = useExpenditures(
+    user ? { businessId: user.businessId ?? undefined, id: user.id } : undefined
+  );
 
   const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
   const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
@@ -220,7 +222,8 @@ export default function ExpendituresPage() {
       const res = await getInsight.mutateAsync({
         year: date?.getFullYear() ?? new Date().getFullYear(),
         month: viewMode === "monthly" ? (date?.getMonth() ?? 0) + 1 : undefined,
-        businessId: user.businessId,
+        businessId: user?.businessId ?? "",
+        userId: user?.id ?? "",
       });
       const refined = String(res.insight || "")
         .replace(/\*\*/g, "")
@@ -246,12 +249,14 @@ export default function ExpendituresPage() {
       if (f.name.toLowerCase().endsWith(".csv")) {
         await importCSV.mutateAsync({
           file: f,
-          businessId: user?.businessId,
+          businessId: user?.businessId ?? "",
+          userId: user?.id ?? "",
         });
       } else {
         await importExcel.mutateAsync({
           file: f,
-          businessId: user?.businessId,
+          businessId: user?.businessId ?? "",
+          userId: user?.id ?? "",
         });
       }
       toast.success("Expenditures imported successfully");
@@ -271,6 +276,7 @@ export default function ExpendituresPage() {
         amount: parseFloat(form.amount),
         description: form.desc,
         businessId: user?.businessId ?? "",
+        userId: user?.id ?? "",
         date: form.date,
       });
       toast.success("Expenditure added");
@@ -293,6 +299,8 @@ export default function ExpendituresPage() {
         id: editingExpenditure.id,
         amount: parseFloat(form.amount),
         description: form.desc,
+        businessId: user?.businessId ?? "",
+        userId: user?.id ?? "",
         date: form.date,
       });
       toast.success("Expenditure updated");
@@ -310,7 +318,11 @@ export default function ExpendituresPage() {
     if (!deletingExpenditure) return;
     setDeleting(true);
     try {
-      await deleteExpenditure.mutateAsync(deletingExpenditure.id);
+      await deleteExpenditure.mutateAsync({
+        id: deletingExpenditure.id,
+        businessId: user?.businessId ?? "",
+        userId: user?.id ?? "",
+      });
       toast.success("Expenditure deleted");
     } catch {
       toast.error("Failed to delete expenditure");

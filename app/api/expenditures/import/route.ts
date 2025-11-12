@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
+import { verifyOrgRole } from "@/lib/auth/checkRole";
+import { verifyBusiness } from "@/lib/auth/checkBusiness";
 
 export async function POST(request: NextRequest) {
   try {
-    const { expenditures, businessId } = await request.json();
-    if (!Array.isArray(expenditures) || !businessId) {
+    const { expenditures, businessId, userId } = await request.json();
+
+    if (!Array.isArray(expenditures) || !businessId || !userId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
+
+    const businessUnauthorized = await verifyBusiness(userId, businessId);
+    if (businessUnauthorized) return businessUnauthorized;
+
+    const unauthorized = await verifyOrgRole(userId);
+    if (unauthorized) return unauthorized;
+
     for (const e of expenditures) {
       if (!e.amount) continue;
       const desc =

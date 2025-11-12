@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { verifyBusiness } from "@/lib/auth/checkBusiness";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(request: NextRequest) {
   try {
-    const { year, month, businessId } = await request.json();
-    if (!businessId || !year) {
+    const { year, month, businessId, userId } = await request.json();
+
+    if (!businessId || !year || !userId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
+
+    const businessUnauthorized = await verifyBusiness(userId, businessId);
+    if (businessUnauthorized) return businessUnauthorized;
 
     const expenditures = await prisma.expenditure.findMany({
       where: {
@@ -70,7 +75,7 @@ Keep it under 160 words total. Use professional, clear business language.
     console.error("Expenditure insight generation error:", error);
     return NextResponse.json(
       {
-        error: "Failed to generate sales insight",
+        error: "Failed to generate expenditure insight",
         details: error || String(error),
       },
       { status: 500 }
