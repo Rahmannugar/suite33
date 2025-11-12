@@ -11,16 +11,13 @@ export type ExportableExpenditure = {
   Date: string;
 };
 
-export function useExpenditures(user?: { businessId?: string; id?: string }) {
+export function useExpenditures() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["expenditures", user?.businessId, user?.id],
+    queryKey: ["expenditures"],
     queryFn: async () => {
-      if (!user?.businessId || !user?.id) return [];
-      const { data } = await axios.get(
-        `/api/expenditures?businessId=${user.businessId}&userId=${user.id}`
-      );
+      const { data } = await axios.get("/api/expenditures");
       const result = z.array(ExpenditureSchema).safeParse(data.expenditures);
       if (!result.success) throw new Error("Invalid expenditures data");
       return result.data;
@@ -33,15 +30,13 @@ export function useExpenditures(user?: { businessId?: string; id?: string }) {
     mutationFn: async (payload: {
       amount: number;
       description: string;
-      businessId: string;
-      userId: string;
       date: Date;
     }) => {
       await axios.post("/api/expenditures", payload);
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["expenditures", user?.businessId, user?.id],
+        queryKey: ["expenditures"],
       }),
   });
 
@@ -51,57 +46,46 @@ export function useExpenditures(user?: { businessId?: string; id?: string }) {
       amount: number;
       description: string;
       date: Date;
-      userId: string;
-      businessId: string;
     }) => {
       await axios.put(`/api/expenditures/${payload.id}`, payload);
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["expenditures", user?.businessId, user?.id],
+        queryKey: ["expenditures"],
       }),
   });
 
   const deleteExpenditure = useMutation({
-    mutationFn: async (payload: {
-      id: string;
-      userId: string;
-      businessId: string;
-    }) =>
-      axios.delete(`/api/expenditures/${payload.id}`, {
-        data: payload,
-      }),
+    mutationFn: async (id: string) => {
+      await axios.delete(`/api/expenditures/${id}`);
+    },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["expenditures", user?.businessId, user?.id],
+        queryKey: ["expenditures"],
       }),
   });
 
   const importCSV = useMutation({
-    mutationFn: async ({
-      file,
-      businessId,
-      userId,
-    }: {
-      file: File;
-      businessId: string;
-      userId: string;
-    }) => {
+    mutationFn: async ({ file }: { file: File }) => {
       return new Promise<void>((resolve, reject) => {
         Papa.parse(file, {
           header: true,
+          skipEmptyLines: true,
           complete: async (results: any) => {
-            const expenditures = results.data;
-            if (!Array.isArray(expenditures) || !businessId || !userId) {
-              reject(new Error("Invalid import data"));
-              return;
+            try {
+              const expenditures = results.data.map((row: any) => ({
+                amount: row.Amount || row.amount,
+                description:
+                  row.Description || row.description || "Expenditures",
+                date: row.Date || row.date,
+              }));
+              if (!expenditures.length)
+                throw new Error("No valid expenditures found in CSV");
+              await axios.post("/api/expenditures/import", { expenditures });
+              resolve();
+            } catch (err: any) {
+              reject(err);
             }
-            await axios.post("/api/expenditures/import", {
-              expenditures,
-              businessId,
-              userId,
-            });
-            resolve();
           },
           error: (err: any) => reject(err),
         });
@@ -109,50 +93,35 @@ export function useExpenditures(user?: { businessId?: string; id?: string }) {
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["expenditures", user?.businessId, user?.id],
+        queryKey: ["expenditures"],
       }),
   });
 
   const importExcel = useMutation({
-    mutationFn: async ({
-      file,
-      businessId,
-      userId,
-    }: {
-      file: File;
-      businessId: string;
-      userId: string;
-    }) => {
+    mutationFn: async ({ file }: { file: File }) => {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await file.arrayBuffer());
       const worksheet = workbook.worksheets[0];
       const expenditures: any[] = [];
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return;
-        const values = row.values;
-        if (!values || typeof values !== "object") return;
-        const arr = Array.isArray(values) ? values : Object.values(values);
-        const [, description, amount, date] = arr;
-        if (description && amount) {
-          expenditures.push({ description, amount: Number(amount) || 0, date });
-        }
+        const amount = row.getCell(2).value;
+        const description = row.getCell(1).value || "Expenditures";
+        const date = row.getCell(3).value;
+        if (amount) expenditures.push({ amount, description, date });
       });
       if (!expenditures.length)
-        throw new Error("No expenditures found in Excel file");
-      await axios.post("/api/expenditures/import", {
-        expenditures,
-        businessId,
-        userId,
-      });
+        throw new Error("No valid expenditures found in Excel file");
+      await axios.post("/api/expenditures/import", { expenditures });
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["expenditures", user?.businessId, user?.id],
+        queryKey: ["expenditures"],
       }),
   });
 
   function exportCSV(expenditures: ExportableExpenditure[], label: string) {
-    if (!expenditures.length) return;
+    if (!expenditures.length) throw new Error("No expenditures to export");
     const csv = Papa.unparse(expenditures);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -167,14 +136,15 @@ export function useExpenditures(user?: { businessId?: string; id?: string }) {
     expenditures: ExportableExpenditure[],
     label: string
   ) {
-    if (!expenditures.length) return;
+    if (!expenditures.length) throw new Error("No expenditures to export");
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(label);
-    worksheet.addRow(["Description", "Amount", "Date"]);
-    expenditures.forEach((e) =>
-      worksheet.addRow([e.Description, e.Amount, e.Date])
-    );
-    worksheet.columns.forEach((col) => (col.width = 20));
+    const worksheet = workbook.addWorksheet("Expenditures");
+    worksheet.columns = [
+      { header: "Description", key: "Description", width: 30 },
+      { header: "Amount", key: "Amount", width: 15 },
+      { header: "Date", key: "Date", width: 15 },
+    ];
+    expenditures.forEach((e) => worksheet.addRow(e));
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -188,14 +158,9 @@ export function useExpenditures(user?: { businessId?: string; id?: string }) {
   }
 
   const getInsight = useMutation({
-    mutationFn: async (payload: {
-      year: number;
-      month?: number;
-      businessId: string;
-      userId: string;
-    }) => {
+    mutationFn: async (payload: { year: number; month?: number }) => {
       const { data } = await axios.post("/api/expenditures/insight", payload);
-      return data;
+      return data.insight;
     },
   });
 
