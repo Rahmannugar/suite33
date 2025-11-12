@@ -1,26 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
+import { supabaseServer } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, fullName, avatarUrl } = await request.json();
+    const { fullName, avatarUrl } = await request.json();
 
-    if (!userId || !fullName) {
+    if (!fullName) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Update user profile
+    const supabase = await supabaseServer(true);
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const profile = await prisma.user.findUnique({
+      where: { id: data.user.id },
+    });
+
+    if (profile?.role !== "STAFF" && profile?.role !== "SUB_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const user = await prisma.user.update({
-      where: { id: userId },
+      where: { id: data.user.id },
       data: { fullName, avatarUrl },
     });
 
     return NextResponse.json({ user });
   } catch (error) {
-    console.error("Staff Onboarding Error:", error);
+    console.error("Staff onboarding error:", error);
     return NextResponse.json(
       { error: "Failed to complete staff onboarding" },
       { status: 500 }

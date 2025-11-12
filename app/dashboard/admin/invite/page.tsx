@@ -27,11 +27,7 @@ export default function StaffInvitePage() {
     emailError,
     handleSubmit,
     sendInvite,
-  } = useStaffInvite(
-    user?.businessId ?? undefined,
-    user?.id ?? undefined,
-    user?.businessName ?? undefined
-  );
+  } = useStaffInvite(user?.businessName ?? undefined);
 
   const canInvite = !!user?.businessId;
   const leftClass = collapsed ? "md:left-24" : "md:left-[272px]";

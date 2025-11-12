@@ -21,16 +21,14 @@ export function useEditProfile() {
       if (file) {
         avatarUrl = await uploadAvatar(file, user.id);
       }
+
       if (user.role === "ADMIN") {
         await axios.put("/api/profile/admin", {
-          userId: user.id,
           fullName,
           logoUrl: avatarUrl,
-          businessId: user.businessId,
         });
       } else {
         await axios.put("/api/profile/staff", {
-          userId: user.id,
           fullName,
           avatarUrl,
         });

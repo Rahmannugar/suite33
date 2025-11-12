@@ -33,16 +33,8 @@ export function usePayroll() {
   });
 
   const generatePayroll = useMutation({
-    mutationFn: async ({
-      businessId,
-      year,
-      month,
-    }: {
-      businessId: string;
-      year: number;
-      month: number;
-    }) => {
-      await axios.post("/api/payroll/generate", { businessId, year, month });
+    mutationFn: async ({ year, month }: { year: number; month: number }) => {
+      await axios.post("/api/payroll/generate", { year, month });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["payroll"] }),
   });

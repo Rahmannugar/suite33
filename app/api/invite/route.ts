@@ -1,40 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
+import { supabaseServer } from "@/lib/supabase/server";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, businessId, departmentName, adminId, role } =
-      await request.json();
+    const { email, departmentName, role } = await request.json();
 
-    if (!email || !businessId || !adminId || !role) {
+    if (!email || !role) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Check invite limit for this admin
-    const now = new Date();
-    const month = `${now.getFullYear()}-${now.getMonth() + 1}`;
-    const admin = await prisma.user.findUnique({ where: { id: adminId } });
+    const supabase = await supabaseServer(true);
+    const { data, error } = await supabase.auth.getUser();
 
-    if (!admin) {
-      return NextResponse.json(
-        { error: "Admin user not found" },
-        { status: 404 }
-      );
+    if (error || !data?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Reset count if month changed
-    if (admin.inviteMonth !== month) {
+    const profile = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      include: { business: true },
+    });
+
+    if (profile?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (!profile.business?.id) {
+      return NextResponse.json({ error: "No business found" }, { status: 403 });
+    }
+
+    //check invite limit
+    const now = new Date();
+    const month = `${now.getFullYear()}-${now.getMonth() + 1}`;
+
+    if (profile.inviteMonth !== month) {
       await prisma.user.update({
-        where: { id: adminId },
+        where: { id: data.user.id },
         data: { inviteCount: 0, inviteMonth: month },
       });
     }
 
-    if (admin.inviteCount >= 10) {
+    if (profile.inviteCount >= 10) {
       return NextResponse.json(
         { error: "Invite limit reached (10 per month)" },
         { status: 403 }
@@ -47,13 +58,13 @@ export async function POST(request: NextRequest) {
       let department = await prisma.department.findFirst({
         where: {
           name: normalizedDeptName,
-          businessId,
+          businessId: profile.business.id,
         },
       });
 
       if (!department) {
         department = await prisma.department.create({
-          data: { name: normalizedDeptName, businessId },
+          data: { name: normalizedDeptName, businessId: profile.business.id },
         });
       }
 
@@ -63,12 +74,18 @@ export async function POST(request: NextRequest) {
     const token = uuidv4();
 
     const invite = await prisma.invite.create({
-      data: { email, businessId, departmentId, token, role },
+      data: {
+        email,
+        businessId: profile.business.id,
+        departmentId,
+        token,
+        role,
+      },
       include: { business: true, department: true },
     });
 
     await prisma.user.update({
-      where: { id: adminId },
+      where: { id: data.user.id },
       data: { inviteCount: { increment: 1 } },
     });
 
@@ -81,7 +98,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Invite Error:", error);
+    console.error("Invite error:", error);
     return NextResponse.json(
       { error: "Failed to create invite" },
       { status: 500 }

@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
+import { supabaseServer } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { token, userId, email } = await request.json();
+    const { token, email } = await request.json();
 
-    if (!token || !userId || !email) {
+    if (!token || !email) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    const supabase = await supabaseServer(true);
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const invite = await prisma.invite.findUnique({
@@ -37,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const newUser = await prisma.user.create({
       data: {
-        id: userId,
+        id: data.user.id,
         email,
         role: invite.role,
       },

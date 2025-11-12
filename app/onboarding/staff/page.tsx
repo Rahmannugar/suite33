@@ -36,15 +36,14 @@ export default function StaffOnboardingPage() {
       }
 
       await axios.post("/api/onboarding/staff", {
-        userId: user?.id,
         fullName,
         avatarUrl,
       });
     },
     onSuccess: () => {
-      setFullName("")
-      setFile(null)
-      setPreview(null)
+      setFullName("");
+      setFile(null);
+      setPreview(null);
       toast.success("Onboarding complete! Signing you in...");
       setIsRouting(true);
       router.push("/dashboard/staff");

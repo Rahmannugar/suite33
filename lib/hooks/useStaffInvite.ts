@@ -5,11 +5,7 @@ import emailjs from "@emailjs/browser";
 import { toast } from "sonner";
 import { validateEmail } from "@/lib/utils/validation";
 
-export function useStaffInvite(
-  businessId: string | undefined,
-  adminId: string | undefined,
-  businessName: string | undefined
-) {
+export function useStaffInvite(businessName: string | undefined) {
   const [email, setEmail] = useState("");
   const [departmentName, setDepartmentName] = useState("");
   const [role, setRole] = useState<"STAFF" | "SUB_ADMIN">("STAFF");
@@ -20,8 +16,6 @@ export function useStaffInvite(
       const res = await axios.post("/api/invite", {
         email,
         departmentName,
-        businessId,
-        adminId,
         role,
       });
       const { invite } = res.data;

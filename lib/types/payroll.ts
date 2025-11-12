@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { StaffSchema } from "./staff";
 
 export const PayrollSchema = z.object({
   id: z.string(),
@@ -8,11 +7,21 @@ export const PayrollSchema = z.object({
   amount: z.number(),
   period: z.string(),
   paid: z.boolean(),
-  staff: StaffSchema.optional(),
-  business: z
+  staff: z
     .object({
       id: z.string(),
-      name: z.string(),
+      user: z.object({
+        id: z.string(),
+        fullName: z.string().nullable().optional(),
+        email: z.string(),
+      }),
+      department: z
+        .object({
+          id: z.string(),
+          name: z.string(),
+        })
+        .nullable()
+        .optional(),
     })
     .optional(),
 });

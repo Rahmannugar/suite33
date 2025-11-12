@@ -30,7 +30,11 @@ const adminLinks: SidebarLink[] = [
     icon: Wallet,
   },
   { href: "/dashboard/admin/inventory", label: "Inventory", icon: Boxes },
-  { href: "/dashboard/admin/management", label: "Organization", icon: Users2 },
+  {
+    href: "/dashboard/admin/organization",
+    label: "Organization",
+    icon: Users2,
+  },
   { href: "/dashboard/admin/payroll", label: "Payroll", icon: BadgeDollarSign },
   { href: "/dashboard/admin/kpi", label: "KPIs", icon: Target },
   { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
@@ -45,7 +49,11 @@ const staffLinks: SidebarLink[] = [
     icon: Wallet,
   },
   { href: "/dashboard/staff/inventory", label: "Inventory", icon: Boxes },
-  { href: "/dashboard/staff/department", label: "Organization", icon: Users2 },
+  {
+    href: "/dashboard/staff/organization",
+    label: "Organization",
+    icon: Users2,
+  },
   { href: "/dashboard/staff/payroll", label: "Payroll", icon: BadgeDollarSign },
   { href: "/dashboard/staff/kpi", label: "KPIs", icon: Target },
 ];

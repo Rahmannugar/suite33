@@ -37,43 +37,40 @@ export default function AdminOnboardingPage() {
     }
   };
 
-  const submitOnboarding = useMutation({
-    mutationFn: async () => {
-      let logoUrl = "";
-      if (logoFile && user?.id) {
-        try {
-          logoUrl = await uploadAvatar(logoFile, user.id);
-        } catch (err) {
-          toast.error("Failed to upload logo.");
-        }
-      }
+ const submitOnboarding = useMutation({
+   mutationFn: async () => {
+     let logoUrl = "";
+     if (logoFile && user?.id) {
+       try {
+         logoUrl = await uploadAvatar(logoFile, user.id);
+       } catch (err) {
+         toast.error("Failed to upload logo.");
+       }
+     }
 
-      await axios.post("/api/onboarding", {
-        userId: user?.id,
-        fullName,
-        businessName,
-        industry,
-        location,
-        logoUrl,
-      });
-    },
-    onSuccess: () => {
-      setFullName("");
-      setBusinessName("");
-      setIndustry("");
-      setLocation("");
-      setLogoFile(null);
-      setLogoPreview(null);
-      toast.success("Business profile created! Signing you in...");
-      setIsRouting(true);
-      router.push("/dashboard/admin");
-    },
-    onError: (err: any) => {
-      toast.error(
-        err?.response?.data?.error || "Failed to complete onboarding"
-      );
-    },
-  });
+     await axios.post("/api/onboarding", {
+       fullName,
+       businessName,
+       industry,
+       location,
+       logoUrl,
+     });
+   },
+   onSuccess: () => {
+     setFullName("");
+     setBusinessName("");
+     setIndustry("");
+     setLocation("");
+     setLogoFile(null);
+     setLogoPreview(null);
+     toast.success("Business profile created! Signing you in...");
+     setIsRouting(true);
+     router.push("/dashboard/admin");
+   },
+   onError: (err: any) => {
+     toast.error(err?.response?.data?.error || "Failed to complete onboarding");
+   },
+ });
 
   if (!user) return null;
 
