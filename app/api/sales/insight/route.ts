@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { verifyOrgRole } from "@/lib/auth/checkRole";
+import { verifyBusiness } from "@/lib/auth/checkBusiness";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(request: NextRequest) {
   try {
     const { year, month, businessId, userId } = await request.json();
-    const unauthorized = await verifyOrgRole(userId);
-    if (unauthorized) return unauthorized;
 
-    if (!businessId || !year) {
+    if (!businessId || !year || !userId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
+
+    const businessUnauthorized = await verifyBusiness(userId, businessId);
+    if (businessUnauthorized) return businessUnauthorized;
 
     const sales = await prisma.sale.findMany({
       where: {
