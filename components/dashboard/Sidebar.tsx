@@ -77,7 +77,6 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside
         className={`${desktopWidthClass} hidden md:flex flex-col h-screen fixed top-0 left-0 z-40 bg-[--sidebar] shadow-lg transition-all duration-200`}
         style={{ background: "var(--sidebar, #fff)" }}
@@ -127,7 +126,6 @@ export default function Sidebar() {
         </nav>
       </aside>
 
-      {/* Mobile toggle button */}
       <div className="md:hidden fixed top-3 left-3 z-50">
         <button
           className="p-2 rounded-full border border-[--sidebar-border] bg-[--sidebar] flex items-center justify-center shadow"
@@ -138,9 +136,8 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Mobile sidebar */}
       <aside
-        className={`md:hidden fixed top-0 left-0 h-screen z-50 bg-[--sidebar] shadow-lg transition-transform duration-200 flex flex-col ${
+        className={`md:hidden fixed inset-0 z-50 bg-[--sidebar] shadow-lg transition-transform duration-200 flex flex-col ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } w-64`}
         style={{ background: "var(--sidebar, #fff)" }}
@@ -158,7 +155,7 @@ export default function Sidebar() {
             <X size={18} />
           </button>
         </div>
-        <nav className="flex-1 flex flex-col gap-1 py-2 px-2">
+        <nav className="flex-1 flex flex-col gap-1 py-2 px-2 overflow-y-auto">
           {links.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (

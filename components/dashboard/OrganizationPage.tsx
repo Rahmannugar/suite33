@@ -148,7 +148,6 @@ export default function OrganizationPage() {
     setDialogTargetId(null);
     setDialogDeptId(null);
     setForm({ deptName: "", moveDeptId: "", rename: "" });
-    setSaving(false);
   }
 
   async function handleCreateDept() {
@@ -161,6 +160,7 @@ export default function OrganizationPage() {
       });
       toast.success("Department created");
       resetDialogState();
+      setSaving(false);
     } catch {
       toast.error("Failed to create department");
       setSaving(false);
@@ -178,6 +178,7 @@ export default function OrganizationPage() {
       });
       toast.success("Department renamed");
       resetDialogState();
+      setSaving(false);
     } catch {
       toast.error("Failed to rename department");
       setSaving(false);
@@ -191,6 +192,7 @@ export default function OrganizationPage() {
       await deleteDepartment.mutateAsync(dialogDeptId);
       toast.success("Department deleted");
       resetDialogState();
+      setSaving(false);
     } catch (err: any) {
       if (err?.response?.status === 400) {
         toast.error(
@@ -225,6 +227,7 @@ export default function OrganizationPage() {
       });
       toast.success("Staff moved");
       resetDialogState();
+      setSaving(false);
     } catch {
       toast.error("Failed to move staff");
       setSaving(false);
@@ -243,6 +246,7 @@ export default function OrganizationPage() {
       await removeStaff.mutateAsync({ staffId: dialogTargetId });
       toast.success("Staff unassigned");
       resetDialogState();
+      setSaving(false);
     } catch {
       toast.error("Failed to unassign staff");
       setSaving(false);
@@ -256,6 +260,7 @@ export default function OrganizationPage() {
       await deleteStaff.mutateAsync({ staffId: dialogTargetId });
       toast.success("Staff removed from business");
       resetDialogState();
+      setSaving(false);
     } catch {
       toast.error("Failed to remove staff");
       setSaving(false);
@@ -269,6 +274,7 @@ export default function OrganizationPage() {
       await promoteStaff.mutateAsync({ staffId: dialogTargetId });
       toast.success("Promoted to Assistant Admin");
       resetDialogState();
+      setSaving(false);
     } catch {
       toast.error("Failed to promote");
       setSaving(false);
@@ -282,6 +288,7 @@ export default function OrganizationPage() {
       await demoteStaff.mutateAsync({ staffId: dialogTargetId });
       toast.success("Demoted to Staff");
       resetDialogState();
+      setSaving(false);
     } catch {
       toast.error("Failed to demote");
       setSaving(false);
@@ -440,87 +447,79 @@ export default function OrganizationPage() {
                           </td>
                           {canMutate && (
                             <td className="p-3">
-                              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3 place-items-stretch">
-                                <div className="col-span-1">
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 min-w-[80px] cursor-pointer"
+                                  onClick={() => {
+                                    setForm((f) => ({
+                                      ...f,
+                                      moveDeptId: "",
+                                    }));
+                                    openDialogSafely("move-staff", {
+                                      staffId: s.id,
+                                    });
+                                  }}
+                                >
+                                  Move
+                                </Button>
+
+                                {s.departmentId && (
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="w-full cursor-pointer"
-                                    onClick={() => {
-                                      setForm((f) => ({
-                                        ...f,
-                                        moveDeptId: "",
-                                      }));
-                                      openDialogSafely("move-staff", {
-                                        staffId: s.id,
-                                      });
-                                    }}
-                                  >
-                                    Move
-                                  </Button>
-                                </div>
-
-                                {s.departmentId && (
-                                  <div className="col-span-1">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full cursor-pointer"
-                                      onClick={() =>
-                                        openDialogSafely("unassign-staff", {
-                                          staffId: s.id,
-                                        })
-                                      }
-                                    >
-                                      Unassign
-                                    </Button>
-                                  </div>
-                                )}
-
-                                <div className="col-span-1">
-                                  {s.user.role === "SUB_ADMIN" ? (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full cursor-pointer"
-                                      onClick={() =>
-                                        openDialogSafely("demote", {
-                                          staffId: s.id,
-                                        })
-                                      }
-                                    >
-                                      Demote
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full cursor-pointer"
-                                      onClick={() =>
-                                        openDialogSafely("promote", {
-                                          staffId: s.id,
-                                        })
-                                      }
-                                    >
-                                      Promote
-                                    </Button>
-                                  )}
-                                </div>
-
-                                <div className="col-span-1">
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    className="w-full cursor-pointer"
+                                    className="flex-1 min-w-[80px] cursor-pointer"
                                     onClick={() =>
-                                      openDialogSafely("delete-staff", {
+                                      openDialogSafely("unassign-staff", {
                                         staffId: s.id,
                                       })
                                     }
                                   >
-                                    Remove
+                                    Unassign
                                   </Button>
-                                </div>
+                                )}
+
+                                {s.user.role === "SUB_ADMIN" ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 min-w-[80px] cursor-pointer"
+                                    onClick={() =>
+                                      openDialogSafely("demote", {
+                                        staffId: s.id,
+                                      })
+                                    }
+                                  >
+                                    Demote
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 min-w-[80px] cursor-pointer"
+                                    onClick={() =>
+                                      openDialogSafely("promote", {
+                                        staffId: s.id,
+                                      })
+                                    }
+                                  >
+                                    Promote
+                                  </Button>
+                                )}
+
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="flex-1 min-w-[80px] cursor-pointer"
+                                  onClick={() =>
+                                    openDialogSafely("delete-staff", {
+                                      staffId: s.id,
+                                    })
+                                  }
+                                >
+                                  Remove
+                                </Button>
                               </div>
                             </td>
                           )}
