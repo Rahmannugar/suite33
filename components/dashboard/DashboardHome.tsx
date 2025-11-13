@@ -35,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getInitials } from "@/lib/utils/getInitials";
 
 function formatCurrencyShort(value: number): string {
   if (value >= 1_000_000_000) return `₦${(value / 1_000_000_000).toFixed(1)}B`;
@@ -122,23 +123,20 @@ export default function DashboardHome() {
   const yearExp = pnlTable.reduce((sum, row) => sum + row.expenditures, 0);
   const yearPnl = yearSales - yearExp;
 
-  const businessLogo = user?.businessLogo || null;
-
   return (
     <div className="space-y-8">
-      {/* Business / User Info*/}
       <div className="rounded-xl border border-[--border] bg-[--card] p-5 flex flex-col sm:flex-row items-center gap-4 shadow-sm">
-        {businessLogo ? (
+        {user?.businessLogo ? (
           <Image
-            src={businessLogo}
+            src={user?.businessLogo}
             alt="Business Logo"
             width={64}
             height={64}
             className="rounded-full object-cover border border-blue-600 w-16 h-16"
           />
         ) : (
-          <div className="rounded-full w-16 h-16 bg-blue-600 flex items-center justify-center text-2xl font-semibold text-white">
-            {user?.businessName?.[0] ?? ""}
+          <div className="rounded-full w-16 h-16 bg-blue-600 flex items-center justify-center text-2xl font-bold text-white">
+            {getInitials(user?.businessName)}
           </div>
         )}
         <div>

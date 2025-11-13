@@ -79,8 +79,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No business found" }, { status: 403 });
     }
 
+    const normalizedName = name.trim().toLowerCase();
+
+    const existing = await prisma.department.findFirst({
+      where: {
+        name: normalizedName,
+        businessId,
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Department with this name already exists" },
+        { status: 409 }
+      );
+    }
+
     const department = await prisma.department.create({
-      data: { name: name.trim().toLowerCase(), businessId },
+      data: { name: normalizedName, businessId },
     });
 
     return NextResponse.json({ department });

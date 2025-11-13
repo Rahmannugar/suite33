@@ -8,15 +8,7 @@ import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-
-function getInitials(name: string | null | undefined) {
-  if (!name) return "";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
-}
+import { getInitials } from "@/lib/utils/getInitials";
 
 export default function Header() {
   const user = useAuthStore((state) => state.user);

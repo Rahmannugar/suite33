@@ -33,7 +33,7 @@ export default function StaffInvitePage() {
   const leftClass = collapsed ? "md:left-24" : "md:left-[272px]";
 
   const navigateFn = () => {
-    router.push("/dashboard/admin/management");
+    router.push("/dashboard/admin/organization");
   };
 
   return (

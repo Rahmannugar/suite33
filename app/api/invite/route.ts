@@ -34,7 +34,55 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No business found" }, { status: 403 });
     }
 
-    //check invite limit
+    const currentBusinessId = profile.business.id;
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        business: { select: { id: true } },
+        Staff: { select: { businessId: true } },
+      },
+    });
+
+    if (existingUser) {
+      const userBusinessId =
+        existingUser.business?.id || existingUser.Staff?.businessId;
+
+      if (userBusinessId === currentBusinessId) {
+        return NextResponse.json(
+          { error: "This email is already registered to your business" },
+          { status: 409 }
+        );
+      }
+
+      if (userBusinessId) {
+        return NextResponse.json(
+          { error: "This email is already registered to another business" },
+          { status: 409 }
+        );
+      }
+    }
+
+    const pendingInvite = await prisma.invite.findFirst({
+      where: {
+        email,
+        businessId: currentBusinessId,
+        accepted: false,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (pendingInvite) {
+      return NextResponse.json(
+        {
+          error:
+            "An active invite for this email already exists in your business",
+        },
+        { status: 409 }
+      );
+    }
+
     const now = new Date();
     const month = `${now.getFullYear()}-${now.getMonth() + 1}`;
 
@@ -58,13 +106,13 @@ export async function POST(request: NextRequest) {
       let department = await prisma.department.findFirst({
         where: {
           name: normalizedDeptName,
-          businessId: profile.business.id,
+          businessId: currentBusinessId,
         },
       });
 
       if (!department) {
         department = await prisma.department.create({
-          data: { name: normalizedDeptName, businessId: profile.business.id },
+          data: { name: normalizedDeptName, businessId: currentBusinessId },
         });
       }
 
@@ -76,7 +124,7 @@ export async function POST(request: NextRequest) {
     const invite = await prisma.invite.create({
       data: {
         email,
-        businessId: profile.business.id,
+        businessId: currentBusinessId,
         departmentId,
         token,
         role,
