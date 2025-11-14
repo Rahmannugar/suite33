@@ -102,7 +102,6 @@ export default function PayrollPage() {
   async function handleGeneratePayroll() {
     if (user?.role !== "ADMIN" || !user?.businessId) return;
     await generatePayroll.mutateAsync({
-      businessId: user.businessId,
       year,
       month,
     });

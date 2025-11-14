@@ -99,7 +99,7 @@ export default function InventoryPage() {
 
   const [form, setForm] = useState({
     name: "",
-    quantity: "",
+    quantity: 0,
     categoryId: "none",
     newCategory: "",
   });
@@ -111,7 +111,7 @@ export default function InventoryPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetForm = () =>
-    setForm({ name: "", quantity: "", categoryId: "none", newCategory: "" });
+    setForm({ name: "", quantity: 0, categoryId: "none", newCategory: "" });
 
   const truncate = (text: string, max: number) =>
     text.length > max ? text.slice(0, max) + "…" : text;
@@ -225,7 +225,7 @@ export default function InventoryPage() {
       }
       await addItem.mutateAsync({
         name: form.name,
-        quantity: parseInt(form.quantity) || 0,
+        quantity: form.quantity,
         categoryId: catId,
       });
       toast.success("Item added");
@@ -246,6 +246,15 @@ export default function InventoryPage() {
       return toast.error("Choose a category or enter a new one.");
     if (form.categoryId !== "none" && form.newCategory)
       return toast.error("Select only one — category or new.");
+    if (
+      editingItem &&
+      form.name.trim() === editingItem.name &&
+      form.quantity === editingItem.quantity &&
+      form.categoryId === editingItem.categoryId
+    ) {
+      setOpenEdit(false);
+      return;
+    }
     setSaving(true);
     try {
       let catId = form.categoryId === "none" ? "" : form.categoryId;
@@ -258,7 +267,7 @@ export default function InventoryPage() {
       await editItem.mutateAsync({
         id: editingItem.id,
         name: form.name,
-        quantity: parseInt(form.quantity) || 0,
+        quantity: form.quantity,
         categoryId: catId,
       });
       toast.success("Item updated");
@@ -294,6 +303,13 @@ export default function InventoryPage() {
   async function handleRenameCategory() {
     if (!selectedCategory || !categoryName.trim())
       return toast.error("Enter a category name");
+    if (
+      selectedCategory &&
+      categoryName.trim().toLowerCase() === selectedCategory.name.toLowerCase()
+    ) {
+      setOpenRenameCategory(false);
+      return;
+    }
     setSaving(true);
     try {
       await renameCategory.mutateAsync({
@@ -472,7 +488,7 @@ export default function InventoryPage() {
                                 setEditingItem(item);
                                 setForm({
                                   name: item.name,
-                                  quantity: item.quantity.toString(),
+                                  quantity: item.quantity,
                                   categoryId: item.categoryId || "none",
                                   newCategory: "",
                                 });
@@ -748,7 +764,9 @@ export default function InventoryPage() {
               type="number"
               placeholder="Quantity"
               value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, quantity: Number(e.target.value) })
+              }
             />
             <Input
               placeholder="New category (optional)"
@@ -810,7 +828,9 @@ export default function InventoryPage() {
               type="number"
               placeholder="Quantity"
               value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, quantity: Number(e.target.value) })
+              }
             />
             <Input
               placeholder="New category (optional)"

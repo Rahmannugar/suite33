@@ -51,6 +51,18 @@ function getEmptyText(feature: string, role: string) {
   return `${feature} is empty, please contact admin.`;
 }
 
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border bg-popover px-3 py-2 text-sm shadow">
+      <div className="font-medium mb-1">{label}</div>
+      <div style={{ color: payload[0].fill }}>
+        {payload[0].name}: {formatCurrencyShort(payload[0].value)}
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardHome() {
   const user = useAuthStore((state) => state.user);
   const { sales, isLoading: salesLoading } = useSales();
@@ -315,12 +327,7 @@ function MetricCard({
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                 <YAxis hide />
-                <Tooltip
-                  formatter={(value: number) => [
-                    formatCurrencyShort(value),
-                    title,
-                  ]}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 <Bar
                   dataKey={dataKey}
                   name={title}

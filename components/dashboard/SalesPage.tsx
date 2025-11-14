@@ -118,7 +118,7 @@ export default function SalesPage() {
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
   const [openAddDate, setOpenAddDate] = useState(false);
   const [openEditDate, setOpenEditDate] = useState(false);
-  const [form, setForm] = useState({ desc: "", amount: "", date: new Date() });
+  const [form, setForm] = useState({ desc: "", amount: 0, date: new Date() });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [insightLoading, setInsightLoading] = useState(false);
@@ -126,7 +126,7 @@ export default function SalesPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [search, setSearch] = useState("");
 
-  const resetForm = () => setForm({ desc: "", amount: "", date: new Date() });
+  const resetForm = () => setForm({ desc: "", amount: 0, date: new Date() });
 
   useEffect(() => {
     setPage(1);
@@ -255,7 +255,7 @@ export default function SalesPage() {
     setSaving(true);
     try {
       await addSale.mutateAsync({
-        amount: parseFloat(form.amount),
+        amount: form.amount,
         description: form.desc,
         date: form.date,
       });
@@ -275,19 +275,17 @@ export default function SalesPage() {
     if (!form.desc) return toast.error("Enter sale description");
     if (
       editingSale.description === form.desc &&
-      editingSale.amount === parseFloat(form.amount) &&
+      editingSale.amount === form.amount &&
       new Date(editingSale.date).getTime() === new Date(form.date).getTime()
     ) {
       setOpenEdit(false);
-      setEditingSale(null);
-      resetForm();
       return;
     }
     setSaving(true);
     try {
       await editSale.mutateAsync({
         id: editingSale.id,
-        amount: parseFloat(form.amount),
+        amount: form.amount,
         description: form.desc,
         date: form.date,
       });
@@ -508,7 +506,7 @@ export default function SalesPage() {
                                     setEditingSale(s);
                                     setForm({
                                       desc: s.description,
-                                      amount: s.amount.toString(),
+                                      amount: s.amount,
                                       date: new Date(s.date),
                                     });
                                     setOpenEdit(true);
@@ -606,7 +604,9 @@ export default function SalesPage() {
               type="number"
               placeholder="Amount"
               value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, amount: Number(e.target.value) })
+              }
             />
             <Popover open={openAddDate} onOpenChange={setOpenAddDate}>
               <PopoverTrigger asChild>
@@ -673,7 +673,9 @@ export default function SalesPage() {
               type="number"
               placeholder="Amount"
               value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, amount: Number(e.target.value) })
+              }
             />
             <Popover open={openEditDate} onOpenChange={setOpenEditDate}>
               <PopoverTrigger asChild>

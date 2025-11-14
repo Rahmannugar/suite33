@@ -146,7 +146,7 @@ model Inventory {
 model Invite {
   id           String      @id @default(uuid()) @db.Uuid
   email        String
-  token        String      @unique
+  token        String      @unique @default(uuid())
   businessId   String      @db.Uuid
   departmentId String?     @db.Uuid
   role         Role        @default(STAFF)

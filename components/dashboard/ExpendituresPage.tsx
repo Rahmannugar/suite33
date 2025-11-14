@@ -123,7 +123,7 @@ export default function ExpendituresPage() {
     useState<Expenditure | null>(null);
   const [openAddDate, setOpenAddDate] = useState(false);
   const [openEditDate, setOpenEditDate] = useState(false);
-  const [form, setForm] = useState({ desc: "", amount: "", date: new Date() });
+  const [form, setForm] = useState({ desc: "", amount: 0, date: new Date() });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [insightLoading, setInsightLoading] = useState(false);
@@ -131,7 +131,7 @@ export default function ExpendituresPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [search, setSearch] = useState("");
 
-  const resetForm = () => setForm({ desc: "", amount: "", date: new Date() });
+  const resetForm = () => setForm({ desc: "", amount: 0, date: new Date() });
 
   useEffect(() => {
     setPage(1);
@@ -265,7 +265,7 @@ export default function ExpendituresPage() {
     setSaving(true);
     try {
       await addExpenditure.mutateAsync({
-        amount: parseFloat(form.amount),
+        amount: form.amount,
         description: form.desc,
 
         date: form.date,
@@ -284,11 +284,21 @@ export default function ExpendituresPage() {
     if (!editingExpenditure) return;
     if (!form.amount) return toast.error("Enter expenditure amount");
     if (!form.desc) return toast.error("Enter expenditure description");
+
+    if (
+      editingExpenditure.description === form.desc &&
+      editingExpenditure.amount === form.amount &&
+      new Date(editingExpenditure.date).getTime() ===
+        new Date(form.date).getTime()
+    ) {
+      setOpenEdit(false);
+      return;
+    }
     setSaving(true);
     try {
       await editExpenditure.mutateAsync({
         id: editingExpenditure.id,
-        amount: parseFloat(form.amount),
+        amount: form.amount,
         description: form.desc,
 
         date: form.date,
@@ -515,7 +525,7 @@ export default function ExpendituresPage() {
                                     setEditingExpenditure(e);
                                     setForm({
                                       desc: e.description || "",
-                                      amount: e.amount.toString(),
+                                      amount: e.amount,
                                       date: new Date(e.date),
                                     });
                                     setOpenEdit(true);
@@ -613,7 +623,9 @@ export default function ExpendituresPage() {
               type="number"
               placeholder="Amount"
               value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, amount: Number(e.target.value) })
+              }
             />
             <Popover open={openAddDate} onOpenChange={setOpenAddDate}>
               <PopoverTrigger asChild>
@@ -680,7 +692,9 @@ export default function ExpendituresPage() {
               type="number"
               placeholder="Amount"
               value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, amount: Number(e.target.value) })
+              }
             />
             <Popover open={openEditDate} onOpenChange={setOpenEditDate}>
               <PopoverTrigger asChild>
