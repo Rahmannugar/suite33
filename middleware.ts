@@ -5,6 +5,19 @@ import { createServerClient } from "@supabase/ssr";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  if (
+    pathname === "/" ||
+    pathname === "/privacy-policy" ||
+    pathname === "/terms-of-service" ||
+    pathname === "/unathorized" ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/images") ||
+    pathname.startsWith("/icons")
+  ) {
+    return NextResponse.next();
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -30,66 +43,33 @@ export async function middleware(req: NextRequest) {
   const user = data?.user;
   const role = req.cookies.get("user_role")?.value;
 
-  // Redirect authenticated users away from auth pages
+  if (!user || !role) {
+    return NextResponse.redirect(new URL("/auth/login", req.url));
+  }
+
+  if (pathname.startsWith("/onboarding/admin") && role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/unathorized", req.url));
+  }
   if (
-    (pathname === "/auth/login" || pathname === "/auth/signup") &&
-    user &&
-    role
+    pathname.startsWith("/onboarding/staff") &&
+    role !== "STAFF" &&
+    role !== "SUB_ADMIN"
   ) {
-    const dashboard =
-      role === "ADMIN"
-        ? "/dashboard/admin"
-        : role === "STAFF" || role === "SUB_ADMIN"
-        ? "/dashboard/staff"
-        : "/dashboard";
-    return NextResponse.redirect(new URL(dashboard, req.url));
+    return NextResponse.redirect(new URL("/unathorized", req.url));
   }
 
-  // Allow public routes
+  if (pathname.startsWith("/dashboard/admin") && role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/unathorized", req.url));
+  }
   if (
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/api") ||
-    pathname === "/" ||
-    pathname.startsWith("/images") ||
-    pathname.startsWith("/icons")
+    pathname.startsWith("/dashboard/staff") &&
+    role !== "STAFF" &&
+    role !== "SUB_ADMIN"
   ) {
-    return NextResponse.next();
+    return NextResponse.redirect(new URL("/unathorized", req.url));
   }
 
-  // Protect dashboard and onboarding routes
-  if (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding")) {
-    if (!user || !role) {
-      return NextResponse.redirect(new URL("/auth/login", req.url));
-    }
-    // Role-based onboarding protection
-    if (pathname.startsWith("/onboarding/admin") && role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/unathorized", req.url));
-    }
-    if (
-      pathname.startsWith("/onboarding/staff") &&
-      role !== "STAFF" &&
-      role !== "SUB_ADMIN"
-    ) {
-      return NextResponse.redirect(new URL("/unathorized", req.url));
-    }
-    // Role-based dashboard protection
-    if (pathname.startsWith("/dashboard/admin") && role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/unathorized", req.url));
-    }
-    if (
-      pathname.startsWith("/dashboard/staff") &&
-      role !== "STAFF" &&
-      role !== "SUB_ADMIN"
-    ) {
-      return NextResponse.redirect(new URL("/unathorized", req.url));
-    }
-  }
-
-  // Protect /dashboard root route
   if (pathname === "/dashboard") {
-    if (!user || !role) {
-      return NextResponse.redirect(new URL("/auth/login", req.url));
-    }
     if (role === "ADMIN") {
       return NextResponse.redirect(new URL("/dashboard/admin", req.url));
     }
@@ -103,14 +83,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/auth/login",
-    "/auth/signup",
-    "/dashboard/:path*",
-    "/onboarding/:path*",
-    "/api/:path*",
-    "/",
-    "/images/:path*",
-    "/icons/:path*",
-  ],
+  matcher: ["/dashboard/:path*", "/onboarding/:path*", "/dashboard"],
 };

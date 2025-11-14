@@ -1,9 +1,9 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabaseClient } from "@/lib/supabase/client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { syncUserToPrisma } from "@/lib/hooks/useSyncUser";
+import { supabaseClient } from "@/lib/supabase/client";
+import { syncUserToPrisma } from "./useSyncUser";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 
@@ -34,19 +34,10 @@ export function useAuth() {
       departmentName: profile.departmentName,
     });
 
-    // Route based on role
     if (profile.role === "ADMIN") {
-      if (profile.businessId && profile.fullName) {
-        router.push("/dashboard/admin");
-      } else {
-        router.push("/onboarding/admin");
-      }
+      router.push("/dashboard/admin");
     } else if (profile.role === "STAFF" || profile.role === "SUB_ADMIN") {
-      if (profile.fullName) {
-        router.push("/dashboard/staff");
-      } else {
-        router.push("/onboarding/staff");
-      }
+      router.push("/dashboard/staff");
     } else {
       router.push("/dashboard");
     }
@@ -59,9 +50,15 @@ export function useAuth() {
       redirectTo,
     }: Credentials & { redirectTo?: string }) => {
       const checkRes = await axios.post("/api/auth/check-user", { email });
-      if (checkRes.data.exists && checkRes.data.provider === "google") {
+
+      if (checkRes.data.exists) {
+        if (checkRes.data.provider === "google") {
+          throw new Error(
+            "This email is registered with Google. Please sign in with Google."
+          );
+        }
         throw new Error(
-          "This email is already registered with Google. Please sign in with Google instead."
+          "An account with this email already exists. Please sign in."
         );
       }
 
@@ -78,10 +75,7 @@ export function useAuth() {
         },
       });
 
-      if (error) {
-        throw new Error(error.message);
-      }
-
+      if (error) throw error;
       if (!data.user) throw new Error("Failed to create account");
 
       return data.user;
@@ -90,18 +84,16 @@ export function useAuth() {
 
   const signIn = useMutation({
     mutationFn: async ({ email, password }: Credentials) => {
-      // Check if user exists and provider
       const checkRes = await axios.post("/api/auth/check-user", { email });
+
       if (checkRes.data.exists && checkRes.data.provider === "google") {
-        return Promise.reject(
-          new Error(
-            "This email is linked to a Google account. Please sign in with Google."
-          )
+        throw new Error(
+          "This account was created with Google. Please sign in with Google instead."
         );
       }
 
       if (!checkRes.data.exists) {
-        throw new Error("No account found with this email address");
+        throw new Error("No account found with this email address.");
       }
 
       const { data, error } = await supabaseClient.auth.signInWithPassword({
@@ -110,36 +102,13 @@ export function useAuth() {
       });
 
       if (error) {
-        const msg = error.message?.toLowerCase();
-        if (msg.includes("user not found")) {
-          return Promise.reject(new Error("No account found with this email."));
+        if (error.message.includes("Invalid login credentials")) {
+          throw new Error("Incorrect password. Please try again.");
         }
-        if (
-          msg.includes("provider") ||
-          msg.includes("sign in with a provider")
-        ) {
-          return Promise.reject(
-            new Error(
-              "This email is linked to a Google account. Please sign in with Google."
-            )
-          );
-        }
-        if (msg.includes("invalid login credentials")) {
-          return Promise.reject(
-            new Error(
-              "Incorrect password. Please try again or reset your password."
-            )
-          );
-        }
-        return Promise.reject(
-          new Error("Could not sign in. Please try again.")
-        );
+        throw error;
       }
 
-      if (!data.user)
-        return Promise.reject(
-          new Error("Login succeeded but no user returned")
-        );
+      if (!data.user) throw new Error("Sign in failed");
 
       await handleProfileAndRoute(data.user.id, data.user.email ?? "");
       return data.user;
@@ -149,7 +118,7 @@ export function useAuth() {
   const signOut = useMutation({
     mutationFn: async () => {
       const { error } = await supabaseClient.auth.signOut();
-      if (error) return Promise.reject(error);
+      if (error) throw error;
       await axios.delete("/api/auth/session");
       queryClient.removeQueries({ queryKey: ["user-profile"] });
       setUser(null);
@@ -158,14 +127,11 @@ export function useAuth() {
 
   const signInWithGoogle = useMutation({
     mutationFn: async ({ email }: { email?: string }) => {
-      // Check if user exists and provider
       if (email) {
         const checkRes = await axios.post("/api/auth/check-user", { email });
-        if (checkRes.data.exists && checkRes.data.provider === "email") {
-          return Promise.reject(
-            new Error(
-              "This email is registered with a password. Please sign in with email and password."
-            )
+        if (checkRes.data.exists && checkRes.data.provider !== "google") {
+          throw new Error(
+            "This email is registered with email/password. Please sign in with email and password."
           );
         }
       }
@@ -175,27 +141,49 @@ export function useAuth() {
           ? window.location.origin
           : process.env.NEXT_PUBLIC_SITE_URL;
 
-      // Redirect to dashboard after Google login
       const { data, error } = await supabaseClient.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: `${origin}/auth/callback` },
       });
 
-      if (error) return Promise.reject(error);
+      if (error) throw error;
       return data;
     },
   });
 
   async function handleGooglePostRedirect() {
     const { data, error } = await supabaseClient.auth.getUser();
-    if (error || !data?.user) return;
+    if (error || !data?.user) throw new Error("Authentication failed");
 
-    // sync user to Prisma before fetching profile
     await syncUserToPrisma({ id: data.user.id, email: data.user.email ?? "" });
-
-    // fetch profile and set Zustand/cookie/route
     await handleProfileAndRoute(data.user.id, data.user.email ?? "");
   }
+
+  const getResetSession = useQuery({
+    queryKey: ["reset-session"],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error || !data.session?.user?.email) {
+        throw new Error("Invalid or expired reset link");
+      }
+      return data.session.user;
+    },
+    enabled: true,
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: async ({ password }: { password: string }) => {
+      const { error } = await supabaseClient.auth.updateUser({ password });
+      if (error) {
+        if (error.message.includes("same_password")) {
+          throw new Error(
+            "New password must be different from your current password."
+          );
+        }
+        throw error;
+      }
+    },
+  });
 
   return {
     signUp,
@@ -203,5 +191,7 @@ export function useAuth() {
     signOut,
     signInWithGoogle,
     handleGooglePostRedirect,
+    getResetSession,
+    resetPassword,
   };
 }

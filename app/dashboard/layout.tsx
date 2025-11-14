@@ -24,8 +24,17 @@ export default async function DashboardLayout({
 
   const profile = await prisma.user.findUnique({
     where: { id: user.id },
-    include: { business: true },
+    include: { business: true, Staff: { include: { business: true } } },
   });
+
+  if (profile?.deletedAt) {
+    redirect("/unathorized");
+  }
+
+  const business = profile?.business || profile?.Staff?.business;
+  if (business?.deletedAt) {
+    redirect("/unathorized");
+  }
 
   if (
     profile?.role === "ADMIN" &&

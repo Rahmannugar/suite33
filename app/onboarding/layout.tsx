@@ -18,14 +18,22 @@ export default async function OnboardingLayout({
 
   const profile = await prisma.user.findUnique({
     where: { id: user.id },
-    include: { business: true },
+    include: { business: true, Staff: { include: { business: true } } },
   });
 
-  // If admin and onboarding complete, redirect to dashboard
+  if (profile?.deletedAt) {
+    redirect("/unathorized");
+  }
+
+  const business = profile?.business || profile?.Staff?.business;
+  if (business?.deletedAt) {
+    redirect("/unathorized");
+  }
+
   if (profile?.role === "ADMIN" && profile.business?.id && profile.fullName) {
     redirect("/dashboard/admin");
   }
-  // If staff/subadmin and onboarding complete, redirect to dashboard
+
   if (
     (profile?.role === "STAFF" || profile?.role === "SUB_ADMIN") &&
     profile.fullName

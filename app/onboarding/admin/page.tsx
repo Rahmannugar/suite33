@@ -9,7 +9,14 @@ import { toast } from "sonner";
 import { uploadAvatar } from "@/lib/utils/uploadImage";
 import Image from "next/image";
 import { ThemeToggle } from "@/components/Toggler";
-import { Building2, MapPin, Briefcase, User, Upload, Loader2 } from "lucide-react";
+import {
+  Building2,
+  MapPin,
+  Briefcase,
+  User,
+  Upload,
+  Loader2,
+} from "lucide-react";
 
 export default function AdminOnboardingPage() {
   const router = useRouter();
@@ -37,47 +44,48 @@ export default function AdminOnboardingPage() {
     }
   };
 
- const submitOnboarding = useMutation({
-   mutationFn: async () => {
-     let logoUrl = "";
-     if (logoFile && user?.id) {
-       try {
-         logoUrl = await uploadAvatar(logoFile, user.id);
-       } catch (err) {
-         toast.error("Failed to upload logo.");
-       }
-     }
+  const submitOnboarding = useMutation({
+    mutationFn: async () => {
+      let logoUrl = "";
+      if (logoFile && user?.id) {
+        try {
+          logoUrl = await uploadAvatar(logoFile, user.id);
+        } catch (err) {
+          toast.error("Failed to upload logo.");
+        }
+      }
 
-     await axios.post("/api/onboarding", {
-       fullName,
-       businessName,
-       industry,
-       location,
-       logoUrl,
-     });
-   },
-   onSuccess: () => {
-     setFullName("");
-     setBusinessName("");
-     setIndustry("");
-     setLocation("");
-     setLogoFile(null);
-     setLogoPreview(null);
-     toast.success("Business profile created! Signing you in...");
-     setIsRouting(true);
-     router.push("/dashboard/admin");
-   },
-   onError: (err: any) => {
-     toast.error(err?.response?.data?.error || "Failed to complete onboarding");
-   },
- });
+      await axios.post("/api/onboarding", {
+        fullName,
+        businessName,
+        industry,
+        location,
+        logoUrl,
+      });
+    },
+    onSuccess: () => {
+      setFullName("");
+      setBusinessName("");
+      setIndustry("");
+      setLocation("");
+      setLogoFile(null);
+      setLogoPreview(null);
+      toast.success("Business profile created! Signing you in...");
+      setIsRouting(true);
+      router.push("/dashboard/admin");
+    },
+    onError: (err: any) => {
+      toast.error(
+        err?.response?.data?.error || "Failed to complete onboarding"
+      );
+    },
+  });
 
   if (!user) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background">
       <div className="w-full max-w-lg rounded-xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-lg p-8 relative">
-        {/* Suite33 Logo */}
         <ThemeToggle />
         <div className="flex justify-center mb-6">
           <Image

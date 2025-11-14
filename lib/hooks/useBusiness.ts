@@ -33,10 +33,10 @@ export function useBusiness() {
 
   const deleteBusiness = useMutation({
     mutationFn: async () => {
-      await axios.delete("/api/business");
+      await axios.delete("/api/business/delete-business");
     },
     onSuccess: () => {
-      queryClient.removeQueries({ queryKey: ["user-profile"] });
+      queryClient.clear();
     },
   });
 

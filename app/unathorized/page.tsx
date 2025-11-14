@@ -5,7 +5,7 @@ export default function UnauthorizedPage() {
       <p className="text-base text-[--muted-foreground] text-center mb-6">
         You do not have permission to view this page.
         <br />
-        Please contact your admin for access.
+        Please contact your admin or Suite33 management for access.
       </p>
       <div className="flex gap-3">
         <a

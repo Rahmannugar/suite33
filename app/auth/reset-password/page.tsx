@@ -1,65 +1,77 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
 import { toast } from "sonner";
-import { validateEmail, validatePassword } from "@/lib/utils/validation";
+import { validatePassword } from "@/lib/utils/validation";
 import Image from "next/image";
-import Link from "next/link";
 import { ThemeToggle } from "@/components/Toggler";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "@/lib/hooks/useAuth";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const { signIn, signInWithGoogle } = useAuth();
-  const [email, setEmail] = useState("");
+export default function ResetPasswordPage() {
+  const { getResetSession, resetPassword } = useAuth();
   const [password, setPassword] = useState("");
-  const [emailError, setEmailError] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isRouting, setIsRouting] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    let valid = true;
-
-    if (!validateEmail(email)) {
-      setEmailError("Enter a valid email address.");
-      valid = false;
-    } else {
-      setEmailError("");
-    }
 
     if (!validatePassword(password)) {
       setPasswordError(
         "Password must be at least 8 characters, include uppercase, lowercase, number, and symbol."
       );
-      valid = false;
-    } else {
-      setPasswordError("");
+      return;
     }
+    setPasswordError("");
 
-    if (!valid) return;
+    if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match.");
+      return;
+    }
+    setConfirmPasswordError("");
 
-    signIn.mutate(
-      { email, password },
+    resetPassword.mutate(
+      { password },
       {
         onSuccess: () => {
-          setEmail("");
-          setPassword("");
-          toast.success("Sign in successful!");
-          setIsRouting(true);
-          router.push("/dashboard");
+          toast.success("Password reset successful! Please sign in.");
+          router.push("/auth/login");
         },
       }
     );
   }
 
+  if (getResetSession.isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-sm text-[--muted-foreground]">Verifying link...</p>
+      </div>
+    );
+  }
+
+  if (getResetSession.isError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-sm text-red-500">
+            Invalid or expired reset link. Please request a new one.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const email = getResetSession.data?.email;
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md rounded-xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-sm p-8">
         <ThemeToggle />
+
         <div className="flex justify-center mb-6">
           <Image
             src="/images/suite33-black.png"
@@ -80,32 +92,27 @@ export default function LoginPage() {
         </div>
 
         <h1 className="text-2xl font-semibold text-center mb-1">
-          Sign in to <span className="text-[--primary]">Suite33</span>
+          Reset your password
         </h1>
         <p className="text-sm text-[--muted-foreground] text-center mb-8">
-          Manage your business smarter, not harder.
+          Enter your new password for <b>{email}</b>
         </p>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <input
               type="email"
-              placeholder="Email address"
               value={email}
-              required
-              onChange={(e) => setEmail(e.target.value)}
-              className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
+              readOnly
+              className="block w-full rounded-lg border border-[--input] bg-muted p-3 text-base cursor-not-allowed"
             />
-            {emailError && (
-              <div className="text-xs text-red-500">{emailError}</div>
-            )}
           </div>
 
           <div className="space-y-2">
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
-                placeholder="Password"
+                placeholder="New password"
                 value={password}
                 required
                 onChange={(e) => setPassword(e.target.value)}
@@ -125,64 +132,50 @@ export default function LoginPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-end">
-            <Link
-              href="/auth/forgot-password"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Forgot password?
-            </Link>
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                required
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                aria-label={
+                  showConfirmPassword ? "Hide password" : "Show password"
+                }
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {confirmPasswordError && (
+              <div className="text-xs text-red-500">{confirmPasswordError}</div>
+            )}
           </div>
 
-          {signIn.isError && (
+          {resetPassword.isError && (
             <div className="text-xs text-red-500">
-              {signIn.error?.message || "Failed to sign in"}
+              {resetPassword.error?.message || "Failed to reset password"}
             </div>
           )}
 
           <button
             type="submit"
             className={`w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition ${
-              signIn.isPending || isRouting
+              resetPassword.isPending
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer"
             }`}
-            disabled={signIn.isPending || isRouting}
+            disabled={resetPassword.isPending}
           >
-            {signIn.isPending || isRouting ? "Signing in..." : "Sign in"}
+            {resetPassword.isPending ? "Resetting..." : "Reset password"}
           </button>
         </form>
-
-        <button
-          onClick={() => signInWithGoogle.mutate({})}
-          disabled={signInWithGoogle.isPending || signIn.isPending}
-          className={`mt-4 w-full flex items-center justify-center gap-2 rounded-lg border border-[--input] py-3 hover:bg-blue-50 dark:hover:bg-blue-900 transition ${
-            signInWithGoogle.isPending
-              ? "opacity-50 cursor-not-allowed"
-              : "cursor-pointer"
-          }`}
-        >
-          <Image
-            src="/icons/google.svg"
-            alt="Google"
-            width={18}
-            height={18}
-            className="opacity-90"
-          />
-          {signInWithGoogle.isPending
-            ? "Signing in..."
-            : "Continue with Google"}
-        </button>
-
-        <p className="mt-6 text-sm text-[--muted-foreground] text-center">
-          No account?{" "}
-          <Link
-            href="/auth/signup"
-            className="underline text-[--primary] hover:opacity-80"
-          >
-            Sign up
-          </Link>
-        </p>
       </div>
     </div>
   );
