@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         Staff: {
           include: {
             department: true,
-            business: true
+            business: true,
           },
         },
       },
@@ -29,8 +29,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Get the business details from either admin's business or staff's business
+    if (record.deletedAt) {
+      return NextResponse.json(
+        { error: "Account has been deleted", deletedAt: record.deletedAt },
+        { status: 403 }
+      );
+    }
+
     const business = record.business || record.Staff?.business;
+
+    if (business?.deletedAt) {
+      return NextResponse.json(
+        { error: "Business has been deleted", deletedAt: business.deletedAt },
+        { status: 403 }
+      );
+    }
 
     return NextResponse.json({
       id: record.id,

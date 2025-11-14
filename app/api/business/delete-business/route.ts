@@ -4,15 +4,6 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { businessId } = await request.json();
-
-    if (!businessId) {
-      return NextResponse.json(
-        { error: "Missing businessId" },
-        { status: 400 }
-      );
-    }
-
     const supabase = await supabaseServer(true);
     const { data, error } = await supabase.auth.getUser();
 
@@ -29,14 +20,22 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (!profile.business?.id || profile.business.id !== businessId) {
+    if (!profile.business?.id) {
       return NextResponse.json(
         { error: "Business not found" },
         { status: 404 }
       );
     }
 
+    if (profile.business?.deletedAt) {
+      return NextResponse.json(
+        { error: "Business is already deleted" },
+        { status: 410 }
+      );
+    }
+
     const now = new Date();
+    const businessId = profile.business.id;
 
     await prisma.sale.updateMany({
       where: { businessId },
@@ -63,9 +62,8 @@ export async function DELETE(request: NextRequest) {
       data: { deletedAt: now },
     });
 
-    await prisma.invite.updateMany({
+    await prisma.invite.deleteMany({
       where: { businessId },
-      data: { deletedAt: now },
     });
 
     const staffList = await prisma.staff.findMany({
