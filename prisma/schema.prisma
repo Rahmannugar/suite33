@@ -15,11 +15,12 @@ model User {
   password    String?
   role        Role      @default(ADMIN)
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  updatedAt   DateTime  @default(now()) @updatedAt
   avatarUrl   String?
   fullName    String?
   inviteCount Int       @default(0)
   inviteMonth String?
+  deletedAt   DateTime?
   business    Business?
   Staff       Staff?
 }
@@ -29,10 +30,11 @@ model Business {
   name         String
   ownerId      String        @unique @db.Uuid
   createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  updatedAt    DateTime      @default(now()) @updatedAt
   industry     String?
   location     String?
   logoUrl      String?
+  deletedAt    DateTime?
   owner        User          @relation(fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   categories   Category[]
   departments  Department[]
@@ -49,7 +51,8 @@ model Department {
   name       String
   businessId String          @db.Uuid
   createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  updatedAt  DateTime        @default(now()) @updatedAt
+  deletedAt  DateTime?
   business   Business        @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   kpis       DepartmentKPI[]
   invites    Invite[]
@@ -62,7 +65,8 @@ model Staff {
   businessId   String      @db.Uuid
   departmentId String?     @db.Uuid
   createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  updatedAt    DateTime    @default(now()) @updatedAt
+  deletedAt    DateTime?
   payrolls     Payroll[]
   business     Business    @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -77,7 +81,7 @@ model StaffKPI {
   value     Float
   period    DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
   staff     Staff    @relation(fields: [staffId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -88,36 +92,42 @@ model DepartmentKPI {
   value        Float
   period       DateTime
   createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  updatedAt    DateTime   @default(now()) @updatedAt
   department   Department @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Sale {
-  id          String   @id @default(uuid()) @db.Uuid
-  businessId  String   @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  businessId  String    @db.Uuid
   amount      Float
-  description String   @default("")
-  date        DateTime @default(now())
-  business    Business @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  description String    @default("")
+  date        DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  deletedAt   DateTime?
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Expenditure {
-  id          String   @id @default(uuid()) @db.Uuid
-  businessId  String   @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  businessId  String    @db.Uuid
   amount      Float
-  description String   @default("")
-  date        DateTime @default(now())
-  business    Business @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  description String    @default("")
+  date        DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  deletedAt   DateTime?
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Payroll {
   id         String   @id @default(uuid()) @db.Uuid
   staffId    String   @db.Uuid
   businessId String   @db.Uuid
-  amount     Float
   period     DateTime
-  createdAt  DateTime @default(now())
+  amount     Float
   paid       Boolean  @default(false)
+  createdAt  DateTime @default(now())
   business   Business @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   staff      Staff    @relation(fields: [staffId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
@@ -127,33 +137,36 @@ model Category {
   name       String
   businessId String      @db.Uuid
   createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @default(now()) @updatedAt
+  deletedAt  DateTime?
   business   Business    @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   inventory  Inventory[]
 }
 
 model Inventory {
-  id         String   @id @default(uuid()) @db.Uuid
+  id         String    @id @default(uuid()) @db.Uuid
   name       String
-  quantity   Int      @default(0)
-  categoryId String   @db.Uuid
-  businessId String   @db.Uuid
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  business   Business @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quantity   Int
+  categoryId String    @db.Uuid
+  businessId String    @db.Uuid
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
+  deletedAt  DateTime?
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Invite {
-  id           String      @id @default(uuid()) @db.Uuid
+  id           String     @id @default(uuid()) @db.Uuid
   email        String
-  token        String      @unique @default(uuid())
-  businessId   String      @db.Uuid
-  departmentId String?     @db.Uuid
-  role         Role        @default(STAFF)
-  accepted     Boolean     @default(false)
-  createdAt    DateTime    @default(now())
-  expiresAt    DateTime    @default(dbgenerated("(now() + '7 days'::interval)"))
-  business     Business    @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  businessId   String     @db.Uuid
+  departmentId String?    @db.Uuid
+  token        String     @unique @default(uuid())
+  accepted     Boolean    @default(false)
+  role         Role       @default(STAFF)
+  expiresAt    DateTime   @default(dbgenerated("(now() + '7 days'::interval)"))
+  createdAt    DateTime   @default(now())
+  business     Business   @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 

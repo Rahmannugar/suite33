@@ -4,9 +4,9 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function PUT(request: NextRequest) {
   try {
-    const { businessId, location } = await request.json();
+    const { location } = await request.json();
 
-    if (!businessId || !location) {
+    if (!location) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -29,15 +29,22 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (!profile.business?.id || profile.business.id !== businessId) {
+    if (!profile.business?.id) {
       return NextResponse.json(
         { error: "Business not found" },
         { status: 404 }
       );
     }
 
+    if (profile.business?.deletedAt) {
+      return NextResponse.json(
+        { error: "Business is deleted" },
+        { status: 410 }
+      );
+    }
+
     const business = await prisma.business.update({
-      where: { id: businessId },
+      where: { id: profile.business.id },
       data: { location },
     });
 
