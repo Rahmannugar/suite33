@@ -5,340 +5,346 @@ import { useRouter } from "next/navigation";
 import { useProfile } from "@/lib/hooks/useProfile";
 import { useBusiness } from "@/lib/hooks/useBusiness";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { toast } from "sonner";
 import { useAuthStore } from "@/lib/stores/authStore";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+type DialogType =
+  | null
+  | "update-name"
+  | "update-industry"
+  | "update-location"
+  | "delete-business";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
+  const user = useAuthStore((s) => s.user);
   const { profile, isLoading } = useProfile();
   const { updateName, updateIndustry, updateLocation, deleteBusiness } =
     useBusiness();
   const { signOut } = useAuth();
 
-  const [openUpdateName, setOpenUpdateName] = useState(false);
-  const [openUpdateIndustry, setOpenUpdateIndustry] = useState(false);
-  const [openUpdateLocation, setOpenUpdateLocation] = useState(false);
-  const [openDeleteBusiness, setOpenDeleteBusiness] = useState(false);
-
-  const [businessName, setBusinessName] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [location, setLocation] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState("");
-
+  const [dialog, setDialog] = useState<DialogType>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const [form, setForm] = useState({
+    name: "",
+    industry: "",
+    location: "",
+    confirm: "",
+  });
+
   if (user?.role !== "ADMIN") return null;
+  if (isLoading || !profile?.businessId) return null;
 
-  function openNameDialog() {
-    setBusinessName(profile?.businessName || "");
-    setOpenUpdateName(true);
-  }
+  const openDialog = (type: DialogType) => {
+    setDialog(type);
+    if (type === "update-name")
+      setForm((f) => ({ ...f, name: profile.businessName || "" }));
+    if (type === "update-industry")
+      setForm((f) => ({ ...f, industry: profile.industry || "" }));
+    if (type === "update-location")
+      setForm((f) => ({ ...f, location: profile.location || "" }));
+    if (type === "delete-business") setForm((f) => ({ ...f, confirm: "" }));
+  };
 
-  function openIndustryDialog() {
-    setIndustry(profile?.industry || "");
-    setOpenUpdateIndustry(true);
-  }
+  const closeDialog = () => {
+    setDialog(null);
+    setSaving(false);
+    setDeleting(false);
+  };
 
-  function openLocationDialog() {
-    setLocation(profile?.location || "");
-    setOpenUpdateLocation(true);
-  }
-
-  async function handleUpdateName(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmedName = businessName.trim();
-    if (!trimmedName) return;
-
-    if (trimmedName === profile?.businessName) {
-      setOpenUpdateName(false);
-      setBusinessName("");
+  async function handleUpdateName() {
+    const trimmed = form.name.trim();
+    if (!trimmed) return;
+    if (trimmed === profile?.businessName) {
+      closeDialog();
       return;
     }
-
     setSaving(true);
     try {
-      await updateName.mutateAsync({ name: trimmedName });
-      toast.success("Business name updated successfully!");
-      setOpenUpdateName(false);
-      setBusinessName("");
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.error || "Failed to update business name"
-      );
-    } finally {
+      await updateName.mutateAsync({ name: trimmed });
+      toast.success("Business name updated");
+      closeDialog();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Failed to update name");
       setSaving(false);
     }
   }
 
-  async function handleUpdateIndustry(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmedIndustry = industry.trim();
-    if (!trimmedIndustry) return;
-
-    if (trimmedIndustry === profile?.industry) {
-      setOpenUpdateIndustry(false);
-      setIndustry("");
+  async function handleUpdateIndustry() {
+    const trimmed = form.industry.trim();
+    if (!trimmed) return;
+    if (trimmed === profile?.industry) {
+      closeDialog();
       return;
     }
-
     setSaving(true);
     try {
-      await updateIndustry.mutateAsync({ industry: trimmedIndustry });
-      toast.success("Business industry updated successfully!");
-      setOpenUpdateIndustry(false);
-      setIndustry("");
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.error || "Failed to update business industry"
-      );
-    } finally {
+      await updateIndustry.mutateAsync({ industry: trimmed });
+      toast.success("Business industry updated");
+      closeDialog();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Failed to update industry");
       setSaving(false);
     }
   }
 
-  async function handleUpdateLocation(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmedLocation = location.trim();
-    if (!trimmedLocation) return;
-
-    if (trimmedLocation === profile?.location) {
-      setOpenUpdateLocation(false);
-      setLocation("");
+  async function handleUpdateLocation() {
+    const trimmed = form.location.trim();
+    if (!trimmed) return;
+    if (trimmed === profile?.location) {
+      closeDialog();
       return;
     }
-
     setSaving(true);
     try {
-      await updateLocation.mutateAsync({ location: trimmedLocation });
-      toast.success("Business location updated successfully!");
-      setOpenUpdateLocation(false);
-      setLocation("");
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.error || "Failed to update business location"
-      );
-    } finally {
+      await updateLocation.mutateAsync({ location: trimmed });
+      toast.success("Business location updated");
+      closeDialog();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Failed to update location");
       setSaving(false);
     }
   }
 
-  async function handleDeleteBusiness(e: React.FormEvent) {
-    e.preventDefault();
-    if (!profile?.businessName) return;
-
-    if (deleteConfirm !== profile.businessName) {
+  async function handleDeleteBusiness() {
+    if (form.confirm !== profile?.businessName) {
       toast.error("Business name does not match");
       return;
     }
-
     setDeleting(true);
     try {
       await deleteBusiness.mutateAsync();
       await signOut.mutateAsync();
-      toast.success("Business deleted successfully");
+      toast.success("Business deleted");
       router.push("/");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Failed to delete business");
-    } finally {
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Failed to delete business");
       setDeleting(false);
     }
   }
 
-  if (isLoading || !profile?.businessId) return null;
-
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="rounded-xl border border-[--border] bg-[--card] p-6">
-        <h2 className="text-xl font-semibold mb-6">Business Settings</h2>
+    <div className="max-w-3xl mx-auto">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl font-semibold">
+            Business Settings
+          </CardTitle>
+        </CardHeader>
 
-        <div className="space-y-6">
+        <CardContent className="space-y-8">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium mb-1">Business Name</h3>
-              <p className="text-sm text-[--muted-foreground]">
+              <p className="font-medium">Business Name</p>
+              <p className="text-sm text-muted-foreground">
                 {profile.businessName}
               </p>
             </div>
-            <button
-              onClick={openNameDialog}
-              className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 transition"
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => openDialog("update-name")}
             >
-              Update Name
-            </button>
+              Update
+            </Button>
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium mb-1">Industry</h3>
-              <p className="text-sm text-[--muted-foreground]">
+              <p className="font-medium">Industry</p>
+              <p className="text-sm text-muted-foreground">
                 {profile.industry || "Not set"}
               </p>
             </div>
-            <button
-              onClick={openIndustryDialog}
-              className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 transition"
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => openDialog("update-industry")}
             >
-              Update Industry
-            </button>
+              Update
+            </Button>
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium mb-1">Location</h3>
-              <p className="text-sm text-[--muted-foreground]">
+              <p className="font-medium">Location</p>
+              <p className="text-sm text-muted-foreground">
                 {profile.location || "Not set"}
               </p>
             </div>
-            <button
-              onClick={openLocationDialog}
-              className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 transition"
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => openDialog("update-location")}
             >
-              Update Location
-            </button>
+              Update
+            </Button>
           </div>
 
-          <div className="border-t border-[--border] pt-6 mt-6">
+          <div className="pt-6 border-t">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium mb-1 text-red-600">
-                  Delete Business
-                </h3>
-                <p className="text-sm text-[--muted-foreground]">
-                  Permanently delete your business and all associated data
+                <p className="font-medium text-red-600">Delete Business</p>
+                <p className="text-sm text-muted-foreground">
+                  Permanently remove all business data
                 </p>
               </div>
-              <button
-                onClick={() => setOpenDeleteBusiness(true)}
-                className="rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-700 transition"
+              <Button
+                variant="destructive"
+                className="cursor-pointer"
+                onClick={() => openDialog("delete-business")}
               >
-                Delete Business
-              </button>
+                Delete
+              </Button>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <Dialog open={openUpdateName} onOpenChange={setOpenUpdateName}>
+      <Dialog open={dialog !== null} onOpenChange={closeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Business Name</DialogTitle>
+            <DialogTitle>
+              {dialog === "update-name" && "Update Business Name"}
+              {dialog === "update-industry" && "Update Industry"}
+              {dialog === "update-location" && "Update Location"}
+              {dialog === "delete-business" && "Delete Business"}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleUpdateName} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">New Business Name</label>
-              <input
-                type="text"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                required
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? "Updating..." : "Update Name"}
-            </button>
-          </form>
-        </DialogContent>
-      </Dialog>
 
-      <Dialog open={openUpdateIndustry} onOpenChange={setOpenUpdateIndustry}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Industry</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleUpdateIndustry} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">New Industry</label>
-              <input
-                type="text"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                required
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
+          {dialog === "update-name" && (
+            <>
+              <Input
+                value={form.name}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }
+                placeholder="Business name"
               />
-            </div>
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? "Updating..." : "Update Industry"}
-            </button>
-          </form>
-        </DialogContent>
-      </Dialog>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={closeDialog}
+                  disabled={saving}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateName}
+                  disabled={saving}
+                  className="cursor-pointer"
+                >
+                  {saving ? "Updating..." : "Update"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
 
-      <Dialog open={openUpdateLocation} onOpenChange={setOpenUpdateLocation}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Location</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleUpdateLocation} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">New Location</label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                required
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
+          {dialog === "update-industry" && (
+            <>
+              <Input
+                value={form.industry}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, industry: e.target.value }))
+                }
+                placeholder="Industry"
               />
-            </div>
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full rounded-lg bg-blue-600 text-white py-3 font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? "Updating..." : "Update Location"}
-            </button>
-          </form>
-        </DialogContent>
-      </Dialog>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={closeDialog}
+                  disabled={saving}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateIndustry}
+                  disabled={saving}
+                  className="cursor-pointer"
+                >
+                  {saving ? "Updating..." : "Update"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
 
-      <Dialog open={openDeleteBusiness} onOpenChange={setOpenDeleteBusiness}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-red-600">Delete Business</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <p className="text-sm text-[--muted-foreground]">
-              Are you sure you want to delete your business? This action will
-              soft delete all associated data.
-            </p>
-            <p className="text-sm font-medium">
-              Enter business name:{" "}
-              <span className="font-bold">{profile.businessName}</span>
-            </p>
-            <form onSubmit={handleDeleteBusiness} className="space-y-4">
-              <input
-                type="text"
-                value={deleteConfirm}
-                onChange={(e) => setDeleteConfirm(e.target.value)}
-                required
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-red-500 outline-none transition"
-                placeholder="Enter business name"
+          {dialog === "update-location" && (
+            <>
+              <Input
+                value={form.location}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, location: e.target.value }))
+                }
+                placeholder="Location"
               />
-              <button
-                type="submit"
-                disabled={deleting}
-                className="w-full rounded-lg bg-red-600 text-white py-3 font-medium hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {deleting ? "Deleting..." : "Delete Business"}
-              </button>
-            </form>
-          </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={closeDialog}
+                  disabled={saving}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateLocation}
+                  disabled={saving}
+                  className="cursor-pointer"
+                >
+                  {saving ? "Updating..." : "Update"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {dialog === "delete-business" && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Enter your business name to confirm deletion:
+              </p>
+
+              <Input
+                value={form.confirm}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, confirm: e.target.value }))
+                }
+                placeholder={profile?.businessName ?? ""}
+              />
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={closeDialog}
+                  disabled={deleting}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteBusiness}
+                  disabled={deleting}
+                  className="cursor-pointer"
+                >
+                  {deleting ? "Deleting..." : "Delete"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -7,6 +7,7 @@ import Image from "next/image";
 import { ThemeToggle } from "@/components/Toggler";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 export default function ResetPasswordPage() {
   const { getResetSession, resetPassword } = useAuth();
@@ -16,6 +17,8 @@ export default function ResetPasswordPage() {
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
