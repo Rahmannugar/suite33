@@ -6,7 +6,7 @@ import { validatePassword } from "@/lib/utils/validation";
 import Image from "next/image";
 import { ThemeToggle } from "@/components/Toggler";
 import { Eye, EyeOff } from "lucide-react";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/lib/hooks/auth/useAuth";
 import { useRouter } from "next/navigation";
 
 export default function ResetPasswordPage() {

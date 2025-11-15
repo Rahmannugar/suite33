@@ -18,10 +18,10 @@ import {
   BadgeDollarSign,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useExpenditures } from "@/lib/hooks/useExpenditures";
-import { useStaff } from "@/lib/hooks/useStaff";
-import { useInventory } from "@/lib/hooks/useInventory";
-import { usePayroll } from "@/lib/hooks/usePayroll";
+import { useExpenditures } from "@/lib/hooks/expenditures/useExpenditures";
+import { useStaff } from "@/lib/hooks/business/useStaff";
+import { useInventory } from "@/lib/hooks/inventory/useInventory";
+import { usePayroll } from "@/lib/hooks/payroll/usePayroll";
 import type { Expenditure } from "@/lib/types/expenditure";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,7 +34,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getInitials } from "@/lib/utils/getInitials";
-import { useSalesSummary } from "@/lib/hooks/useSalesSummary";
+import { useSalesSummary } from "@/lib/hooks/sales/useSalesSummary";
 import { useMemo } from "react";
 
 type SaleSummaryMonth = {

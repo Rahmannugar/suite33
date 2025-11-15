@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { SaleSchema } from "../types/sale";
+import { SaleSchema } from "@/lib/types/sale";
 import z from "zod";
 
 export type ExportableSale = {

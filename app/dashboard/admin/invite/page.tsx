@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useSidebarStore } from "@/lib/stores/sidebarStore";
-import { useStaffInvite } from "@/lib/hooks/useStaffInvite";
+import { useStaffInvite } from "@/lib/hooks/invite/useStaffInvite";
 import {
   Select,
   SelectTrigger,

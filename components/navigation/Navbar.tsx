@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/Toggler";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/lib/hooks/auth/useAuth";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 

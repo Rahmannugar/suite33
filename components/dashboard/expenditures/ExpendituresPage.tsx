@@ -5,7 +5,7 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import {
   ExportableExpenditure,
   useExpenditures,
-} from "@/lib/hooks/useExpenditures";
+} from "@/lib/hooks/expenditures/useExpenditures";
 import { useInsightStore } from "@/lib/stores/insightStore";
 import ByteDatePicker from "byte-datepicker";
 import "byte-datepicker/styles.css";

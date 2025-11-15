@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { PayrollSchema } from "../types/payroll";
+import { PayrollSchema } from "@/lib/types/payroll";
 import z from "zod";
 
 export function usePayroll() {

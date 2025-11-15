@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/lib/hooks/auth/useAuth";
 import { toast } from "sonner";
 import { validateEmail, validatePassword } from "@/lib/utils/validation";
 import Image from "next/image";

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useInventory } from "@/lib/hooks/useInventory";
+import { useInventory } from "@/lib/hooks/inventory/useInventory";
 import { toast } from "sonner";
 import type { Inventory } from "@/lib/types/inventory";
 import {

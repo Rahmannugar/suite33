@@ -1,6 +1,6 @@
 "use client";
 
-import { useProfile } from "@/lib/hooks/useProfile";
+import { useProfile } from "@/lib/hooks/profile/useProfile";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Header from "@/components/dashboard/Header";
 import { ReactNode } from "react";

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { StaffSchema } from "../types/staff";
+import { StaffSchema } from "@/lib/types/staff";
 import z from "zod";
 
 export function useStaff() {

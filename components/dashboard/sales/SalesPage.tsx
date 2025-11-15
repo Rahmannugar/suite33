@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useSales } from "@/lib/hooks/useSales";
+import { useSales } from "@/lib/hooks/sales/useSales";
 import { useInsightStore } from "@/lib/stores/insightStore";
 import ByteDatePicker from "byte-datepicker";
 import "byte-datepicker/styles.css";
@@ -42,15 +42,6 @@ import {
   Edit,
   Calendar as CalendarIcon,
 } from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip as ChartTooltipComponent,
-  CartesianGrid,
-} from "recharts";
 import { toast } from "sonner";
 import type { Sale } from "@/lib/types/sale";
 import {
@@ -67,7 +58,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { useSalesSummary } from "@/lib/hooks/useSalesSummary";
+import { useSalesSummary } from "@/lib/hooks/sales/useSalesSummary";
 import { SalesChart } from "./SalesChart";
 
 type ChartPoint = { name: string; amount: number; count: number };

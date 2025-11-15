@@ -3,12 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/stores/authStore";
 import axios from "axios";
-import { UserSchema, User } from "../types/user";
+import { UserSchema, User } from "@/lib/types/user";
 import { useEffect } from "react";
-import { z } from "zod";
 
 export function useProfile() {
-  const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
 
   const query = useQuery({

@@ -2,9 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { usePayroll } from "@/lib/hooks/usePayroll";
-import { useStaff } from "@/lib/hooks/useStaff";
-import { useDepartments } from "@/lib/hooks/useDepartments";
+import { usePayroll } from "@/lib/hooks/payroll/usePayroll";
+import { useStaff } from "@/lib/hooks/business/useStaff";
+import { useDepartments } from "@/lib/hooks/business/useDepartments";
 import { toast } from "sonner";
 import ByteDatePicker from "byte-datepicker";
 import {

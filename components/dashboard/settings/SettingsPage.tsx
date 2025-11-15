@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useProfile } from "@/lib/hooks/useProfile";
-import { useBusiness } from "@/lib/hooks/useBusiness";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useProfile } from "@/lib/hooks/profile/useProfile";
+import { useBusiness } from "@/lib/hooks/business/useBusiness";
+import { useAuth } from "@/lib/hooks/auth/useAuth";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { toast } from "sonner";
 import {

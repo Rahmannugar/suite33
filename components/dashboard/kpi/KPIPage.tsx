@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useKPIs } from "@/lib/hooks/useKPIs";
-import { useStaff } from "@/lib/hooks/useStaff";
-import { useDepartments } from "@/lib/hooks/useDepartments";
+import { useKPIs } from "@/lib/hooks/kpi/useKPIs";
+import { useStaff } from "@/lib/hooks/business/useStaff";
+import { useDepartments } from "@/lib/hooks/business/useDepartments";
 import { useInsightStore } from "@/lib/stores/insightStore";
 import { toast } from "sonner";
 import {

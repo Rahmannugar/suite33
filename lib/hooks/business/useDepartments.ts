@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import z from "zod";
-import { DepartmentSchema } from "../types/department";
+import { DepartmentSchema } from "@/lib/types/department";
 
 export function useDepartments() {
   const queryClient = useQueryClient();

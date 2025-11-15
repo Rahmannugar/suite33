@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { z } from "zod";
-import { StaffKPISchema, DepartmentKPISchema } from "../types/kpi";
+import { StaffKPISchema, DepartmentKPISchema } from "@/lib/types/kpi";
 
 export function useKPIs(page = 1, perPage = 10) {
   const queryClient = useQueryClient();

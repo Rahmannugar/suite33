@@ -2,8 +2,8 @@
 
 import { useSidebarStore } from "@/lib/stores/sidebarStore";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useProfile } from "@/lib/hooks/useProfile";
-import { useEditProfile } from "@/lib/hooks/useEditProfile";
+import { useProfile } from "@/lib/hooks/profile/useProfile";
+import { useEditProfile } from "@/lib/hooks/profile/useEditProfile";
 import { uploadAvatar } from "@/lib/utils/uploadImage";
 import { toast } from "sonner";
 import Image from "next/image";

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { ExpenditureSchema } from "../types/expenditure";
+import { ExpenditureSchema } from "@/lib/types/expenditure";
 import z from "zod";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";

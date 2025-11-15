@@ -4,8 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useDepartments } from "@/lib/hooks/useDepartments";
-import { useStaff } from "@/lib/hooks/useStaff";
+import { useDepartments } from "@/lib/hooks/business/useDepartments";
+import { useStaff } from "@/lib/hooks/business/useStaff";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

@@ -5,7 +5,7 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/lib/hooks/auth/useAuth";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { getInitials } from "@/lib/utils/getInitials";

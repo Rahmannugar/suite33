@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
-import { InventorySchema } from "../types/inventory";
+import { InventorySchema } from "@/lib/types/inventory";
 import { z } from "zod";
 
 export function findSimilarCategory(categories: any[], searchName: string) {

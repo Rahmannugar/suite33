@@ -3,7 +3,7 @@
 import { ThemeToggle } from "@/components/Toggler";
 import Image from "next/image";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { useInvite } from "@/lib/hooks/useInvite";
+import { useInvite } from "@/lib/hooks/invite/useInvite";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
