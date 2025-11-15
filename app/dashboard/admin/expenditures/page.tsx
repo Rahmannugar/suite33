@@ -1,4 +1,4 @@
-import ExpenditurePage from "@/components/dashboard/ExpendituresPage";
+import ExpenditurePage from "@/components/dashboard/expenditures/ExpendituresPage";
 export default function AdminExpenditurePage() {
   return <ExpenditurePage />;
 }

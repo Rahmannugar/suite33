@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { ExportableSale, useSales } from "@/lib/hooks/useSales";
+import { useSales } from "@/lib/hooks/useSales";
 import { useInsightStore } from "@/lib/stores/insightStore";
 import ByteDatePicker from "byte-datepicker";
 import "byte-datepicker/styles.css";
@@ -68,6 +68,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { useSalesSummary } from "@/lib/hooks/useSalesSummary";
+import { SalesChart } from "./SalesChart";
 
 type ChartPoint = { name: string; amount: number; count: number };
 type SummaryMonth = { month: number; total: number; count: number };
@@ -115,7 +116,8 @@ export default function SalesPage() {
   const [search, setSearch] = useState("");
 
   const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
-  const currentYear = date?.getFullYear() ?? new Date().getFullYear();
+  const currentYear = date ? date.getFullYear() : new Date().getFullYear();
+  const currentMonth = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
 
   const {
     sales,
@@ -131,8 +133,10 @@ export default function SalesPage() {
     getInsight,
   } = useSales(page, perPage, viewMode === "yearly" ? currentYear : undefined);
 
-  const { data: summary, isLoading: summaryLoading } =
-    useSalesSummary(currentYear);
+  const { data: summary } = useSalesSummary(
+    currentYear,
+    viewMode === "monthly" ? currentMonth : undefined
+  );
 
   const resetForm = () => setForm({ desc: "", amount: 0, date: new Date() });
 
@@ -160,41 +164,55 @@ export default function SalesPage() {
     return filtered;
   }, [sales, date, viewMode, search]);
 
-  const totalAmount = filteredSales.reduce((sum, s) => sum + s.amount, 0);
-  const totalSales = filteredSales.length;
   const totalPages = pagination ? Math.ceil(pagination.total / perPage) : 1;
 
-  const chartData: ChartPoint[] =
-    viewMode === "yearly" && summary
-      ? summary.map((m: SummaryMonth) => ({
-          name: new Date(2000, m.month - 1).toLocaleString("default", {
-            month: "short",
-          }),
-          amount: m.total,
-          count: m.count,
-        }))
-      : Array.from({ length: 4 }, (_, i) => {
-          if (!date) return { name: "", amount: 0, count: 0 };
-          const start = new Date(
-            date.getFullYear(),
-            date.getMonth(),
-            i * 7 + 1
-          );
-          const end = new Date(
-            date.getFullYear(),
-            date.getMonth(),
-            (i + 1) * 7
-          );
-          const weekSales = filteredSales.filter((s) => {
-            const d = new Date(s.date);
-            return d >= start && d <= end;
-          });
-          return {
-            name: `Week ${i + 1}`,
-            amount: weekSales.reduce((sum, s) => sum + s.amount, 0),
-            count: weekSales.length,
-          };
-        });
+  const monthlyRaw =
+    viewMode === "monthly" && Array.isArray(summary) ? (summary as Sale[]) : [];
+  let chartData: ChartPoint[] = [];
+
+  if (viewMode === "yearly" && Array.isArray(summary)) {
+    chartData = summary.map((m: SummaryMonth) => ({
+      name: new Date(2000, m.month - 1).toLocaleString("default", {
+        month: "short",
+      }),
+      amount: m.total,
+      count: m.count,
+    }));
+  }
+
+  if (viewMode === "monthly" && Array.isArray(summary)) {
+    chartData = Array.from({ length: 4 }, (_, i) => {
+      const start = new Date(currentYear, currentMonth - 1, i * 7 + 1);
+      const end = new Date(currentYear, currentMonth - 1, (i + 1) * 7);
+
+      const weekSales = monthlyRaw.filter((s) => {
+        const d = new Date(s.date);
+        return d >= start && d <= end;
+      });
+
+      return {
+        name: `Week ${i + 1}`,
+        amount: weekSales.reduce((sum, s) => sum + s.amount, 0),
+        count: weekSales.length,
+      };
+    });
+  }
+
+  const totalAmount =
+    viewMode === "monthly"
+      ? monthlyRaw.reduce((sum: number, s: Sale) => sum + s.amount, 0)
+      : (summary ?? []).reduce(
+          (sum: number, m: SummaryMonth) => sum + m.total,
+          0
+        );
+
+  const totalSales =
+    viewMode === "monthly"
+      ? monthlyRaw.length
+      : (summary ?? []).reduce(
+          (sum: number, m: SummaryMonth) => sum + m.count,
+          0
+        );
 
   const periodLabel =
     viewMode === "yearly"
@@ -202,6 +220,8 @@ export default function SalesPage() {
       : `${date?.toLocaleString("default", {
           month: "long",
         })} ${date?.getFullYear()} Sales`;
+
+  const chartKey = `${viewMode}-${currentYear}-${currentMonth}`;
 
   function formatSalesExport(sales: Sale[]) {
     return sales.map((s) => ({
@@ -418,22 +438,10 @@ export default function SalesPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+                {!summary ? (
                   <Skeleton className="w-full h-[420px] rounded-lg" />
                 ) : (
-                  <ResponsiveContainer width="100%" height={420}>
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <ChartTooltipComponent content={<ChartTooltip />} />
-                      <Bar
-                        dataKey="amount"
-                        fill="#2563eb"
-                        radius={[8, 8, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <SalesChart data={chartData} chartKey={chartKey} />
                 )}
               </CardContent>
             </Card>

@@ -1,4 +1,4 @@
-import SettingsPage from "@/components/dashboard/SettingsPage";
+import SettingsPage from "@/components/dashboard/settings/SettingsPage";
 
 export default function AdminSettingsPage() {
   return (

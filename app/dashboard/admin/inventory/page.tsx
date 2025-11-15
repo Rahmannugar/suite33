@@ -1,4 +1,4 @@
-import InventoryPage from "@/components/dashboard/InventoryPage";
+import InventoryPage from "@/components/dashboard/inventory/InventoryPage";
 export default function AdminInventoryPage() {
   return <InventoryPage />;
 }

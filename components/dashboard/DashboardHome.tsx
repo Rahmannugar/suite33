@@ -18,12 +18,10 @@ import {
   BadgeDollarSign,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useSales } from "@/lib/hooks/useSales";
 import { useExpenditures } from "@/lib/hooks/useExpenditures";
 import { useStaff } from "@/lib/hooks/useStaff";
 import { useInventory } from "@/lib/hooks/useInventory";
 import { usePayroll } from "@/lib/hooks/usePayroll";
-import type { Sale } from "@/lib/types/sale";
 import type { Expenditure } from "@/lib/types/expenditure";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,6 +34,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getInitials } from "@/lib/utils/getInitials";
+import { useSalesSummary } from "@/lib/hooks/useSalesSummary";
+import { useMemo } from "react";
+
+type SaleSummaryMonth = {
+  month: number;
+  total: number;
+  count: number;
+};
 
 function formatCurrencyShort(value: number): string {
   if (value >= 1_000_000_000) return `₦${(value / 1_000_000_000).toFixed(1)}B`;
@@ -62,10 +68,9 @@ function CustomTooltip({ active, payload, label }: any) {
     </div>
   );
 }
-
 export default function DashboardHome() {
   const user = useAuthStore((state) => state.user);
-  const { sales, isLoading: salesLoading } = useSales();
+
   const { expenditures, isLoading: expLoading } = useExpenditures();
   const { staff, isLoading: staffLoading } = useStaff();
   const { inventory, isLoading: invLoading } = useInventory();
@@ -74,66 +79,70 @@ export default function DashboardHome() {
   const role = user?.role ?? "STAFF";
   const currentYear = new Date().getFullYear();
 
-  const salesChartData = sales?.length
-    ? Array.from({ length: 12 }, (_, i) => {
-        const monthName = new Date(2000, i).toLocaleString("default", {
-          month: "short",
-        });
-        const monthSales = sales.filter(
-          (s: Sale) =>
-            new Date(s.date).getFullYear() === currentYear &&
-            new Date(s.date).getMonth() === i
-        );
-        return {
-          name: monthName,
-          sales: monthSales.reduce((sum, s) => sum + s.amount, 0),
-        };
-      })
-    : [];
+  const { data: summary, isLoading: salesLoading } =
+    useSalesSummary(currentYear);
 
-  const expChartData = expenditures?.length
-    ? Array.from({ length: 12 }, (_, i) => {
-        const monthName = new Date(2000, i).toLocaleString("default", {
-          month: "short",
-        });
-        const monthExp = expenditures.filter(
-          (e: Expenditure) =>
-            new Date(e.date).getFullYear() === currentYear &&
-            new Date(e.date).getMonth() === i
-        );
-        return {
-          name: monthName,
-          expenditures: monthExp.reduce((sum, e) => sum + e.amount, 0),
-        };
-      })
-    : [];
+  const salesChartData = useMemo(() => {
+    if (!summary) return [];
+    return summary.map((m: SaleSummaryMonth) => ({
+      name: new Date(2000, m.month - 1).toLocaleString("default", {
+        month: "short",
+      }),
+      sales: m.total,
+    }));
+  }, [summary]);
 
-  const pnlTable = Array.from({ length: 12 }, (_, i) => {
-    const salesMonth =
-      sales?.filter(
-        (s: Sale) =>
-          new Date(s.date).getFullYear() === currentYear &&
-          new Date(s.date).getMonth() === i
-      ) ?? [];
-    const expMonth =
-      expenditures?.filter(
+  const expChartData = useMemo(() => {
+    if (!expenditures) return [];
+    return Array.from({ length: 12 }, (_, i) => {
+      const expMonth = expenditures.filter(
         (e: Expenditure) =>
           new Date(e.date).getFullYear() === currentYear &&
           new Date(e.date).getMonth() === i
-      ) ?? [];
-    return {
-      month: new Date(2000, i).toLocaleString("default", { month: "short" }),
-      sales: salesMonth.reduce((sum, s) => sum + s.amount, 0),
-      expenditures: expMonth.reduce((sum, e) => sum + e.amount, 0),
-      pnl:
-        salesMonth.reduce((sum, s) => sum + s.amount, 0) -
-        expMonth.reduce((sum, e) => sum + e.amount, 0),
-    };
-  });
+      );
+      return {
+        name: new Date(2000, i).toLocaleString("default", { month: "short" }),
+        expenditures: expMonth.reduce((sum, e) => sum + e.amount, 0),
+      };
+    });
+  }, [expenditures, currentYear]);
 
-  const yearSales = pnlTable.reduce((sum, row) => sum + row.sales, 0);
-  const yearExp = pnlTable.reduce((sum, row) => sum + row.expenditures, 0);
-  const yearPnl = yearSales - yearExp;
+  const pnlTable = useMemo(() => {
+    if (!summary) return [];
+
+    return Array.from({ length: 12 }, (_, i) => {
+      const salesRow = summary.find((m: SaleSummaryMonth) => m.month === i + 1);
+      const salesTotal = salesRow?.total ?? 0;
+
+      const expMonth =
+        expenditures?.filter(
+          (e: Expenditure) =>
+            new Date(e.date).getFullYear() === currentYear &&
+            new Date(e.date).getMonth() === i
+        ) ?? [];
+
+      const expTotal = expMonth.reduce((sum, e) => sum + e.amount, 0);
+
+      return {
+        month: new Date(2000, i).toLocaleString("default", {
+          month: "short",
+        }),
+        sales: salesTotal,
+        expenditures: expTotal,
+        pnl: salesTotal - expTotal,
+      };
+    });
+  }, [summary, expenditures, currentYear]);
+
+  const { yearSales, yearExp, yearPnl } = useMemo(() => {
+    const totalSales = pnlTable.reduce((sum, row) => sum + row.sales, 0);
+    const totalExp = pnlTable.reduce((sum, row) => sum + row.expenditures, 0);
+    return {
+      yearSales: totalSales,
+      yearExp: totalExp,
+      yearPnl: totalSales - totalExp,
+    };
+  }, [pnlTable]);
 
   return (
     <div className="space-y-8">
@@ -156,25 +165,22 @@ export default function DashboardHome() {
             {user?.businessName?.toUpperCase() ?? "Business"}
           </div>
           <div className="text-sm text-[--muted-foreground]">
-            {user?.role === "ADMIN"
+            {role === "ADMIN"
               ? `Admin: ${user?.fullName ?? ""}`
-              : user?.role === "SUB_ADMIN"
+              : role === "SUB_ADMIN"
               ? `Assistant Admin: ${user?.fullName ?? ""}`
               : `Staff: ${user?.fullName ?? ""}`}
           </div>
         </div>
       </div>
 
-      {/* Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
         <MetricCard
           title="Sales"
           icon={<TrendingUp size={20} className="text-blue-600" />}
           isLoading={salesLoading}
           data={salesChartData}
-          total={sales
-            ?.filter((s) => new Date(s.date).getFullYear() === currentYear)
-            .reduce((sum, s) => sum + s.amount, 0)}
+          total={yearSales}
           dataKey="sales"
           color="#2563eb"
           role={role}
@@ -184,9 +190,7 @@ export default function DashboardHome() {
           icon={<Wallet size={20} className="text-amber-500" />}
           isLoading={expLoading}
           data={expChartData}
-          total={expenditures
-            ?.filter((e) => new Date(e.date).getFullYear() === currentYear)
-            .reduce((sum, e) => sum + e.amount, 0)}
+          total={yearExp}
           dataKey="expenditures"
           color="#eab308"
           role={role}
@@ -209,8 +213,7 @@ export default function DashboardHome() {
         />
       </div>
 
-      {/* Payroll */}
-      <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] hover:shadow-md cursor-pointer will-change-transform">
+      <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] cursor-pointer">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BadgeDollarSign size={20} className="text-blue-600" />
@@ -245,7 +248,6 @@ export default function DashboardHome() {
         </CardContent>
       </Card>
 
-      {/* P&L Table */}
       <Card>
         <CardHeader>
           <CardTitle>P & L Summary – {currentYear}</CardTitle>
@@ -281,9 +283,7 @@ export default function DashboardHome() {
                   <TableCell>₦{yearSales.toLocaleString()}</TableCell>
                   <TableCell>₦{yearExp.toLocaleString()}</TableCell>
                   <TableCell
-                    className={`${
-                      yearPnl < 0 ? "text-red-600" : "text-green-600"
-                    }`}
+                    className={yearPnl < 0 ? "text-red-600" : "text-green-600"}
                   >
                     ₦{yearPnl.toLocaleString()}
                   </TableCell>
@@ -308,7 +308,7 @@ function MetricCard({
   role,
 }: any) {
   return (
-    <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] hover:shadow-md cursor-pointer will-change-transform">
+    <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] cursor-pointer">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {icon} {title}
@@ -349,7 +349,7 @@ function MetricCard({
 
 function SimpleMetric({ title, icon, count, loading, subtitle, role }: any) {
   return (
-    <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] hover:shadow-md cursor-pointer will-change-transform">
+    <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] cursor-pointer">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {icon} {title}

@@ -8,6 +8,9 @@ export async function GET(request: NextRequest) {
     const year = parseInt(
       searchParams.get("year") || `${new Date().getFullYear()}`
     );
+    const month = searchParams.get("month")
+      ? parseInt(searchParams.get("month")!)
+      : undefined;
 
     const supabase = await supabaseServer(true);
     const { data, error } = await supabase.auth.getUser();
@@ -30,26 +33,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No business found" }, { status: 403 });
     }
 
-    const sales = await prisma.sale.findMany({
-      where: {
-        businessId,
-        date: {
-          gte: new Date(year, 0, 1),
-          lte: new Date(year, 11, 31, 23, 59, 59, 999),
+    if (month) {
+      const sales = await prisma.sale.findMany({
+        where: {
+          businessId,
+          date: {
+            gte: new Date(year, month - 1, 1),
+            lte: new Date(year, month, 0, 23, 59, 59, 999),
+          },
         },
-      },
-    });
+      });
+      return NextResponse.json({ summary: sales });
+    } else {
+      const sales = await prisma.sale.findMany({
+        where: {
+          businessId,
+          date: {
+            gte: new Date(year, 0, 1),
+            lte: new Date(year, 11, 31, 23, 59, 59, 999),
+          },
+        },
+      });
 
-    const summary = Array.from({ length: 12 }, (_, i) => {
-      const monthSales = sales.filter((s) => new Date(s.date).getMonth() === i);
-      return {
-        month: i + 1,
-        total: monthSales.reduce((sum, s) => sum + s.amount, 0),
-        count: monthSales.length,
-      };
-    });
+      const summary = Array.from({ length: 12 }, (_, i) => {
+        const monthSales = sales.filter(
+          (s) => new Date(s.date).getMonth() === i
+        );
+        return {
+          month: i + 1,
+          total: monthSales.reduce((sum, s) => sum + s.amount, 0),
+          count: monthSales.length,
+        };
+      });
 
-    return NextResponse.json({ summary });
+      return NextResponse.json({ summary });
+    }
   } catch (error) {
     console.error("Sales summary error:", error);
     return NextResponse.json(
