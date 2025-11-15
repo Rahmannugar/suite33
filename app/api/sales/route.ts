@@ -4,6 +4,12 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const perPage = parseInt(searchParams.get("perPage") || "10");
+    const year = searchParams.get("year");
+    const skip = (page - 1) * perPage;
+
     const supabase = await supabaseServer(true);
     const { data, error } = await supabase.auth.getUser();
 
@@ -25,12 +31,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No business found" }, { status: 403 });
     }
 
-    const sales = await prisma.sale.findMany({
-      where: { businessId },
-      orderBy: { date: "desc" },
-    });
+    const where: any = { businessId };
+    if (year) {
+      where.date = {
+        gte: new Date(Number(year), 0, 1),
+        lte: new Date(Number(year), 11, 31, 23, 59, 59, 999),
+      };
+    }
 
-    return NextResponse.json({ sales });
+    const [sales, total] = await Promise.all([
+      prisma.sale.findMany({
+        where,
+        orderBy: { date: "desc" },
+        skip,
+        take: perPage,
+      }),
+      prisma.sale.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      sales,
+      pagination: {
+        total,
+        page,
+        perPage,
+      },
+    });
   } catch (error) {
     console.error("Sales fetch error:", error);
     return NextResponse.json(
@@ -55,7 +81,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // ✅ Fetch user profile with role and business
     const profile = await prisma.user.findUnique({
       where: { id: data.user.id },
       include: {

@@ -67,8 +67,10 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { useSalesSummary } from "@/lib/hooks/useSalesSummary";
 
 type ChartPoint = { name: string; amount: number; count: number };
+type SummaryMonth = { month: number; total: number; count: number };
 
 function ChartTooltip({
   active,
@@ -93,20 +95,6 @@ function ChartTooltip({
 export default function SalesPage() {
   const user = useAuthStore((s) => s.user);
   const { insight, setInsight, clearInsight } = useInsightStore();
-  const {
-    sales,
-    isLoading,
-    addSale,
-    editSale,
-    deleteSale,
-    importCSV,
-    importExcel,
-    exportCSV,
-    exportExcel,
-    getInsight,
-  } = useSales();
-
-  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
   const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
   const [date, setDate] = useState<Date | null>(new Date());
   const [page, setPage] = useState(1);
@@ -126,65 +114,85 @@ export default function SalesPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [search, setSearch] = useState("");
 
-  const resetForm = () => setForm({ desc: "", amount: 0, date: new Date() });
+  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
+  const currentYear = date?.getFullYear() ?? new Date().getFullYear();
 
-  useEffect(() => {
-    setPage(1);
-  }, [viewMode, date, search]);
+  const {
+    sales,
+    pagination,
+    isLoading,
+    addSale,
+    editSale,
+    deleteSale,
+    importCSV,
+    importExcel,
+    exportCSV,
+    exportExcel,
+    getInsight,
+  } = useSales(page, perPage, viewMode === "yearly" ? currentYear : undefined);
+
+  const { data: summary, isLoading: summaryLoading } =
+    useSalesSummary(currentYear);
+
+  const resetForm = () => setForm({ desc: "", amount: 0, date: new Date() });
 
   const truncate = (text: string, max: number) =>
     text.length > max ? text.slice(0, max) + "…" : text;
 
   const filteredSales = useMemo(() => {
-    if (!sales || !date) return [];
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = d.getMonth() + 1;
-    const normalizedSearch = search.trim().toLowerCase();
-    return sales
-      .filter((s: Sale) => {
-        const sd = new Date(s.date);
-        const byPeriod =
-          viewMode === "yearly"
-            ? sd.getFullYear() === year
-            : sd.getFullYear() === year && sd.getMonth() + 1 === month;
-        const bySearch =
-          !normalizedSearch ||
-          s.description?.toLowerCase().includes(normalizedSearch);
-        return byPeriod && bySearch;
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    if (!sales) return [];
+    let filtered = sales;
+    if (viewMode === "monthly" && date) {
+      filtered = filtered.filter(
+        (s) =>
+          new Date(s.date).getFullYear() === date.getFullYear() &&
+          new Date(s.date).getMonth() === date.getMonth()
+      );
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      filtered = filtered.filter(
+        (s) =>
+          s.description.toLowerCase().includes(q) ||
+          String(s.amount).includes(q)
+      );
+    }
+    return filtered;
   }, [sales, date, viewMode, search]);
 
   const totalAmount = filteredSales.reduce((sum, s) => sum + s.amount, 0);
   const totalSales = filteredSales.length;
-  const totalPages = Math.ceil(totalSales / perPage);
-  const paginatedSales = filteredSales.slice(
-    (page - 1) * perPage,
-    page * perPage
-  );
+  const totalPages = pagination ? Math.ceil(pagination.total / perPage) : 1;
 
   const chartData: ChartPoint[] =
-    viewMode === "yearly"
-      ? Array.from({ length: 12 }, (_, i) => {
-          const list = filteredSales.filter(
-            (s) => new Date(s.date).getMonth() === i
-          );
-          return {
-            name: new Date(0, i).toLocaleString("default", { month: "short" }),
-            amount: list.reduce((sum, s) => sum + s.amount, 0),
-            count: list.length,
-          };
-        })
+    viewMode === "yearly" && summary
+      ? summary.map((m: SummaryMonth) => ({
+          name: new Date(2000, m.month - 1).toLocaleString("default", {
+            month: "short",
+          }),
+          amount: m.total,
+          count: m.count,
+        }))
       : Array.from({ length: 4 }, (_, i) => {
-          const list = filteredSales.filter((s) => {
-            const day = new Date(s.date).getDate();
-            return Math.ceil(day / 7) === i + 1;
+          if (!date) return { name: "", amount: 0, count: 0 };
+          const start = new Date(
+            date.getFullYear(),
+            date.getMonth(),
+            i * 7 + 1
+          );
+          const end = new Date(
+            date.getFullYear(),
+            date.getMonth(),
+            (i + 1) * 7
+          );
+          const weekSales = filteredSales.filter((s) => {
+            const d = new Date(s.date);
+            return d >= start && d <= end;
           });
           return {
             name: `Week ${i + 1}`,
-            amount: list.reduce((sum, s) => sum + s.amount, 0),
-            count: list.length,
+            amount: weekSales.reduce((sum, s) => sum + s.amount, 0),
+            count: weekSales.length,
           };
         });
 
@@ -195,63 +203,43 @@ export default function SalesPage() {
           month: "long",
         })} ${date?.getFullYear()} Sales`;
 
-  function formatSalesExport(sales: Sale[]): ExportableSale[] {
+  function formatSalesExport(sales: Sale[]) {
     return sales.map((s) => ({
       Description: s.description,
-      Amount: `₦${s.amount.toLocaleString()}`,
-      Date: new Date(s.date).toLocaleDateString("en-GB"),
+      Amount: s.amount.toString(),
+      Date: new Date(s.date).toLocaleDateString(),
     }));
   }
 
   async function handleInsight() {
-    if (!user?.businessId) return;
     setInsightLoading(true);
     try {
-      const res = await getInsight.mutateAsync({
-        year: date?.getFullYear() ?? new Date().getFullYear(),
-        month: viewMode === "monthly" ? (date?.getMonth() ?? 0) + 1 : undefined,
-      });
-      const refined = String(res.insight || "")
-        .replace(/\*\*/g, "")
-        .trim();
-      setInsight(refined);
-      toast.success("Insight generated successfully");
-      setTimeout(
-        () => insightRef.current?.scrollIntoView({ block: "start" }),
-        150
-      );
+      const year = date ? date.getFullYear() : new Date().getFullYear();
+      const month = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
+      const payload = viewMode === "yearly" ? { year } : { year, month };
+      const result = await getInsight.mutateAsync(payload);
+      setInsight(result);
+      setInsightLoading(false);
+      setTimeout(() => {
+        insightRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     } catch {
-      toast.error("Failed to generate insights");
-    } finally {
       setInsightLoading(false);
     }
   }
 
   async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!user?.businessId) return;
-    try {
-      if (f.name.toLowerCase().endsWith(".csv")) {
-        await importCSV.mutateAsync({
-          file: f,
-        });
-      } else {
-        await importExcel.mutateAsync({
-          file: f,
-        });
-      }
-      toast.success("Sales imported successfully");
-    } catch {
-      toast.error("Failed to import sales");
-    } finally {
-      e.currentTarget.value = "";
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.name.endsWith(".csv")) {
+      await importCSV.mutateAsync({ file });
+    } else if (file.name.endsWith(".xlsx")) {
+      await importExcel.mutateAsync({ file });
     }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleAdd() {
-    if (!form.amount) return toast.error("Enter sale amount");
-    if (!form.desc) return toast.error("Enter sale description");
     setSaving(true);
     try {
       await addSale.mutateAsync({
@@ -259,11 +247,8 @@ export default function SalesPage() {
         description: form.desc,
         date: form.date,
       });
-      toast.success("Sale added");
       setOpenAdd(false);
       resetForm();
-    } catch {
-      toast.error("Failed to add sale");
     } finally {
       setSaving(false);
     }
@@ -475,7 +460,7 @@ export default function SalesPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedSales.map((s, i) => (
+                        {filteredSales.map((s: Sale, i: number) => (
                           <TableRow key={s.id}>
                             <TableCell>
                               {(page - 1) * perPage + i + 1}

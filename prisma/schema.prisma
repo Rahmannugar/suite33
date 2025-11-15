@@ -15,7 +15,7 @@ model User {
   password    String?
   role        Role      @default(ADMIN)
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now()) @updatedAt
+  updatedAt   DateTime  @updatedAt
   avatarUrl   String?
   fullName    String?
   inviteCount Int       @default(0)
@@ -23,27 +23,36 @@ model User {
   deletedAt   DateTime?
   business    Business?
   Staff       Staff?
+
+  @@index([email])
+  @@index([role])
+  @@index([deletedAt])
 }
 
 model Business {
-  id           String        @id @default(uuid()) @db.Uuid
-  name         String
-  ownerId      String        @unique @db.Uuid
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @default(now()) @updatedAt
-  industry     String?
-  location     String?
-  logoUrl      String?
-  deletedAt    DateTime?
-  owner        User          @relation(fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  categories   Category[]
-  departments  Department[]
-  expenditures Expenditure[]
-  inventory    Inventory[]
-  invites      Invite[]
-  payrolls     Payroll[]
-  sales        Sale[]
-  staff        Staff[]
+  id             String          @id @default(uuid()) @db.Uuid
+  name           String
+  ownerId        String          @unique @db.Uuid
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  industry       String?
+  location       String?
+  logoUrl        String?
+  deletedAt      DateTime?
+  owner          User            @relation(fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  categories     Category[]
+  departments    Department[]
+  departmentKPIs DepartmentKPI[]
+  expenditures   Expenditure[]
+  inventory      Inventory[]
+  invites        Invite[]
+  payrollBatches PayrollBatch[]
+  sales          Sale[]
+  staff          Staff[]
+
+  @@index([ownerId])
+  @@index([name])
+  @@index([deletedAt])
 }
 
 model Department {
@@ -51,49 +60,85 @@ model Department {
   name       String
   businessId String          @db.Uuid
   createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @default(now()) @updatedAt
+  updatedAt  DateTime        @updatedAt
   deletedAt  DateTime?
   business   Business        @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   kpis       DepartmentKPI[]
   invites    Invite[]
   staff      Staff[]
+
+  @@index([businessId])
+  @@index([name])
+  @@index([deletedAt])
 }
 
 model Staff {
-  id           String      @id @default(uuid()) @db.Uuid
-  userId       String      @unique @db.Uuid
-  businessId   String      @db.Uuid
-  departmentId String?     @db.Uuid
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @default(now()) @updatedAt
+  id           String             @id @default(uuid()) @db.Uuid
+  userId       String             @unique @db.Uuid
+  businessId   String             @db.Uuid
+  departmentId String?            @db.Uuid
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
   deletedAt    DateTime?
-  payrolls     Payroll[]
-  business     Business    @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  department   Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user         User        @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  business     Business           @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department   Department?        @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user         User               @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   kpis         StaffKPI[]
+  payrollItems PayrollBatchItem[]
+
+  @@index([userId])
+  @@index([businessId])
+  @@index([departmentId])
+  @@index([deletedAt])
 }
 
 model StaffKPI {
-  id        String   @id @default(uuid()) @db.Uuid
-  staffId   String   @db.Uuid
-  metric    String
-  value     Float
-  period    DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id          String    @id @default(uuid()) @db.Uuid
+  staffId     String    @db.Uuid
+  metric      String
+  description String?
+  metricType  String    @default("number")
+  status      String    @default("PENDING")
+  target      Float?
+  period      DateTime
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  staff       Staff     @relation(fields: [staffId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([staffId, metric, period])
+  @@index([staffId])
+  @@index([metric])
+  @@index([period])
+  @@index([deletedAt])
+  @@index([status])
 }
 
 model DepartmentKPI {
   id           String     @id @default(uuid()) @db.Uuid
   departmentId String     @db.Uuid
+  businessId   String     @db.Uuid
   metric       String
-  value        Float
+  description  String?
+  metricType   String     @default("number")
+  status       String     @default("PENDING")
+  target       Float?
   period       DateTime
+  notes        String?
   createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @default(now()) @updatedAt
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
   department   Department @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  business     Business   @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([departmentId, metric, period])
+  @@index([departmentId])
+  @@index([businessId])
+  @@index([metric])
+  @@index([period])
+  @@index([deletedAt])
+  @@index([status])
 }
 
 model Sale {
@@ -103,9 +148,14 @@ model Sale {
   description String    @default("")
   date        DateTime  @default(now())
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now()) @updatedAt
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   business    Business  @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([businessId])
+  @@index([date])
+  @@index([amount])
+  @@index([deletedAt])
 }
 
 model Expenditure {
@@ -115,22 +165,45 @@ model Expenditure {
   description String    @default("")
   date        DateTime  @default(now())
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now()) @updatedAt
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   business    Business  @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([businessId])
+  @@index([date])
+  @@index([amount])
+  @@index([deletedAt])
 }
 
-model Payroll {
-  id         String   @id @default(uuid()) @db.Uuid
-  staffId    String   @db.Uuid
-  businessId String   @db.Uuid
+model PayrollBatch {
+  id         String             @id @default(uuid()) @db.Uuid
+  businessId String             @db.Uuid
   period     DateTime
-  amount     Float
-  paid       Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  deletedAt  DateTime? 
-  business   Business @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  staff      Staff    @relation(fields: [staffId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  locked     Boolean            @default(false)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  business   Business           @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  items      PayrollBatchItem[]
+
+  @@index([businessId])
+  @@index([period])
+  @@index([locked])
+}
+
+model PayrollBatchItem {
+  id        String       @id @default(uuid()) @db.Uuid
+  batchId   String       @db.Uuid
+  staffId   String       @db.Uuid
+  amount    Float
+  paid      Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  batch     PayrollBatch @relation(fields: [batchId], references: [id])
+  staff     Staff        @relation(fields: [staffId], references: [id])
+
+  @@index([batchId])
+  @@index([staffId])
+  @@index([paid])
 }
 
 model Category {
@@ -138,10 +211,14 @@ model Category {
   name       String
   businessId String      @db.Uuid
   createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @default(now()) @updatedAt
+  updatedAt  DateTime    @updatedAt
   deletedAt  DateTime?
   business   Business    @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   inventory  Inventory[]
+
+  @@index([businessId])
+  @@index([name])
+  @@index([deletedAt])
 }
 
 model Inventory {
@@ -151,24 +228,37 @@ model Inventory {
   categoryId String    @db.Uuid
   businessId String    @db.Uuid
   createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @default(now()) @updatedAt
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
   business   Business  @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   category   Category  @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([businessId])
+  @@index([categoryId])
+  @@index([name])
+  @@index([quantity])
+  @@index([deletedAt])
 }
 
 model Invite {
-  id           String     @id @default(uuid()) @db.Uuid
+  id           String      @id @default(uuid()) @db.Uuid
   email        String
-  businessId   String     @db.Uuid
-  departmentId String?    @db.Uuid
-  token        String     @unique @default(uuid())
-  accepted     Boolean    @default(false)
-  role         Role       @default(STAFF)
-  expiresAt    DateTime   @default(dbgenerated("(now() + '7 days'::interval)"))
-  createdAt    DateTime   @default(now())
-  business     Business   @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  businessId   String      @db.Uuid
+  departmentId String?     @db.Uuid
+  token        String      @unique @default(uuid())
+  accepted     Boolean     @default(false)
+  role         Role        @default(STAFF)
+  expiresAt    DateTime    @default(dbgenerated("(now() + '7 days'::interval)"))
+  createdAt    DateTime    @default(now())
+  business     Business    @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([token])
+  @@index([email])
+  @@index([businessId])
+  @@index([departmentId])
+  @@index([accepted])
+  @@index([expiresAt])
 }
 
 enum Role {

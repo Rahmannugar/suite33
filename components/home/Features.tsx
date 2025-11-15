@@ -48,7 +48,7 @@ const items = [
   },
   {
     icon: Mail,
-    title: "Staff Emails",
+    title: "Staff KPIs",
     desc: "Send KPI updates and official notices to your team.",
   },
 ];

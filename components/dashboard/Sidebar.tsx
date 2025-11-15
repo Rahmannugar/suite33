@@ -41,7 +41,7 @@ const adminLinks: SidebarLink[] = [
 ];
 
 const staffLinks: SidebarLink[] = [
-  { href: "/dashboard/staff", label: "Overview", icon: Home },
+  { href: "/dashboard/staff", label: "Dashboard", icon: Home },
   { href: "/dashboard/staff/sales", label: "Sales", icon: TrendingUp },
   {
     href: "/dashboard/staff/expenditures",

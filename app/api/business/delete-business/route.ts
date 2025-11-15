@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { supabaseServer } from "@/lib/supabase/server";
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   try {
     const supabase = await supabaseServer(true);
     const { data, error } = await supabase.auth.getUser();
