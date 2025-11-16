@@ -18,11 +18,9 @@ import {
   BadgeDollarSign,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useExpenditures } from "@/lib/hooks/expenditures/useExpenditures";
 import { useStaff } from "@/lib/hooks/business/useStaff";
 import { useInventory } from "@/lib/hooks/inventory/useInventory";
 import { usePayroll } from "@/lib/hooks/payroll/usePayroll";
-import type { Expenditure } from "@/lib/types/expenditure";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -36,12 +34,8 @@ import {
 import { getInitials } from "@/lib/utils/getInitials";
 import { useSalesSummary } from "@/lib/hooks/sales/useSalesSummary";
 import { useMemo } from "react";
-
-type SaleSummaryMonth = {
-  month: number;
-  total: number;
-  count: number;
-};
+import { SummaryMonth } from "@/lib/utils/chart";
+import { useExpendituresSummary } from "@/lib/hooks/expenditures/useExpendituresSummary";
 
 function formatCurrencyShort(value: number): string {
   if (value >= 1_000_000_000) return `₦${(value / 1_000_000_000).toFixed(1)}B`;
@@ -68,10 +62,9 @@ function CustomTooltip({ active, payload, label }: any) {
     </div>
   );
 }
+
 export default function DashboardHome() {
   const user = useAuthStore((state) => state.user);
-
-  const { expenditures, isLoading: expLoading } = useExpenditures();
   const { staff, isLoading: staffLoading } = useStaff();
   const { inventory, isLoading: invLoading } = useInventory();
   const { payroll, isLoading: payrollLoading } = usePayroll();
@@ -79,49 +72,43 @@ export default function DashboardHome() {
   const role = user?.role ?? "STAFF";
   const currentYear = new Date().getFullYear();
 
-  const { data: summary, isLoading: salesLoading } =
+  const { data: salesSummary, isLoading: salesLoading } =
     useSalesSummary(currentYear);
 
+  const { data: expSummary, isLoading: expLoading } =
+    useExpendituresSummary(currentYear);
+
   const salesChartData = useMemo(() => {
-    if (!summary) return [];
-    return summary.map((m: SaleSummaryMonth) => ({
+    if (!salesSummary) return [];
+    return salesSummary.map((m: SummaryMonth) => ({
       name: new Date(2000, m.month - 1).toLocaleString("default", {
         month: "short",
       }),
       sales: m.total,
     }));
-  }, [summary]);
+  }, [salesSummary]);
 
   const expChartData = useMemo(() => {
-    if (!expenditures) return [];
-    return Array.from({ length: 12 }, (_, i) => {
-      const expMonth = expenditures.filter(
-        (e: Expenditure) =>
-          new Date(e.date).getFullYear() === currentYear &&
-          new Date(e.date).getMonth() === i
-      );
-      return {
-        name: new Date(2000, i).toLocaleString("default", { month: "short" }),
-        expenditures: expMonth.reduce((sum, e) => sum + e.amount, 0),
-      };
-    });
-  }, [expenditures, currentYear]);
+    if (!expSummary) return [];
+    return expSummary.map((m: SummaryMonth) => ({
+      name: new Date(2000, m.month - 1).toLocaleString("default", {
+        month: "short",
+      }),
+      expenditures: m.total,
+    }));
+  }, [expSummary]);
 
   const pnlTable = useMemo(() => {
-    if (!summary) return [];
+    if (!salesSummary || !expSummary) return [];
 
     return Array.from({ length: 12 }, (_, i) => {
-      const salesRow = summary.find((m: SaleSummaryMonth) => m.month === i + 1);
+      const salesRow = salesSummary.find(
+        (m: SummaryMonth) => m.month === i + 1
+      );
       const salesTotal = salesRow?.total ?? 0;
 
-      const expMonth =
-        expenditures?.filter(
-          (e: Expenditure) =>
-            new Date(e.date).getFullYear() === currentYear &&
-            new Date(e.date).getMonth() === i
-        ) ?? [];
-
-      const expTotal = expMonth.reduce((sum, e) => sum + e.amount, 0);
+      const expRow = expSummary.find((m: SummaryMonth) => m.month === i + 1);
+      const expTotal = expRow?.total ?? 0;
 
       return {
         month: new Date(2000, i).toLocaleString("default", {
@@ -132,7 +119,7 @@ export default function DashboardHome() {
         pnl: salesTotal - expTotal,
       };
     });
-  }, [summary, expenditures, currentYear]);
+  }, [salesSummary, expSummary]);
 
   const { yearSales, yearExp, yearPnl } = useMemo(() => {
     const totalSales = pnlTable.reduce((sum, row) => sum + row.sales, 0);

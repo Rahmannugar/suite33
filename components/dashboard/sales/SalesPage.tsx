@@ -60,29 +60,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useSalesSummary } from "@/lib/hooks/sales/useSalesSummary";
 import { SalesChart } from "./SalesChart";
-
-type ChartPoint = { name: string; amount: number; count: number };
-type SummaryMonth = { month: number; total: number; count: number };
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: any[];
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const p: ChartPoint = payload[0].payload;
-  return (
-    <div className="rounded-md border bg-popover px-3 py-2 text-sm shadow">
-      <div className="font-medium">{label}</div>
-      <div>Amount: ₦{p.amount.toLocaleString()}</div>
-      <div>Sales: {p.count}</div>
-    </div>
-  );
-}
+import { ChartPoint, SummaryMonth } from "@/lib/utils/chart";
 
 export default function SalesPage() {
   const user = useAuthStore((s) => s.user);
@@ -128,6 +106,10 @@ export default function SalesPage() {
     currentYear,
     viewMode === "monthly" ? currentMonth : undefined
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [viewMode, date, search]);
 
   const resetForm = () => setForm({ desc: "", amount: 0, date: new Date() });
 

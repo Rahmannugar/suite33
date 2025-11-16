@@ -12,7 +12,7 @@ import {
   CartesianGrid,
 } from "recharts";
 
-export function SalesChart({
+export function ExpendituresChart({
   data,
   chartKey,
 }: {
@@ -26,10 +26,10 @@ export function SalesChart({
         <XAxis dataKey="name" />
         <YAxis />
         <ChartTooltipComponent content={<ChartTooltip />} />
-        <Bar dataKey="amount" fill="#2563eb" radius={[8, 8, 0, 0]} />
+        <Bar dataKey="amount" fill="#eab308" radius={[8, 8, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
-export default memo(SalesChart);
+export default memo(ExpendituresChart);

@@ -4,6 +4,12 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const perPage = parseInt(searchParams.get("perPage") || "10");
+    const year = searchParams.get("year");
+    const skip = (page - 1) * perPage;
+
     const supabase = await supabaseServer(true);
     const { data, error } = await supabase.auth.getUser();
 
@@ -25,14 +31,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No business found" }, { status: 403 });
     }
 
-    const expenditures = await prisma.expenditure.findMany({
-      where: { businessId },
-      orderBy: { date: "desc" },
-    });
+    const where: any = { businessId };
+    if (year) {
+      where.date = {
+        gte: new Date(Number(year), 0, 1),
+        lte: new Date(Number(year), 11, 31, 23, 59, 59, 999),
+      };
+    }
 
-    return NextResponse.json({ expenditures });
+    const [expenditures, total] = await Promise.all([
+      prisma.expenditure.findMany({
+        where,
+        orderBy: { date: "desc" },
+        skip,
+        take: perPage,
+      }),
+      prisma.expenditure.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      expenditures,
+      pagination: {
+        total,
+        page,
+        perPage,
+      },
+    });
   } catch (error) {
-    console.error("Expenditures fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch expenditures" },
       { status: 500 }
@@ -87,7 +112,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ expenditure });
   } catch (error) {
-    console.error("Expenditure creation error:", error);
     return NextResponse.json(
       { error: "Failed to add expenditure" },
       { status: 500 }

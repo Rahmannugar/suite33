@@ -11,16 +11,28 @@ export type ExportableExpenditure = {
   Date: string;
 };
 
-export function useExpenditures() {
+export function useExpenditures(page = 1, perPage = 10, year?: number) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["expenditures"],
+    queryKey: ["expenditures", page, perPage, year],
     queryFn: async () => {
-      const { data } = await axios.get("/api/expenditures");
+      const params = new URLSearchParams();
+      params.append("page", page.toString());
+      params.append("perPage", perPage.toString());
+      if (year) params.append("year", year.toString());
+
+      const { data } = await axios.get(
+        `/api/expenditures?${params.toString()}`
+      );
+
       const result = z.array(ExpenditureSchema).safeParse(data.expenditures);
       if (!result.success) throw new Error("Invalid expenditures data");
-      return result.data;
+
+      return {
+        expenditures: result.data,
+        pagination: data.pagination,
+      };
     },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -34,10 +46,10 @@ export function useExpenditures() {
     }) => {
       await axios.post("/api/expenditures", payload);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["expenditures"],
-      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenditures"] });
+      queryClient.invalidateQueries({ queryKey: ["expenditures-summary"] });
+    },
   });
 
   const editExpenditure = useMutation({
@@ -49,20 +61,20 @@ export function useExpenditures() {
     }) => {
       await axios.put(`/api/expenditures/${payload.id}`, payload);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["expenditures"],
-      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenditures"] });
+      queryClient.invalidateQueries({ queryKey: ["expenditures-summary"] });
+    },
   });
 
   const deleteExpenditure = useMutation({
     mutationFn: async (id: string) => {
       await axios.delete(`/api/expenditures/${id}`);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["expenditures"],
-      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenditures"] });
+      queryClient.invalidateQueries({ queryKey: ["expenditures-summary"] });
+    },
   });
 
   const importCSV = useMutation({
@@ -76,11 +88,13 @@ export function useExpenditures() {
               const expenditures = results.data.map((row: any) => ({
                 amount: row.Amount || row.amount,
                 description:
-                  row.Description || row.description || "Expenditures",
+                  row.Description || row.description || "Expenditure",
                 date: row.Date || row.date,
               }));
+
               if (!expenditures.length)
                 throw new Error("No valid expenditures found in CSV");
+
               await axios.post("/api/expenditures/import", { expenditures });
               resolve();
             } catch (err: any) {
@@ -91,44 +105,53 @@ export function useExpenditures() {
         });
       });
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["expenditures"],
-      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenditures"] });
+      queryClient.invalidateQueries({ queryKey: ["expenditures-summary"] });
+    },
   });
 
   const importExcel = useMutation({
     mutationFn: async ({ file }: { file: File }) => {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await file.arrayBuffer());
+
       const worksheet = workbook.worksheets[0];
       const expenditures: any[] = [];
+
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return;
+
+        const description = row.getCell(1).value || "Expenditure";
         const amount = row.getCell(2).value;
-        const description = row.getCell(1).value || "Expenditures";
         const date = row.getCell(3).value;
-        if (amount) expenditures.push({ amount, description, date });
+
+        if (amount) expenditures.push({ description, amount, date });
       });
+
       if (!expenditures.length)
         throw new Error("No valid expenditures found in Excel file");
+
       await axios.post("/api/expenditures/import", { expenditures });
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["expenditures"],
-      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenditures"] });
+      queryClient.invalidateQueries({ queryKey: ["expenditures-summary"] });
+    },
   });
 
   function exportCSV(expenditures: ExportableExpenditure[], label: string) {
-    if (!expenditures.length) throw new Error("No expenditures to export");
+    if (!expenditures.length) return;
+
     const csv = Papa.unparse(expenditures);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
+
     const a = document.createElement("a");
     a.href = url;
     a.download = `${label}.csv`;
     a.click();
+
     URL.revokeObjectURL(url);
   }
 
@@ -136,24 +159,31 @@ export function useExpenditures() {
     expenditures: ExportableExpenditure[],
     label: string
   ) {
-    if (!expenditures.length) throw new Error("No expenditures to export");
+    if (!expenditures.length) return;
+
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Expenditures");
+
     worksheet.columns = [
       { header: "Description", key: "Description", width: 30 },
       { header: "Amount", key: "Amount", width: 15 },
       { header: "Date", key: "Date", width: 15 },
     ];
+
     expenditures.forEach((e) => worksheet.addRow(e));
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
+
     const url = URL.createObjectURL(blob);
+
     const a = document.createElement("a");
     a.href = url;
     a.download = `${label}.xlsx`;
     a.click();
+
     URL.revokeObjectURL(url);
   }
 
@@ -165,7 +195,8 @@ export function useExpenditures() {
   });
 
   return {
-    expenditures: query.data,
+    expenditures: query.data?.expenditures ?? [],
+    pagination: query.data?.pagination,
     isLoading: query.isLoading,
     addExpenditure,
     editExpenditure,

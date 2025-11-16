@@ -45,15 +45,6 @@ import {
   Edit,
   Calendar as CalendarIcon,
 } from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip as ChartTooltipComponent,
-  CartesianGrid,
-} from "recharts";
 import { toast } from "sonner";
 import type { Expenditure } from "@/lib/types/expenditure";
 import {
@@ -70,46 +61,13 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-
-type ChartPoint = { name: string; amount: number; count: number };
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: any[];
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const p: ChartPoint = payload[0].payload;
-  return (
-    <div className="rounded-md border bg-popover px-3 py-2 text-sm shadow">
-      <div className="font-medium">{label}</div>
-      <div>Amount: ₦{p.amount.toLocaleString()}</div>
-      <div>Entries: {p.count}</div>
-    </div>
-  );
-}
+import { ChartPoint, SummaryMonth } from "@/lib/utils/chart";
+import { useExpendituresSummary } from "@/lib/hooks/expenditures/useExpendituresSummary";
+import ExpendituresChart from "./ExpendituresChart";
 
 export default function ExpendituresPage() {
   const user = useAuthStore((s) => s.user);
   const { insight, setInsight, clearInsight } = useInsightStore();
-  const {
-    expenditures,
-    isLoading,
-    addExpenditure,
-    editExpenditure,
-    deleteExpenditure,
-    importCSV,
-    importExcel,
-    exportCSV,
-    exportExcel,
-    getInsight,
-  } = useExpenditures();
-
-  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
   const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
   const [date, setDate] = useState<Date | null>(new Date());
   const [page, setPage] = useState(1);
@@ -130,71 +88,116 @@ export default function ExpendituresPage() {
   const insightRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [search, setSearch] = useState("");
+  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
+  const currentYear = date ? date.getFullYear() : new Date().getFullYear();
+  const currentMonth = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
 
-  const resetForm = () => setForm({ desc: "", amount: 0, date: new Date() });
+  const {
+    expenditures,
+    pagination,
+    isLoading,
+    addExpenditure,
+    editExpenditure,
+    deleteExpenditure,
+    importCSV,
+    importExcel,
+    exportCSV,
+    exportExcel,
+    getInsight,
+  } = useExpenditures(
+    page,
+    perPage,
+    viewMode === "yearly" ? currentYear : undefined
+  );
+
+  const { data: summary } = useExpendituresSummary(
+    currentYear,
+    viewMode === "monthly" ? currentMonth : undefined
+  );
 
   useEffect(() => {
     setPage(1);
   }, [viewMode, date, search]);
 
+  const resetForm = () => setForm({ desc: "", amount: 0, date: new Date() });
+
   const truncate = (text: string, max: number) =>
     text.length > max ? text.slice(0, max) + "…" : text;
 
   const filteredExpenditures = useMemo(() => {
-    if (!expenditures || !date) return [];
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = d.getMonth() + 1;
-    const normalizedSearch = search.trim().toLowerCase();
-    return expenditures
-      .filter((e: Expenditure) => {
-        const ed = new Date(e.date);
-        const byPeriod =
-          viewMode === "yearly"
-            ? ed.getFullYear() === year
-            : ed.getFullYear() === year && ed.getMonth() + 1 === month;
-        const bySearch =
-          !normalizedSearch ||
-          e.description?.toLowerCase().includes(normalizedSearch);
-        return byPeriod && bySearch;
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    if (!expenditures) return [];
+    let filtered = expenditures;
+    if (viewMode === "monthly" && date) {
+      filtered = filtered.filter(
+        (e) =>
+          new Date(e.date).getFullYear() === date.getFullYear() &&
+          new Date(e.date).getMonth() === date.getMonth()
+      );
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      filtered = filtered.filter((e) =>
+        (e.description || "").toLowerCase().includes(q)
+      );
+    }
+    return filtered;
   }, [expenditures, date, viewMode, search]);
 
-  const totalAmount = filteredExpenditures.reduce(
-    (sum, e) => sum + e.amount,
-    0
-  );
-  const totalEntries = filteredExpenditures.length;
-  const totalPages = Math.ceil(totalEntries / perPage);
-  const paginatedExpenditures = filteredExpenditures.slice(
-    (page - 1) * perPage,
-    page * perPage
-  );
+  const totalPages = pagination ? Math.ceil(pagination.total / perPage) : 1;
 
-  const chartData: ChartPoint[] =
-    viewMode === "yearly"
-      ? Array.from({ length: 12 }, (_, i) => {
-          const list = filteredExpenditures.filter(
-            (e) => new Date(e.date).getMonth() === i
-          );
-          return {
-            name: new Date(0, i).toLocaleString("default", { month: "short" }),
-            amount: list.reduce((sum, e) => sum + e.amount, 0),
-            count: list.length,
-          };
-        })
-      : Array.from({ length: 4 }, (_, i) => {
-          const list = filteredExpenditures.filter((e) => {
-            const day = new Date(e.date).getDate();
-            return Math.ceil(day / 7) === i + 1;
-          });
-          return {
-            name: `Week ${i + 1}`,
-            amount: list.reduce((sum, e) => sum + e.amount, 0),
-            count: list.length,
-          };
-        });
+  const monthlyRaw =
+    viewMode === "monthly" && Array.isArray(summary)
+      ? (summary as Expenditure[])
+      : [];
+
+  let chartData: ChartPoint[] = [];
+
+  if (viewMode === "yearly" && Array.isArray(summary)) {
+    chartData = (summary as SummaryMonth[]).map((m: SummaryMonth) => ({
+      name: new Date(2000, m.month - 1).toLocaleString("default", {
+        month: "short",
+      }),
+      amount: m.total,
+      count: m.count,
+    }));
+  }
+
+  if (viewMode === "monthly" && Array.isArray(summary)) {
+    chartData = Array.from({ length: 4 }, (_, i) => {
+      const start = new Date(currentYear, currentMonth - 1, i * 7 + 1);
+      const end = new Date(currentYear, currentMonth - 1, (i + 1) * 7);
+
+      const weekList = monthlyRaw.filter((s) => {
+        const d = new Date(s.date);
+        return d >= start && d <= end;
+      });
+
+      return {
+        name: `Week ${i + 1}`,
+        amount: weekList.reduce(
+          (sum: number, s: Expenditure) => sum + s.amount,
+          0
+        ),
+        count: weekList.length,
+      };
+    });
+  }
+
+  const totalEntries =
+    viewMode === "monthly"
+      ? monthlyRaw.length
+      : (summary ?? []).reduce(
+          (sum: number, m: SummaryMonth) => sum + m.count,
+          0
+        );
+
+  const totalAmount =
+    viewMode === "monthly"
+      ? monthlyRaw.reduce((sum: number, s: Expenditure) => sum + s.amount, 0)
+      : (summary ?? []).reduce(
+          (sum: number, m: SummaryMonth) => sum + m.total,
+          0
+        );
 
   const periodLabel =
     viewMode === "yearly"
@@ -203,11 +206,13 @@ export default function ExpendituresPage() {
           month: "long",
         })} ${date?.getFullYear()} Expenditures`;
 
+  const chartKey = `${viewMode}-${currentYear}-${currentMonth}`;
+
   function formatExpendituresExport(
-    expenditures: Expenditure[]
+    exps: Expenditure[]
   ): ExportableExpenditure[] {
-    return expenditures.map((e) => ({
-      Description: e.description,
+    return exps.map((e) => ({
+      Description: e.description || "",
       Amount: `₦${e.amount.toLocaleString()}`,
       Date: new Date(e.date).toLocaleDateString("en-GB"),
     }));
@@ -217,46 +222,29 @@ export default function ExpendituresPage() {
     if (!user?.businessId) return;
     setInsightLoading(true);
     try {
-      const res = await getInsight.mutateAsync({
-        year: date?.getFullYear() ?? new Date().getFullYear(),
-        month: viewMode === "monthly" ? (date?.getMonth() ?? 0) + 1 : undefined,
-      });
-      const refined = String(res.insight || "")
-        .replace(/\*\*/g, "")
-        .trim();
-      setInsight(refined);
-      toast.success("Insight generated successfully");
-      setTimeout(
-        () => insightRef.current?.scrollIntoView({ block: "start" }),
-        150
-      );
+      const year = date ? date.getFullYear() : new Date().getFullYear();
+      const month = viewMode === "monthly" ? date?.getMonth()! + 1 : undefined;
+      const payload = viewMode === "yearly" ? { year } : { year, month };
+      const result = await getInsight.mutateAsync(payload);
+      setInsight(result);
+      setInsightLoading(false);
+      setTimeout(() => {
+        insightRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     } catch {
-      toast.error("Failed to generate insights");
-    } finally {
       setInsightLoading(false);
     }
   }
 
   async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!user?.businessId) return;
-    try {
-      if (f.name.toLowerCase().endsWith(".csv")) {
-        await importCSV.mutateAsync({
-          file: f,
-        });
-      } else {
-        await importExcel.mutateAsync({
-          file: f,
-        });
-      }
-      toast.success("Expenditures imported successfully");
-    } catch {
-      toast.error("Failed to import expenditures");
-    } finally {
-      e.currentTarget.value = "";
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.name.endsWith(".csv")) {
+      await importCSV.mutateAsync({ file });
+    } else if (file.name.endsWith(".xlsx")) {
+      await importExcel.mutateAsync({ file });
     }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleAdd() {
@@ -267,14 +255,10 @@ export default function ExpendituresPage() {
       await addExpenditure.mutateAsync({
         amount: form.amount,
         description: form.desc,
-
         date: form.date,
       });
-      toast.success("Expenditure added");
       setOpenAdd(false);
       resetForm();
-    } catch {
-      toast.error("Failed to add expenditure");
     } finally {
       setSaving(false);
     }
@@ -284,7 +268,6 @@ export default function ExpendituresPage() {
     if (!editingExpenditure) return;
     if (!form.amount) return toast.error("Enter expenditure amount");
     if (!form.desc) return toast.error("Enter expenditure description");
-
     if (
       editingExpenditure.description === form.desc &&
       editingExpenditure.amount === form.amount &&
@@ -300,13 +283,12 @@ export default function ExpendituresPage() {
         id: editingExpenditure.id,
         amount: form.amount,
         description: form.desc,
-
         date: form.date,
       });
       toast.success("Expenditure updated");
-      resetForm();
-      setEditingExpenditure(null);
       setOpenEdit(false);
+      setEditingExpenditure(null);
+      resetForm();
     } catch {
       toast.error("Failed to update expenditure");
     } finally {
@@ -383,6 +365,7 @@ export default function ExpendituresPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
+
             {canMutate && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                 <input
@@ -452,22 +435,10 @@ export default function ExpendituresPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+                {!summary ? (
                   <Skeleton className="w-full h-[420px] rounded-lg" />
                 ) : (
-                  <ResponsiveContainer width="100%" height={420}>
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <ChartTooltipComponent content={<ChartTooltip />} />
-                      <Bar
-                        dataKey="amount"
-                        fill="#eab308"
-                        radius={[8, 8, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <ExpendituresChart data={chartData} chartKey={chartKey} />
                 )}
               </CardContent>
             </Card>
@@ -494,60 +465,64 @@ export default function ExpendituresPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedExpenditures.map((e, i) => (
-                          <TableRow key={e.id}>
-                            <TableCell>
-                              {(page - 1) * perPage + i + 1}
-                            </TableCell>
-                            <TableCell>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-block max-w-[220px] truncate">
-                                    {truncate(e.description || "-", 25)}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  {e.description || "-"}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TableCell>
-                            <TableCell>₦{e.amount.toLocaleString()}</TableCell>
-                            <TableCell>
-                              {new Date(e.date).toLocaleDateString("en-GB")}
-                            </TableCell>
-                            {canMutate && (
-                              <TableCell className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1 cursor-pointer"
-                                  onClick={() => {
-                                    setEditingExpenditure(e);
-                                    setForm({
-                                      desc: e.description || "",
-                                      amount: e.amount,
-                                      date: new Date(e.date),
-                                    });
-                                    setOpenEdit(true);
-                                  }}
-                                >
-                                  <Edit size={14} /> Edit
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  className="gap-1 cursor-pointer"
-                                  onClick={() => {
-                                    setDeletingExpenditure(e);
-                                    setOpenDelete(true);
-                                  }}
-                                >
-                                  <Trash2 size={14} /> Delete
-                                </Button>
+                        {filteredExpenditures
+                          .slice((page - 1) * perPage, page * perPage)
+                          .map((e: Expenditure, i: number) => (
+                            <TableRow key={e.id}>
+                              <TableCell>
+                                {(page - 1) * perPage + i + 1}
                               </TableCell>
-                            )}
-                          </TableRow>
-                        ))}
+                              <TableCell>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-block max-w-[220px] truncate">
+                                      {truncate(e.description || "-", 25)}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {e.description || "-"}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TableCell>
+                              <TableCell>
+                                ₦{e.amount.toLocaleString()}
+                              </TableCell>
+                              <TableCell>
+                                {new Date(e.date).toLocaleDateString("en-GB")}
+                              </TableCell>
+                              {canMutate && (
+                                <TableCell className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1 cursor-pointer"
+                                    onClick={() => {
+                                      setEditingExpenditure(e);
+                                      setForm({
+                                        desc: e.description || "",
+                                        amount: e.amount,
+                                        date: new Date(e.date),
+                                      });
+                                      setOpenEdit(true);
+                                    }}
+                                  >
+                                    <Edit size={14} /> Edit
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="gap-1 cursor-pointer"
+                                    onClick={() => {
+                                      setDeletingExpenditure(e);
+                                      setOpenDelete(true);
+                                    }}
+                                  >
+                                    <Trash2 size={14} /> Delete
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))}
                       </TableBody>
                     </Table>
 

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/lib/hooks/auth/useAuth";
 
 function useAuthCallback() {
   const { handleGooglePostRedirect } = useAuth();
@@ -14,9 +13,11 @@ function useAuthCallback() {
   useEffect(() => {
     if (!triggered.current) {
       triggered.current = true;
-      handleGooglePostRedirect().catch((err) => {
+      handleGooglePostRedirect().catch((err: unknown) => {
         setIsError(true);
-        setErrorMsg(err?.message || "Something went wrong");
+        const message =
+          err instanceof Error ? err.message : "Something went wrong";
+        setErrorMsg(message);
       });
     }
     // eslint-disable-next-line

@@ -39,10 +39,10 @@ export function useSales(page = 1, perPage = 10, year?: number) {
     }) => {
       await axios.post("/api/sales", payload);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["sales"],
-      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-summary"] });
+    },
   });
 
   const editSale = useMutation({
@@ -54,20 +54,20 @@ export function useSales(page = 1, perPage = 10, year?: number) {
     }) => {
       await axios.put(`/api/sales/${payload.id}`, payload);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["sales"],
-      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-summary"] });
+    },
   });
 
   const deleteSale = useMutation({
     mutationFn: async (id: string) => {
       await axios.delete(`/api/sales/${id}`);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["sales"],
-      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-summary"] });
+    },
   });
 
   const importCSV = useMutation({
@@ -99,10 +99,10 @@ export function useSales(page = 1, perPage = 10, year?: number) {
         reader.readAsText(file);
       });
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["sales"],
-      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-summary"] });
+    },
   });
 
   const importExcel = useMutation({
@@ -122,10 +122,10 @@ export function useSales(page = 1, perPage = 10, year?: number) {
       if (!sales.length) throw new Error("No valid sales found");
       await axios.post("/api/sales/import", { sales });
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["sales"],
-      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-summary"] });
+    },
   });
 
   function exportCSV(sales: ExportableSale[], label: string) {
