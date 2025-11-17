@@ -9,21 +9,32 @@ export type ExportableSale = {
   Date: string;
 };
 
-export function useSales(page = 1, perPage = 10, year?: number) {
+export function useSales(
+  page = 1,
+  perPage = 10,
+  year?: number,
+  month?: number,
+  search?: string
+) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["sales", page, perPage, year],
+    queryKey: ["sales", page, perPage, year, month, search],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append("page", page.toString());
       params.append("perPage", perPage.toString());
-      if (year) params.append("year", year.toString());
+      if (year) params.append("year", String(year));
+      if (month) params.append("month", String(month));
+      if (search?.trim()) params.append("search", search.trim().toLowerCase());
+
       const { data } = await axios.get(`/api/sales?${params.toString()}`);
-      const result = z.array(SaleSchema).safeParse(data.sales);
-      if (!result.success) throw new Error("Invalid sales data");
+
+      const parsed = z.array(SaleSchema).safeParse(data.sales);
+      if (!parsed.success) throw new Error("Invalid sales data");
+
       return {
-        sales: result.data,
+        sales: parsed.data,
         pagination: data.pagination,
       };
     },
@@ -36,9 +47,7 @@ export function useSales(page = 1, perPage = 10, year?: number) {
       amount: number;
       description: string;
       date: Date;
-    }) => {
-      await axios.post("/api/sales", payload);
-    },
+    }) => axios.post("/api/sales", payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["sales-summary"] });
@@ -51,9 +60,7 @@ export function useSales(page = 1, perPage = 10, year?: number) {
       amount: number;
       description: string;
       date: Date;
-    }) => {
-      await axios.put(`/api/sales/${payload.id}`, payload);
-    },
+    }) => axios.put(`/api/sales/${payload.id}`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["sales-summary"] });
@@ -61,9 +68,7 @@ export function useSales(page = 1, perPage = 10, year?: number) {
   });
 
   const deleteSale = useMutation({
-    mutationFn: async (id: string) => {
-      await axios.delete(`/api/sales/${id}`);
-    },
+    mutationFn: async (id: string) => axios.delete(`/api/sales/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["sales-summary"] });
@@ -71,16 +76,13 @@ export function useSales(page = 1, perPage = 10, year?: number) {
   });
 
   const importCSV = useMutation({
-    mutationFn: async ({ file }: { file: File }) => {
-      return new Promise<void>((resolve, reject) => {
+    mutationFn: async ({ file }: { file: File }) =>
+      new Promise<void>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = async (e) => {
           try {
             const text = e.target?.result as string;
-            const rows = text
-              .split("\n")
-              .map((row) => row.split(","))
-              .filter((row) => row.length >= 2);
+            const rows = text.split("\n").map((row) => row.split(","));
             const sales = rows
               .map(([desc, amount, date]) => ({
                 description: desc,
@@ -88,7 +90,6 @@ export function useSales(page = 1, perPage = 10, year?: number) {
                 date,
               }))
               .filter((s) => s.amount);
-            if (!sales.length) return reject("No valid sales found");
             await axios.post("/api/sales/import", { sales });
             resolve();
           } catch (err) {
@@ -97,8 +98,7 @@ export function useSales(page = 1, perPage = 10, year?: number) {
         };
         reader.onerror = reject;
         reader.readAsText(file);
-      });
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["sales-summary"] });
@@ -111,15 +111,16 @@ export function useSales(page = 1, perPage = 10, year?: number) {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await file.arrayBuffer());
       const worksheet = workbook.worksheets[0];
+
       const sales: any[] = [];
-      worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return;
+      worksheet.eachRow((row, index) => {
+        if (index === 1) return;
         const desc = row.getCell(1).value?.toString() ?? "";
         const amount = parseFloat(row.getCell(2).value?.toString() ?? "0");
         const date = row.getCell(3).value?.toString() ?? "";
         if (amount) sales.push({ description: desc, amount, date });
       });
-      if (!sales.length) throw new Error("No valid sales found");
+
       await axios.post("/api/sales/import", { sales });
     },
     onSuccess: () => {
@@ -128,11 +129,11 @@ export function useSales(page = 1, perPage = 10, year?: number) {
     },
   });
 
-  function exportCSV(sales: ExportableSale[], label: string) {
-    if (!sales.length) return;
+  function exportCSV(data: ExportableSale[], label: string) {
+    if (!data.length) return;
     const Papa = require("papaparse");
-    const csv = Papa.unparse(sales);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -141,17 +142,15 @@ export function useSales(page = 1, perPage = 10, year?: number) {
     URL.revokeObjectURL(url);
   }
 
-  async function exportExcel(sales: ExportableSale[], label: string) {
-    if (!sales.length) return;
+  async function exportExcel(data: ExportableSale[], label: string) {
+    if (!data.length) return;
     const ExcelJS = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(label);
-    worksheet.addRow(["Description", "Amount", "Date"]);
-    sales.forEach((s) => worksheet.addRow([s.Description, s.Amount, s.Date]));
+    const sheet = workbook.addWorksheet(label);
+    sheet.addRow(["Description", "Amount", "Date"]);
+    data.forEach((d) => sheet.addRow([d.Description, d.Amount, d.Date]));
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
+    const blob = new Blob([buffer]);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

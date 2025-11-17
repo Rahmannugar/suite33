@@ -68,27 +68,26 @@ import ExpendituresChart from "./ExpendituresChart";
 export default function ExpendituresPage() {
   const user = useAuthStore((s) => s.user);
   const { insight, setInsight, clearInsight } = useInsightStore();
+
   const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
   const [date, setDate] = useState<Date | null>(new Date());
+
   const [page, setPage] = useState(1);
   const perPage = 10;
-  const [openAdd, setOpenAdd] = useState(false);
-  const [openEdit, setOpenEdit] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [editingExpenditure, setEditingExpenditure] =
-    useState<Expenditure | null>(null);
-  const [deletingExpenditure, setDeletingExpenditure] =
-    useState<Expenditure | null>(null);
-  const [openAddDate, setOpenAddDate] = useState(false);
-  const [openEditDate, setOpenEditDate] = useState(false);
-  const [form, setForm] = useState({ desc: "", amount: 0, date: new Date() });
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [insightLoading, setInsightLoading] = useState(false);
-  const insightRef = useRef<HTMLDivElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [search, setSearch] = useState("");
-  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<any>(null);
+
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search.trim().toLowerCase());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
+
   const currentYear = date ? date.getFullYear() : new Date().getFullYear();
   const currentMonth = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
 
@@ -107,8 +106,12 @@ export default function ExpendituresPage() {
   } = useExpenditures(
     page,
     perPage,
-    viewMode === "yearly" ? currentYear : undefined
+    viewMode === "yearly" ? currentYear : currentYear,
+    viewMode === "monthly" ? currentMonth : undefined,
+    debouncedSearch
   );
+
+  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
 
   const { data: summary } = useExpendituresSummary(
     currentYear,
@@ -117,31 +120,10 @@ export default function ExpendituresPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [viewMode, date, search]);
+  }, [viewMode, date]);
 
-  const resetForm = () => setForm({ desc: "", amount: 0, date: new Date() });
-
-  const truncate = (text: string, max: number) =>
-    text.length > max ? text.slice(0, max) + "…" : text;
-
-  const filteredExpenditures = useMemo(() => {
-    if (!expenditures) return [];
-    let filtered = expenditures;
-    if (viewMode === "monthly" && date) {
-      filtered = filtered.filter(
-        (e) =>
-          new Date(e.date).getFullYear() === date.getFullYear() &&
-          new Date(e.date).getMonth() === date.getMonth()
-      );
-    }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      filtered = filtered.filter((e) =>
-        (e.description || "").toLowerCase().includes(q)
-      );
-    }
-    return filtered;
-  }, [expenditures, date, viewMode, search]);
+  const unpaginated = expenditures || [];
+  const filtered = useMemo(() => unpaginated, [unpaginated]);
 
   const totalPages = pagination ? Math.ceil(pagination.total / perPage) : 1;
 
@@ -153,7 +135,7 @@ export default function ExpendituresPage() {
   let chartData: ChartPoint[] = [];
 
   if (viewMode === "yearly" && Array.isArray(summary)) {
-    chartData = (summary as SummaryMonth[]).map((m: SummaryMonth) => ({
+    chartData = (summary as SummaryMonth[]).map((m) => ({
       name: new Date(2000, m.month - 1).toLocaleString("default", {
         month: "short",
       }),
@@ -166,18 +148,13 @@ export default function ExpendituresPage() {
     chartData = Array.from({ length: 4 }, (_, i) => {
       const start = new Date(currentYear, currentMonth - 1, i * 7 + 1);
       const end = new Date(currentYear, currentMonth - 1, (i + 1) * 7);
-
-      const weekList = monthlyRaw.filter((s) => {
-        const d = new Date(s.date);
+      const weekList = monthlyRaw.filter((e) => {
+        const d = new Date(e.date);
         return d >= start && d <= end;
       });
-
       return {
         name: `Week ${i + 1}`,
-        amount: weekList.reduce(
-          (sum: number, s: Expenditure) => sum + s.amount,
-          0
-        ),
+        amount: weekList.reduce((sum, e) => sum + e.amount, 0),
         count: weekList.length,
       };
     });
@@ -186,70 +163,79 @@ export default function ExpendituresPage() {
   const totalEntries =
     viewMode === "monthly"
       ? monthlyRaw.length
-      : (summary ?? []).reduce(
-          (sum: number, m: SummaryMonth) => sum + m.count,
-          0
-        );
+      : (summary ?? []).reduce((sum, m) => sum + m.count, 0);
 
   const totalAmount =
     viewMode === "monthly"
-      ? monthlyRaw.reduce((sum: number, s: Expenditure) => sum + s.amount, 0)
-      : (summary ?? []).reduce(
-          (sum: number, m: SummaryMonth) => sum + m.total,
-          0
-        );
+      ? monthlyRaw.reduce((sum, e) => sum + e.amount, 0)
+      : (summary ?? []).reduce((sum, m) => sum + m.total, 0);
 
   const periodLabel =
     viewMode === "yearly"
-      ? `${date?.getFullYear()} Expenditures`
+      ? `${currentYear} Expenditures`
       : `${date?.toLocaleString("default", {
           month: "long",
-        })} ${date?.getFullYear()} Expenditures`;
+        })} ${currentYear} Expenditures`;
 
   const chartKey = `${viewMode}-${currentYear}-${currentMonth}`;
 
-  function formatExpendituresExport(
-    exps: Expenditure[]
-  ): ExportableExpenditure[] {
-    return exps.map((e) => ({
-      Description: e.description || "",
-      Amount: `₦${e.amount.toLocaleString()}`,
-      Date: new Date(e.date).toLocaleDateString("en-GB"),
-    }));
+  function truncate(text: string, max: number) {
+    return text.length > max ? text.slice(0, max) + "…" : text;
   }
 
+  const [openAdd, setOpenAdd] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+
+  const [editingExpenditure, setEditingExpenditure] =
+    useState<Expenditure | null>(null);
+  const [deletingExpenditure, setDeletingExpenditure] =
+    useState<Expenditure | null>(null);
+
+  const [openAddDate, setOpenAddDate] = useState(false);
+  const [openEditDate, setOpenEditDate] = useState(false);
+
+  const [form, setForm] = useState({
+    desc: "",
+    amount: 0,
+    date: new Date(),
+  });
+
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const insightRef = useRef<HTMLDivElement | null>(null);
+
   async function handleInsight() {
-    if (!user?.businessId) return;
-    setInsightLoading(true);
     try {
-      const year = date ? date.getFullYear() : new Date().getFullYear();
-      const month = viewMode === "monthly" ? date?.getMonth()! + 1 : undefined;
-      const payload = viewMode === "yearly" ? { year } : { year, month };
+      setInsightLoading(true);
+      const payload =
+        viewMode === "yearly"
+          ? { year: currentYear }
+          : { year: currentYear, month: currentMonth };
       const result = await getInsight.mutateAsync(payload);
       setInsight(result);
+    } finally {
       setInsightLoading(false);
       setTimeout(() => {
         insightRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
-    } catch {
-      setInsightLoading(false);
     }
   }
 
-  async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.name.endsWith(".csv")) {
-      await importCSV.mutateAsync({ file });
-    } else if (file.name.endsWith(".xlsx")) {
+    if (file.name.endsWith(".csv")) await importCSV.mutateAsync({ file });
+    else if (file.name.endsWith(".xlsx"))
       await importExcel.mutateAsync({ file });
-    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  const [insightLoading, setInsightLoading] = useState(false);
+
   async function handleAdd() {
-    if (!form.amount) return toast.error("Enter expenditure amount");
-    if (!form.desc) return toast.error("Enter expenditure description");
     setSaving(true);
     try {
       await addExpenditure.mutateAsync({
@@ -258,7 +244,7 @@ export default function ExpendituresPage() {
         date: form.date,
       });
       setOpenAdd(false);
-      resetForm();
+      setForm({ desc: "", amount: 0, date: new Date() });
     } finally {
       setSaving(false);
     }
@@ -266,17 +252,6 @@ export default function ExpendituresPage() {
 
   async function handleEdit() {
     if (!editingExpenditure) return;
-    if (!form.amount) return toast.error("Enter expenditure amount");
-    if (!form.desc) return toast.error("Enter expenditure description");
-    if (
-      editingExpenditure.description === form.desc &&
-      editingExpenditure.amount === form.amount &&
-      new Date(editingExpenditure.date).getTime() ===
-        new Date(form.date).getTime()
-    ) {
-      setOpenEdit(false);
-      return;
-    }
     setSaving(true);
     try {
       await editExpenditure.mutateAsync({
@@ -285,12 +260,9 @@ export default function ExpendituresPage() {
         description: form.desc,
         date: form.date,
       });
-      toast.success("Expenditure updated");
       setOpenEdit(false);
       setEditingExpenditure(null);
-      resetForm();
-    } catch {
-      toast.error("Failed to update expenditure");
+      setForm({ desc: "", amount: 0, date: new Date() });
     } finally {
       setSaving(false);
     }
@@ -301,9 +273,6 @@ export default function ExpendituresPage() {
     setDeleting(true);
     try {
       await deleteExpenditure.mutateAsync(deletingExpenditure.id);
-      toast.success("Expenditure deleted");
-    } catch {
-      toast.error("Failed to delete expenditure");
     } finally {
       setDeleting(false);
       setDeletingExpenditure(null);
@@ -319,9 +288,8 @@ export default function ExpendituresPage() {
           {canMutate && (
             <Button
               onClick={() => {
-                setEditingExpenditure(null);
-                resetForm();
                 setOpenAdd(true);
+                setForm({ desc: "", amount: 0, date: new Date() });
               }}
               className="gap-2 cursor-pointer"
             >
@@ -360,7 +328,7 @@ export default function ExpendituresPage() {
               </ByteDatePicker>
 
               <Input
-                placeholder="Search by description…"
+                placeholder="Search expenditures…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -373,41 +341,53 @@ export default function ExpendituresPage() {
                   type="file"
                   accept=".csv,.xlsx"
                   className="hidden"
-                  onChange={handleImportChange}
+                  onChange={handleImport}
                 />
+
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
                   className="gap-2 cursor-pointer w-full"
                 >
-                  <FileUp size={16} /> Import CSV/Excel
+                  <FileUp size={16} /> Import
                 </Button>
+
                 <Button
                   variant="outline"
                   className="gap-2 cursor-pointer w-full"
                   onClick={() => {
                     exportCSV(
-                      formatExpendituresExport(filteredExpenditures),
+                      filtered.map((e) => ({
+                        Description: e.description,
+                        Amount: e.amount.toString(),
+                        Date: new Date(e.date).toLocaleDateString(),
+                      })),
                       periodLabel
                     );
                     toast.success("CSV exported successfully");
                   }}
                 >
-                  <FileDown size={16} /> Export CSV
+                  <FileDown size={16} /> CSV
                 </Button>
+
                 <Button
                   variant="outline"
                   className="gap-2 cursor-pointer w-full"
                   onClick={() => {
                     exportExcel(
-                      formatExpendituresExport(filteredExpenditures),
+                      filtered.map((e) => ({
+                        Description: e.description,
+                        Amount: e.amount.toString(),
+                        Date: new Date(e.date).toLocaleDateString(),
+                      })),
                       periodLabel
                     );
                     toast.success("Excel exported successfully");
                   }}
                 >
-                  <FileDown size={16} /> Export Excel
+                  <FileDown size={16} /> Excel
                 </Button>
+
                 <Button
                   className="gap-2 bg-amber-600 text-white hover:bg-amber-700 cursor-pointer w-full"
                   onClick={async () => {
@@ -449,10 +429,11 @@ export default function ExpendituresPage() {
                   Expenditure Records
                 </CardTitle>
               </CardHeader>
+
               <CardContent>
                 {isLoading ? (
                   <Skeleton className="h-40 w-full" />
-                ) : totalEntries > 0 ? (
+                ) : filtered.length > 0 ? (
                   <>
                     <Table>
                       <TableHeader>
@@ -464,65 +445,67 @@ export default function ExpendituresPage() {
                           {canMutate && <TableHead>Actions</TableHead>}
                         </TableRow>
                       </TableHeader>
+
                       <TableBody>
-                        {filteredExpenditures
-                          .slice((page - 1) * perPage, page * perPage)
-                          .map((e: Expenditure, i: number) => (
-                            <TableRow key={e.id}>
-                              <TableCell>
-                                {(page - 1) * perPage + i + 1}
+                        {filtered.map((e: Expenditure, i: number) => (
+                          <TableRow key={e.id}>
+                            <TableCell>
+                              {(page - 1) * perPage + i + 1}
+                            </TableCell>
+
+                            <TableCell>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-block max-w-[240px] truncate">
+                                    {truncate(e.description || "-", 25)}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {e.description || "-"}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TableCell>
+
+                            <TableCell>₦{e.amount.toLocaleString()}</TableCell>
+
+                            <TableCell>
+                              {new Date(e.date).toLocaleDateString("en-GB")}
+                            </TableCell>
+
+                            {canMutate && (
+                              <TableCell className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1 cursor-pointer"
+                                  onClick={() => {
+                                    setEditingExpenditure(e);
+                                    setForm({
+                                      desc: e.description,
+                                      amount: e.amount,
+                                      date: new Date(e.date),
+                                    });
+                                    setOpenEdit(true);
+                                  }}
+                                >
+                                  <Edit size={14} /> Edit
+                                </Button>
+
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="gap-1 cursor-pointer"
+                                  onClick={() => {
+                                    setDeletingExpenditure(e);
+                                    setOpenDelete(true);
+                                  }}
+                                >
+                                  <Trash2 size={14} /> Delete
+                                </Button>
                               </TableCell>
-                              <TableCell>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="inline-block max-w-[220px] truncate">
-                                      {truncate(e.description || "-", 25)}
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    {e.description || "-"}
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TableCell>
-                              <TableCell>
-                                ₦{e.amount.toLocaleString()}
-                              </TableCell>
-                              <TableCell>
-                                {new Date(e.date).toLocaleDateString("en-GB")}
-                              </TableCell>
-                              {canMutate && (
-                                <TableCell className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-1 cursor-pointer"
-                                    onClick={() => {
-                                      setEditingExpenditure(e);
-                                      setForm({
-                                        desc: e.description || "",
-                                        amount: e.amount,
-                                        date: new Date(e.date),
-                                      });
-                                      setOpenEdit(true);
-                                    }}
-                                  >
-                                    <Edit size={14} /> Edit
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    className="gap-1 cursor-pointer"
-                                    onClick={() => {
-                                      setDeletingExpenditure(e);
-                                      setOpenDelete(true);
-                                    }}
-                                  >
-                                    <Trash2 size={14} /> Delete
-                                  </Button>
-                                </TableCell>
-                              )}
-                            </TableRow>
-                          ))}
+                            )}
+                          </TableRow>
+                        ))}
                       </TableBody>
                     </Table>
 
@@ -535,6 +518,7 @@ export default function ExpendituresPage() {
                               className="cursor-pointer"
                             />
                           </PaginationItem>
+
                           {Array.from({ length: totalPages }, (_, i) => (
                             <PaginationItem key={i}>
                               <PaginationLink
@@ -546,6 +530,7 @@ export default function ExpendituresPage() {
                               </PaginationLink>
                             </PaginationItem>
                           ))}
+
                           <PaginationItem>
                             <PaginationNext
                               onClick={() =>
@@ -585,15 +570,17 @@ export default function ExpendituresPage() {
         </Tabs>
 
         <Dialog open={openAdd} onOpenChange={setOpenAdd}>
-          <DialogContent>
+          <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle>Add Expenditure</DialogTitle>
             </DialogHeader>
+
             <Input
               placeholder="Description"
               value={form.desc}
               onChange={(e) => setForm({ ...form, desc: e.target.value })}
             />
+
             <Input
               type="number"
               placeholder="Amount"
@@ -602,6 +589,7 @@ export default function ExpendituresPage() {
                 setForm({ ...form, amount: Number(e.target.value) })
               }
             />
+
             <Popover open={openAddDate} onOpenChange={setOpenAddDate}>
               <PopoverTrigger asChild>
                 <Button
@@ -609,13 +597,15 @@ export default function ExpendituresPage() {
                   className="justify-start gap-2 cursor-pointer w-full"
                 >
                   <CalendarIcon size={16} />
-                  {form.date ? format(form.date, "dd-MM-yyyy") : "Select Date"}
+                  {format(form.date, "dd-MM-yyyy")}
                 </Button>
               </PopoverTrigger>
+
               <PopoverContent
                 align="center"
-                sideOffset={4}
-                className="p-0 w-auto mx-auto"
+                side="bottom"
+                sideOffset={8}
+                className="p-0 w-auto left-1/2 transform -translate-x-1/2"
               >
                 <Calendar
                   mode="single"
@@ -626,43 +616,46 @@ export default function ExpendituresPage() {
                       setOpenAddDate(false);
                     }
                   }}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
+
             <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => {
-                  resetForm();
                   setOpenAdd(false);
+                  setForm({ desc: "", amount: 0, date: new Date() });
                 }}
                 disabled={saving}
                 className="cursor-pointer"
               >
                 Cancel
               </Button>
+
               <Button
                 onClick={handleAdd}
                 disabled={saving}
                 className="cursor-pointer"
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-          <DialogContent>
+          <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle>Edit Expenditure</DialogTitle>
             </DialogHeader>
+
             <Input
               placeholder="Description"
               value={form.desc}
               onChange={(e) => setForm({ ...form, desc: e.target.value })}
             />
+
             <Input
               type="number"
               placeholder="Amount"
@@ -671,6 +664,7 @@ export default function ExpendituresPage() {
                 setForm({ ...form, amount: Number(e.target.value) })
               }
             />
+
             <Popover open={openEditDate} onOpenChange={setOpenEditDate}>
               <PopoverTrigger asChild>
                 <Button
@@ -678,13 +672,15 @@ export default function ExpendituresPage() {
                   className="justify-start gap-2 cursor-pointer w-full"
                 >
                   <CalendarIcon size={16} />
-                  {form.date ? format(form.date, "dd-MM-yyyy") : "Select Date"}
+                  {format(form.date, "dd-MM-yyyy")}
                 </Button>
               </PopoverTrigger>
+
               <PopoverContent
                 align="center"
-                sideOffset={4}
-                className="p-0 w-auto mx-auto"
+                side="bottom"
+                sideOffset={8}
+                className="p-0 w-auto left-1/2 transform -translate-x-1/2"
               >
                 <Calendar
                   mode="single"
@@ -695,56 +691,59 @@ export default function ExpendituresPage() {
                       setOpenEditDate(false);
                     }
                   }}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
+
             <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => {
-                  resetForm();
-                  setEditingExpenditure(null);
                   setOpenEdit(false);
+                  setEditingExpenditure(null);
+                  setForm({ desc: "", amount: 0, date: new Date() });
                 }}
-                className="cursor-pointer"
                 disabled={saving}
+                className="cursor-pointer"
               >
                 Cancel
               </Button>
+
               <Button
                 onClick={handleEdit}
                 disabled={saving}
                 className="cursor-pointer"
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         <Dialog open={openDelete} onOpenChange={setOpenDelete}>
-          <DialogContent>
+          <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle>Delete Expenditure</DialogTitle>
             </DialogHeader>
-            <p>Are you sure you want to delete this expenditure record?</p>
+
+            <p>Are you sure you want to delete this record?</p>
+
             <DialogFooter>
               <Button
                 variant="outline"
-                className="cursor-pointer"
                 onClick={() => setOpenDelete(false)}
                 disabled={deleting}
+                className="cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
                 variant="destructive"
-                className="cursor-pointer"
                 onClick={handleDelete}
                 disabled={deleting}
+                className="cursor-pointer"
               >
-                {deleting ? "Deleting..." : "Delete"}
+                {deleting ? "Deleting…" : "Delete"}
               </Button>
             </DialogFooter>
           </DialogContent>

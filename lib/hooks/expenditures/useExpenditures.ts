@@ -2,8 +2,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { ExpenditureSchema } from "@/lib/types/expenditure";
 import z from "zod";
-import Papa from "papaparse";
-import ExcelJS from "exceljs";
 
 export type ExportableExpenditure = {
   Description: string;
@@ -11,26 +9,34 @@ export type ExportableExpenditure = {
   Date: string;
 };
 
-export function useExpenditures(page = 1, perPage = 10, year?: number) {
+export function useExpenditures(
+  page = 1,
+  perPage = 10,
+  year?: number,
+  month?: number,
+  search?: string
+) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["expenditures", page, perPage, year],
+    queryKey: ["expenditures", page, perPage, year, month, search],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append("page", page.toString());
       params.append("perPage", perPage.toString());
-      if (year) params.append("year", year.toString());
+      if (year) params.append("year", String(year));
+      if (month) params.append("month", String(month));
+      if (search?.trim()) params.append("search", search.trim().toLowerCase());
 
       const { data } = await axios.get(
         `/api/expenditures?${params.toString()}`
       );
 
-      const result = z.array(ExpenditureSchema).safeParse(data.expenditures);
-      if (!result.success) throw new Error("Invalid expenditures data");
+      const parsed = z.array(ExpenditureSchema).safeParse(data.expenditures);
+      if (!parsed.success) throw new Error("Invalid expenditures data");
 
       return {
-        expenditures: result.data,
+        expenditures: parsed.data,
         pagination: data.pagination,
       };
     },
@@ -43,9 +49,7 @@ export function useExpenditures(page = 1, perPage = 10, year?: number) {
       amount: number;
       description: string;
       date: Date;
-    }) => {
-      await axios.post("/api/expenditures", payload);
-    },
+    }) => axios.post("/api/expenditures", payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenditures"] });
       queryClient.invalidateQueries({ queryKey: ["expenditures-summary"] });
@@ -58,9 +62,7 @@ export function useExpenditures(page = 1, perPage = 10, year?: number) {
       amount: number;
       description: string;
       date: Date;
-    }) => {
-      await axios.put(`/api/expenditures/${payload.id}`, payload);
-    },
+    }) => axios.put(`/api/expenditures/${payload.id}`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenditures"] });
       queryClient.invalidateQueries({ queryKey: ["expenditures-summary"] });
@@ -68,9 +70,7 @@ export function useExpenditures(page = 1, perPage = 10, year?: number) {
   });
 
   const deleteExpenditure = useMutation({
-    mutationFn: async (id: string) => {
-      await axios.delete(`/api/expenditures/${id}`);
-    },
+    mutationFn: async (id: string) => axios.delete(`/api/expenditures/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenditures"] });
       queryClient.invalidateQueries({ queryKey: ["expenditures-summary"] });
@@ -78,33 +78,31 @@ export function useExpenditures(page = 1, perPage = 10, year?: number) {
   });
 
   const importCSV = useMutation({
-    mutationFn: async ({ file }: { file: File }) => {
-      return new Promise<void>((resolve, reject) => {
-        Papa.parse(file, {
-          header: true,
-          skipEmptyLines: true,
-          complete: async (results: any) => {
-            try {
-              const expenditures = results.data.map((row: any) => ({
-                amount: row.Amount || row.amount,
-                description:
-                  row.Description || row.description || "Expenditure",
-                date: row.Date || row.date,
-              }));
-
-              if (!expenditures.length)
-                throw new Error("No valid expenditures found in CSV");
-
-              await axios.post("/api/expenditures/import", { expenditures });
-              resolve();
-            } catch (err: any) {
-              reject(err);
-            }
-          },
-          error: (err: any) => reject(err),
-        });
-      });
-    },
+    mutationFn: async ({ file }: { file: File }) =>
+      new Promise<void>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const text = e.target?.result as string;
+            const rows = text.split("\n").map((row) => row.split(","));
+            const items = rows
+              .map(([desc, amount, date]) => ({
+                description: desc,
+                amount: parseFloat(amount),
+                date,
+              }))
+              .filter((s) => s.amount);
+            await axios.post("/api/expenditures/import", {
+              expenditures: items,
+            });
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsText(file);
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenditures"] });
       queryClient.invalidateQueries({ queryKey: ["expenditures-summary"] });
@@ -113,26 +111,21 @@ export function useExpenditures(page = 1, perPage = 10, year?: number) {
 
   const importExcel = useMutation({
     mutationFn: async ({ file }: { file: File }) => {
+      const ExcelJS = await import("exceljs");
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await file.arrayBuffer());
+      const sheet = workbook.worksheets[0];
 
-      const worksheet = workbook.worksheets[0];
-      const expenditures: any[] = [];
-
-      worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return;
-
-        const description = row.getCell(1).value || "Expenditure";
-        const amount = row.getCell(2).value;
-        const date = row.getCell(3).value;
-
-        if (amount) expenditures.push({ description, amount, date });
+      const list: any[] = [];
+      sheet.eachRow((row, idx) => {
+        if (idx === 1) return;
+        const desc = row.getCell(1).value?.toString() ?? "";
+        const amount = parseFloat(row.getCell(2).value?.toString() ?? "0");
+        const date = row.getCell(3).value?.toString() ?? "";
+        if (amount) list.push({ description: desc, amount, date });
       });
 
-      if (!expenditures.length)
-        throw new Error("No valid expenditures found in Excel file");
-
-      await axios.post("/api/expenditures/import", { expenditures });
+      await axios.post("/api/expenditures/import", { expenditures: list });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenditures"] });
@@ -140,50 +133,33 @@ export function useExpenditures(page = 1, perPage = 10, year?: number) {
     },
   });
 
-  function exportCSV(expenditures: ExportableExpenditure[], label: string) {
-    if (!expenditures.length) return;
-
-    const csv = Papa.unparse(expenditures);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  function exportCSV(rows: ExportableExpenditure[], label: string) {
+    if (!rows.length) return;
+    const Papa = require("papaparse");
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
     a.download = `${label}.csv`;
     a.click();
-
     URL.revokeObjectURL(url);
   }
 
-  async function exportExcel(
-    expenditures: ExportableExpenditure[],
-    label: string
-  ) {
-    if (!expenditures.length) return;
-
+  async function exportExcel(rows: ExportableExpenditure[], label: string) {
+    if (!rows.length) return;
+    const ExcelJS = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Expenditures");
-
-    worksheet.columns = [
-      { header: "Description", key: "Description", width: 30 },
-      { header: "Amount", key: "Amount", width: 15 },
-      { header: "Date", key: "Date", width: 15 },
-    ];
-
-    expenditures.forEach((e) => worksheet.addRow(e));
-
+    const sheet = workbook.addWorksheet(label);
+    sheet.addRow(["Description", "Amount", "Date"]);
+    rows.forEach((r) => sheet.addRow([r.Description, r.Amount, r.Date]));
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-
+    const blob = new Blob([buffer]);
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
     a.download = `${label}.xlsx`;
     a.click();
-
     URL.revokeObjectURL(url);
   }
 

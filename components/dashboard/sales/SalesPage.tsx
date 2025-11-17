@@ -65,26 +65,25 @@ import { ChartPoint, SummaryMonth } from "@/lib/utils/chart";
 export default function SalesPage() {
   const user = useAuthStore((s) => s.user);
   const { insight, setInsight, clearInsight } = useInsightStore();
+
   const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
   const [date, setDate] = useState<Date | null>(new Date());
   const [page, setPage] = useState(1);
   const perPage = 10;
-  const [openAdd, setOpenAdd] = useState(false);
-  const [openEdit, setOpenEdit] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [editingSale, setEditingSale] = useState<Sale | null>(null);
-  const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
-  const [openAddDate, setOpenAddDate] = useState(false);
-  const [openEditDate, setOpenEditDate] = useState(false);
-  const [form, setForm] = useState({ desc: "", amount: 0, date: new Date() });
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [insightLoading, setInsightLoading] = useState(false);
-  const insightRef = useRef<HTMLDivElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [search, setSearch] = useState("");
 
-  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<any>(null);
+
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search.trim().toLowerCase());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
+
   const currentYear = date ? date.getFullYear() : new Date().getFullYear();
   const currentMonth = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
 
@@ -100,7 +99,15 @@ export default function SalesPage() {
     exportCSV,
     exportExcel,
     getInsight,
-  } = useSales(page, perPage, viewMode === "yearly" ? currentYear : undefined);
+  } = useSales(
+    page,
+    perPage,
+    viewMode === "yearly" ? currentYear : currentYear,
+    viewMode === "monthly" ? currentMonth : undefined,
+    debouncedSearch
+  );
+
+  const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
 
   const { data: summary } = useSalesSummary(
     currentYear,
@@ -109,38 +116,17 @@ export default function SalesPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [viewMode, date, search]);
+  }, [viewMode, date]);
 
-  const resetForm = () => setForm({ desc: "", amount: 0, date: new Date() });
+  const unpaginated = sales || [];
 
-  const truncate = (text: string, max: number) =>
-    text.length > max ? text.slice(0, max) + "…" : text;
-
-  const filteredSales = useMemo(() => {
-    if (!sales) return [];
-    let filtered = sales;
-    if (viewMode === "monthly" && date) {
-      filtered = filtered.filter(
-        (s) =>
-          new Date(s.date).getFullYear() === date.getFullYear() &&
-          new Date(s.date).getMonth() === date.getMonth()
-      );
-    }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      filtered = filtered.filter(
-        (s) =>
-          s.description.toLowerCase().includes(q) ||
-          String(s.amount).includes(q)
-      );
-    }
-    return filtered;
-  }, [sales, date, viewMode, search]);
+  const filteredSales = useMemo(() => unpaginated, [unpaginated]);
 
   const totalPages = pagination ? Math.ceil(pagination.total / perPage) : 1;
 
   const monthlyRaw =
     viewMode === "monthly" && Array.isArray(summary) ? (summary as Sale[]) : [];
+
   let chartData: ChartPoint[] = [];
 
   if (viewMode === "yearly" && Array.isArray(summary)) {
@@ -157,12 +143,10 @@ export default function SalesPage() {
     chartData = Array.from({ length: 4 }, (_, i) => {
       const start = new Date(currentYear, currentMonth - 1, i * 7 + 1);
       const end = new Date(currentYear, currentMonth - 1, (i + 1) * 7);
-
       const weekSales = monthlyRaw.filter((s) => {
         const d = new Date(s.date);
         return d >= start && d <= end;
       });
-
       return {
         name: `Week ${i + 1}`,
         amount: weekSales.reduce((sum, s) => sum + s.amount, 0),
@@ -189,48 +173,61 @@ export default function SalesPage() {
 
   const periodLabel =
     viewMode === "yearly"
-      ? `${date?.getFullYear()} Sales`
+      ? `${currentYear} Sales`
       : `${date?.toLocaleString("default", {
           month: "long",
-        })} ${date?.getFullYear()} Sales`;
+        })} ${currentYear} Sales`;
 
   const chartKey = `${viewMode}-${currentYear}-${currentMonth}`;
 
-  function formatSalesExport(sales: Sale[]) {
-    return sales.map((s) => ({
-      Description: s.description,
-      Amount: s.amount.toString(),
-      Date: new Date(s.date).toLocaleDateString(),
-    }));
+  function truncate(text: string, max: number) {
+    return text.length > max ? text.slice(0, max) + "…" : text;
   }
 
+  const [openAdd, setOpenAdd] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+
+  const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
+
+  const [openAddDate, setOpenAddDate] = useState(false);
+  const [openEditDate, setOpenEditDate] = useState(false);
+
+  const [form, setForm] = useState({ desc: "", amount: 0, date: new Date() });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const insightRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   async function handleInsight() {
-    setInsightLoading(true);
     try {
-      const year = date ? date.getFullYear() : new Date().getFullYear();
-      const month = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
-      const payload = viewMode === "yearly" ? { year } : { year, month };
+      setInsightLoading(true);
+      const payload =
+        viewMode === "yearly"
+          ? { year: currentYear }
+          : { year: currentYear, month: currentMonth };
       const result = await getInsight.mutateAsync(payload);
       setInsight(result);
+    } finally {
       setInsightLoading(false);
       setTimeout(() => {
         insightRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
-    } catch {
-      setInsightLoading(false);
     }
   }
 
-  async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.name.endsWith(".csv")) {
-      await importCSV.mutateAsync({ file });
-    } else if (file.name.endsWith(".xlsx")) {
+    if (file.name.endsWith(".csv")) await importCSV.mutateAsync({ file });
+    else if (file.name.endsWith(".xlsx"))
       await importExcel.mutateAsync({ file });
-    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
+
+  const [insightLoading, setInsightLoading] = useState(false);
 
   async function handleAdd() {
     setSaving(true);
@@ -241,7 +238,7 @@ export default function SalesPage() {
         date: form.date,
       });
       setOpenAdd(false);
-      resetForm();
+      setForm({ desc: "", amount: 0, date: new Date() });
     } finally {
       setSaving(false);
     }
@@ -249,16 +246,6 @@ export default function SalesPage() {
 
   async function handleEdit() {
     if (!editingSale) return;
-    if (!form.amount) return toast.error("Enter sale amount");
-    if (!form.desc) return toast.error("Enter sale description");
-    if (
-      editingSale.description === form.desc &&
-      editingSale.amount === form.amount &&
-      new Date(editingSale.date).getTime() === new Date(form.date).getTime()
-    ) {
-      setOpenEdit(false);
-      return;
-    }
     setSaving(true);
     try {
       await editSale.mutateAsync({
@@ -267,12 +254,9 @@ export default function SalesPage() {
         description: form.desc,
         date: form.date,
       });
-      toast.success("Sale updated");
       setOpenEdit(false);
       setEditingSale(null);
-      resetForm();
-    } catch {
-      toast.error("Failed to update sale");
+      setForm({ desc: "", amount: 0, date: new Date() });
     } finally {
       setSaving(false);
     }
@@ -283,9 +267,6 @@ export default function SalesPage() {
     setDeleting(true);
     try {
       await deleteSale.mutateAsync(deletingSale.id);
-      toast.success("Sale deleted");
-    } catch {
-      toast.error("Failed to delete sale");
     } finally {
       setDeleting(false);
       setDeletingSale(null);
@@ -301,9 +282,8 @@ export default function SalesPage() {
           {canMutate && (
             <Button
               onClick={() => {
-                setEditingSale(null);
-                resetForm();
                 setOpenAdd(true);
+                setForm({ desc: "", amount: 0, date: new Date() });
               }}
               className="gap-2 cursor-pointer"
             >
@@ -342,7 +322,7 @@ export default function SalesPage() {
               </ByteDatePicker>
 
               <Input
-                placeholder="Search by description…"
+                placeholder="Search sales…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -355,35 +335,53 @@ export default function SalesPage() {
                   type="file"
                   accept=".csv,.xlsx"
                   className="hidden"
-                  onChange={handleImportChange}
+                  onChange={handleImport}
                 />
+
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
                   className="gap-2 cursor-pointer w-full"
                 >
-                  <FileUp size={16} /> Import CSV/Excel
+                  <FileUp size={16} /> Import
                 </Button>
+
                 <Button
                   variant="outline"
                   className="gap-2 cursor-pointer w-full"
                   onClick={() => {
-                    exportCSV(formatSalesExport(filteredSales), periodLabel);
+                    exportCSV(
+                      filteredSales.map((s) => ({
+                        Description: s.description,
+                        Amount: s.amount.toString(),
+                        Date: new Date(s.date).toLocaleDateString(),
+                      })),
+                      periodLabel
+                    );
                     toast.success("CSV exported successfully");
                   }}
                 >
-                  <FileDown size={16} /> Export CSV
+                  <FileDown size={16} /> CSV
                 </Button>
+
                 <Button
                   variant="outline"
                   className="gap-2 cursor-pointer w-full"
                   onClick={() => {
-                    exportExcel(formatSalesExport(filteredSales), periodLabel);
+                    exportExcel(
+                      filteredSales.map((s) => ({
+                        Description: s.description,
+                        Amount: s.amount.toString(),
+                        Date: new Date(s.date).toLocaleDateString(),
+                      })),
+                      periodLabel
+                    );
                     toast.success("Excel exported successfully");
                   }}
                 >
-                  <FileDown size={16} /> Export Excel
+                  <FileDown size={16} /> Excel
                 </Button>
+
                 <Button
                   className="gap-2 bg-blue-600 text-white hover:bg-blue-700 cursor-pointer w-full"
                   onClick={async () => {
@@ -428,7 +426,7 @@ export default function SalesPage() {
               <CardContent>
                 {isLoading ? (
                   <Skeleton className="h-40 w-full" />
-                ) : totalSales > 0 ? (
+                ) : filteredSales.length > 0 ? (
                   <>
                     <Table>
                       <TableHeader>
@@ -449,19 +447,18 @@ export default function SalesPage() {
                             <TableCell>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="inline-block max-w-[220px] truncate">
+                                  <span className="inline-block max-w-[240px] truncate">
                                     {truncate(s.description || "-", 25)}
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent>
-                                  {s.description || "-"}
-                                </TooltipContent>
+                                <TooltipContent>{s.description}</TooltipContent>
                               </Tooltip>
                             </TableCell>
                             <TableCell>₦{s.amount.toLocaleString()}</TableCell>
                             <TableCell>
                               {new Date(s.date).toLocaleDateString("en-GB")}
                             </TableCell>
+
                             {canMutate && (
                               <TableCell className="flex items-center gap-2">
                                 <Button
@@ -480,6 +477,7 @@ export default function SalesPage() {
                                 >
                                   <Edit size={14} /> Edit
                                 </Button>
+
                                 <Button
                                   variant="destructive"
                                   size="sm"
@@ -507,6 +505,7 @@ export default function SalesPage() {
                               className="cursor-pointer"
                             />
                           </PaginationItem>
+
                           {Array.from({ length: totalPages }, (_, i) => (
                             <PaginationItem key={i}>
                               <PaginationLink
@@ -518,6 +517,7 @@ export default function SalesPage() {
                               </PaginationLink>
                             </PaginationItem>
                           ))}
+
                           <PaginationItem>
                             <PaginationNext
                               onClick={() =>
@@ -557,15 +557,17 @@ export default function SalesPage() {
         </Tabs>
 
         <Dialog open={openAdd} onOpenChange={setOpenAdd}>
-          <DialogContent>
+          <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle>Add Sale</DialogTitle>
             </DialogHeader>
+
             <Input
               placeholder="Description"
               value={form.desc}
               onChange={(e) => setForm({ ...form, desc: e.target.value })}
             />
+
             <Input
               type="number"
               placeholder="Amount"
@@ -574,6 +576,7 @@ export default function SalesPage() {
                 setForm({ ...form, amount: Number(e.target.value) })
               }
             />
+
             <Popover open={openAddDate} onOpenChange={setOpenAddDate}>
               <PopoverTrigger asChild>
                 <Button
@@ -581,13 +584,15 @@ export default function SalesPage() {
                   className="justify-start gap-2 cursor-pointer w-full"
                 >
                   <CalendarIcon size={16} />
-                  {form.date ? format(form.date, "dd-MM-yyyy") : "Select Date"}
+                  {format(form.date, "dd-MM-yyyy")}
                 </Button>
               </PopoverTrigger>
+
               <PopoverContent
                 align="center"
-                sideOffset={4}
-                className="p-0 w-auto mx-auto"
+                side="bottom"
+                sideOffset={8}
+                className="p-0 w-auto left-1/2 transform -translate-x-1/2"
               >
                 <Calendar
                   mode="single"
@@ -598,43 +603,46 @@ export default function SalesPage() {
                       setOpenAddDate(false);
                     }
                   }}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
+
             <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => {
-                  resetForm();
                   setOpenAdd(false);
+                  setForm({ desc: "", amount: 0, date: new Date() });
                 }}
                 disabled={saving}
                 className="cursor-pointer"
               >
                 Cancel
               </Button>
+
               <Button
                 onClick={handleAdd}
                 disabled={saving}
                 className="cursor-pointer"
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-          <DialogContent>
+          <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle>Edit Sale</DialogTitle>
             </DialogHeader>
+
             <Input
               placeholder="Description"
               value={form.desc}
               onChange={(e) => setForm({ ...form, desc: e.target.value })}
             />
+
             <Input
               type="number"
               placeholder="Amount"
@@ -643,6 +651,7 @@ export default function SalesPage() {
                 setForm({ ...form, amount: Number(e.target.value) })
               }
             />
+
             <Popover open={openEditDate} onOpenChange={setOpenEditDate}>
               <PopoverTrigger asChild>
                 <Button
@@ -650,13 +659,15 @@ export default function SalesPage() {
                   className="justify-start gap-2 cursor-pointer w-full"
                 >
                   <CalendarIcon size={16} />
-                  {form.date ? format(form.date, "dd-MM-yyyy") : "Select Date"}
+                  {format(form.date, "dd-MM-yyyy")}
                 </Button>
               </PopoverTrigger>
+
               <PopoverContent
                 align="center"
-                sideOffset={4}
-                className="p-0 w-auto mx-auto"
+                side="bottom"
+                sideOffset={8}
+                className="p-0 w-auto left-1/2 transform -translate-x-1/2"
               >
                 <Calendar
                   mode="single"
@@ -667,46 +678,49 @@ export default function SalesPage() {
                       setOpenEditDate(false);
                     }
                   }}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
+
             <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => {
-                  resetForm();
-                  setEditingSale(null);
                   setOpenEdit(false);
+                  setEditingSale(null);
+                  setForm({ desc: "", amount: 0, date: new Date() });
                 }}
                 disabled={saving}
                 className="cursor-pointer"
               >
                 Cancel
               </Button>
+
               <Button
                 onClick={handleEdit}
                 disabled={saving}
                 className="cursor-pointer"
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         <Dialog open={openDelete} onOpenChange={setOpenDelete}>
-          <DialogContent>
+          <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle>Delete Sale</DialogTitle>
             </DialogHeader>
-            <p>Are you sure you want to delete this sale record?</p>
+
+            <p>Are you sure you want to delete this sale?</p>
+
             <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setOpenDelete(false)}
-                className="cursor-pointer"
                 disabled={deleting}
+                className="cursor-pointer"
               >
                 Cancel
               </Button>
@@ -716,7 +730,7 @@ export default function SalesPage() {
                 disabled={deleting}
                 className="cursor-pointer"
               >
-                {deleting ? "Deleting..." : "Delete"}
+                {deleting ? "Deleting…" : "Delete"}
               </Button>
             </DialogFooter>
           </DialogContent>
