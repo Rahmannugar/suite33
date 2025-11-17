@@ -49,10 +49,30 @@ import { AnimatePresence, motion } from "framer-motion";
 
 export default function InventoryPage() {
   const user = useAuthStore((s) => s.user);
+
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  const [page, setPage] = useState(1);
+  const perPage = 10;
+  const [catPage, setCatPage] = useState(1);
+  const catPerPage = 10;
+  const [lowStockPage, setLowStockPage] = useState(1);
+  const lowStockPerPage = 10;
+
+  const [filterCategory, setFilterCategory] = useState("all");
+
+  useEffect(() => setPage(1), [filterCategory, debouncedSearch]);
+
   const {
     inventory,
     isLoading,
     categories,
+    inventoryPagination,
     addCategory,
     addItem,
     editItem,
@@ -66,63 +86,15 @@ export default function InventoryPage() {
     lowStock,
     isLowStockLoading,
     refetchLowStock,
-  } = useInventory();
+  } = useInventory({
+    page,
+    perPage,
+    search: debouncedSearch,
+  });
 
   const canMutate = user?.role === "ADMIN" || user?.role === "SUB_ADMIN";
 
-  const [page, setPage] = useState(1);
-  const perPage = 10;
-
-  const [catPage, setCatPage] = useState(1);
-  const catPerPage = 10;
-
-  const [lowStockPage, setLowStockPage] = useState(1);
-  const lowStockPerPage = 10;
-
-  const [search, setSearch] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
-
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  const [openAdd, setOpenAdd] = useState(false);
-  const [openEdit, setOpenEdit] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
-
-  const [openRenameCategory, setOpenRenameCategory] = useState(false);
-  const [openDeleteCategory, setOpenDeleteCategory] = useState(false);
-
-  const [editingItem, setEditingItem] = useState<Inventory | null>(null);
-  const [deletingItem, setDeletingItem] = useState<Inventory | null>(null);
-
-  const [selectedCategory, setSelectedCategory] = useState<any>(null);
-
-  const [form, setForm] = useState({
-    name: "",
-    quantity: 0,
-    categoryId: "none",
-    newCategory: "",
-  });
-
-  const [categoryName, setCategoryName] = useState("");
-
-  const [showCategories, setShowCategories] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const resetForm = () =>
-    setForm({ name: "", quantity: 0, categoryId: "none", newCategory: "" });
-
-  const truncate = (text: string, max: number) =>
-    text.length > max ? text.slice(0, max) + "…" : text;
-
-  useEffect(() => setPage(1), [filterCategory, search]);
-
-  useEffect(() => setCatPage(1), [showCategories, categories?.length]);
-
-  useEffect(() => setLowStockPage(1), [lowStock?.length]);
-
-  const normalizedSearch = search.trim().toLowerCase();
+  const normalizedSearch = debouncedSearch.toLowerCase();
 
   const filteredInventory = useMemo(() => {
     const base = inventory ?? [];
@@ -184,20 +156,50 @@ export default function InventoryPage() {
     lowStockPage * lowStockPerPage
   );
 
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const [openAdd, setOpenAdd] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+
+  const [openRenameCategory, setOpenRenameCategory] = useState(false);
+  const [openDeleteCategory, setOpenDeleteCategory] = useState(false);
+
+  const [editingItem, setEditingItem] = useState<Inventory | null>(null);
+  const [deletingItem, setDeletingItem] = useState<Inventory | null>(null);
+
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
+
+  const [form, setForm] = useState({
+    name: "",
+    quantity: 0,
+    categoryId: "none",
+    newCategory: "",
+  });
+
+  const [categoryName, setCategoryName] = useState("");
+
+  const [showCategories, setShowCategories] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const resetForm = () =>
+    setForm({ name: "", quantity: 0, categoryId: "none", newCategory: "" });
+
+  const truncate = (text: string, max: number) =>
+    text.length > max ? text.slice(0, max) + "…" : text;
+
+  useEffect(() => setCatPage(1), [showCategories, categories?.length]);
+  useEffect(() => setLowStockPage(1), [lowStock?.length]);
+
   async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user?.businessId || !user?.id) return;
     const isCSV = file.name.toLowerCase().endsWith(".csv");
     try {
-      if (isCSV) {
-        await importCSV.mutateAsync({
-          file,
-        });
-      } else {
-        await importExcel.mutateAsync({
-          file,
-        });
-      }
+      if (isCSV) await importCSV.mutateAsync({ file });
+      else await importExcel.mutateAsync({ file });
       toast.success("Inventory imported successfully");
       refetchLowStock();
     } catch {
@@ -216,7 +218,6 @@ export default function InventoryPage() {
     setSaving(true);
     try {
       let catId = form.categoryId;
-
       if (form.categoryId === "none" && form.newCategory) {
         const category = await addCategory.mutateAsync({
           name: form.newCategory.trim(),
@@ -245,9 +246,8 @@ export default function InventoryPage() {
     if (form.categoryId === "none" && !form.newCategory)
       return toast.error("Choose a category or enter a new one.");
     if (form.categoryId !== "none" && form.newCategory)
-      return toast.error("Select only one — category or new.");
+      return toast.error("Select only one category or new.");
     if (
-      editingItem &&
       form.name.trim() === editingItem.name &&
       form.quantity === editingItem.quantity &&
       form.categoryId === editingItem.categoryId
@@ -260,7 +260,7 @@ export default function InventoryPage() {
       let catId = form.categoryId === "none" ? "" : form.categoryId;
       if (form.newCategory) {
         const newCat = await addCategory.mutateAsync({
-          name: form.newCategory.trim().toLowerCase(),
+          name: form.newCategory.trim(),
         });
         catId = newCat.id;
       }
@@ -286,9 +286,7 @@ export default function InventoryPage() {
     if (!deletingItem) return;
     setDeleting(true);
     try {
-      await deleteItem.mutateAsync({
-        id: deletingItem.id,
-      });
+      await deleteItem.mutateAsync({ id: deletingItem.id });
       toast.success("Item deleted");
       refetchLowStock();
     } catch {
@@ -304,7 +302,6 @@ export default function InventoryPage() {
     if (!selectedCategory || !categoryName.trim())
       return toast.error("Enter a category name");
     if (
-      selectedCategory &&
       categoryName.trim().toLowerCase() === selectedCategory.name.toLowerCase()
     ) {
       setOpenRenameCategory(false);
@@ -597,7 +594,6 @@ export default function InventoryPage() {
                       </PaginationItem>
                     ))}
                     <PaginationItem>
-                      {" "}
                       <PaginationNext
                         onClick={() =>
                           setLowStockPage((p) =>
@@ -833,7 +829,7 @@ export default function InventoryPage() {
               }
             />
             <Input
-              placeholder="New category (optional)"
+              placeholder="New category"
               value={form.newCategory}
               onChange={(e) =>
                 setForm({ ...form, newCategory: e.target.value })

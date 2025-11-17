@@ -10,36 +10,80 @@ export function findSimilarCategory(categories: any[], searchName: string) {
   return categories.find((cat) => cat.name.toLowerCase() === normalized);
 }
 
-export function useInventory() {
+export function useInventory(opts?: {
+  page?: number;
+  perPage?: number;
+  categoryId?: string;
+  search?: string;
+
+  catPage?: number;
+  catPerPage?: number;
+
+  lowPage?: number;
+  lowPerPage?: number;
+}) {
   const queryClient = useQueryClient();
 
+  const {
+    page = 1,
+    perPage = 10,
+    categoryId,
+    search = "",
+
+    catPage = 1,
+    catPerPage = 10,
+
+    lowPage = 1,
+    lowPerPage = 10,
+  } = opts || {};
+
   const inventoryQuery = useQuery({
-    queryKey: ["inventory"],
+    queryKey: ["inventory", page, perPage, categoryId, search],
     queryFn: async () => {
-      const { data } = await axios.get("/api/inventory");
-      const result = z.array(InventorySchema).safeParse(data.inventory);
-      if (!result.success) throw new Error("Invalid inventory data");
-      return result.data;
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("perPage", String(perPage));
+      if (categoryId) params.append("categoryId", categoryId);
+      if (search.trim()) params.append("search", search.trim().toLowerCase());
+
+      const { data } = await axios.get(`/api/inventory?${params.toString()}`);
+      const parsed = z.array(InventorySchema).safeParse(data.inventory);
+      if (!parsed.success) throw new Error("Invalid inventory data");
+
+      return { inventory: parsed.data, pagination: data.pagination };
     },
     staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
   const lowStockQuery = useQuery({
-    queryKey: ["inventory-low-stock"],
+    queryKey: ["inventory-low-stock", lowPage, lowPerPage],
     queryFn: async () => {
-      const { data } = await axios.get("/api/inventory/low-stock");
-      const result = z.array(InventorySchema).safeParse(data.lowStock);
-      if (!result.success) throw new Error("Invalid low stock data");
-      return result.data;
+      const params = new URLSearchParams();
+      params.append("page", String(lowPage));
+      params.append("perPage", String(lowPerPage));
+
+      const { data } = await axios.get(
+        `/api/inventory/low-stock?${params.toString()}`
+      );
+
+      const parsed = z.array(InventorySchema).safeParse(data.lowStock);
+      if (!parsed.success) throw new Error("Invalid low stock data");
+
+      return { lowStock: parsed.data, pagination: data.pagination };
     },
     staleTime: 1000 * 60 * 10,
   });
 
   const categoriesQuery = useQuery({
-    queryKey: ["categories"],
+    queryKey: ["categories", catPage, catPerPage],
     queryFn: async () => {
-      const { data } = await axios.get("/api/categories");
-      return data.categories;
+      const params = new URLSearchParams();
+      params.append("page", String(catPage));
+      params.append("perPage", String(catPerPage));
+
+      const { data } = await axios.get(`/api/categories?${params.toString()}`);
+      return { categories: data.categories, pagination: data.pagination };
     },
     staleTime: 1000 * 60 * 10,
   });
@@ -51,6 +95,9 @@ export function useInventory() {
       queryClient.invalidateQueries({ queryKey: ["categories"] }),
     ]);
   };
+
+  const refetchLowStock = () =>
+    queryClient.invalidateQueries({ queryKey: ["inventory-low-stock"] });
 
   const addCategory = useMutation({
     mutationFn: async (payload: { name: string; newCategory?: string }) => {
@@ -82,9 +129,7 @@ export function useInventory() {
       name: string;
       quantity: number;
       categoryId: string;
-    }) => {
-      await axios.post("/api/inventory", payload);
-    },
+    }) => axios.post("/api/inventory", payload),
     onSuccess: refetchAll,
   });
 
@@ -94,15 +139,13 @@ export function useInventory() {
       name: string;
       quantity: number;
       categoryId: string;
-    }) => {
-      await axios.put(`/api/inventory/${payload.id}`, payload);
-    },
+    }) => axios.put(`/api/inventory/${payload.id}`, payload),
     onSuccess: refetchAll,
   });
 
   const deleteItem = useMutation({
-    mutationFn: async (payload: { id: string }) =>
-      axios.delete(`/api/inventory/${payload.id}`),
+    mutationFn: async ({ id }: { id: string }) =>
+      axios.delete(`/api/inventory/${id}`),
     onSuccess: refetchAll,
   });
 
@@ -114,7 +157,7 @@ export function useInventory() {
           skipEmptyLines: true,
           complete: async (results: any) => {
             try {
-              const categories = categoriesQuery.data ?? [];
+              const localCats = categoriesQuery.data?.categories ?? [];
               const items = [];
 
               for (const row of results.data) {
@@ -124,14 +167,14 @@ export function useInventory() {
 
                 if (!name || !categoryName) continue;
 
-                let category = findSimilarCategory(categories, categoryName);
+                let category = findSimilarCategory(localCats, categoryName);
 
                 if (!category) {
                   const res = await axios.post("/api/categories", {
                     name: categoryName,
                   });
                   category = res.data.category;
-                  categories.push(category);
+                  localCats.push(category);
                 }
 
                 items.push({
@@ -145,11 +188,11 @@ export function useInventory() {
 
               await axios.post("/api/inventory/import", { items });
               resolve();
-            } catch (err: any) {
+            } catch (err) {
               reject(err);
             }
           },
-          error: (err: any) => reject(err),
+          error: (err) => reject(err),
         });
       });
     },
@@ -162,7 +205,7 @@ export function useInventory() {
       await workbook.xlsx.load(await file.arrayBuffer());
       const worksheet = workbook.worksheets[0];
 
-      const categories = categoriesQuery.data ?? [];
+      const localCats = categoriesQuery.data?.categories ?? [];
       const items: any[] = [];
 
       worksheet.eachRow(async (row, rowNumber) => {
@@ -174,14 +217,14 @@ export function useInventory() {
 
         if (!name || !categoryName) return;
 
-        let category = findSimilarCategory(categories, String(categoryName));
+        let category = findSimilarCategory(localCats, String(categoryName));
 
         if (!category) {
           const res = await axios.post("/api/categories", {
             name: String(categoryName),
           });
           category = res.data.category;
-          categories.push(category);
+          localCats.push(category);
         }
 
         items.push({
@@ -192,7 +235,6 @@ export function useInventory() {
       });
 
       if (!items.length) throw new Error("No valid items found in Excel file");
-
       await axios.post("/api/inventory/import", { items });
     },
     onSuccess: refetchAll,
@@ -210,10 +252,12 @@ export function useInventory() {
     const csv = Papa.unparse(exportData);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
+
     const a = document.createElement("a");
     a.href = url;
     a.download = `${label}.csv`;
     a.click();
+
     URL.revokeObjectURL(url);
   }
 
@@ -241,28 +285,38 @@ export function useInventory() {
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `${label}.xlsx`;
     a.click();
+
     URL.revokeObjectURL(url);
   }
 
   return {
-    inventory: inventoryQuery.data,
+    inventory: inventoryQuery.data?.inventory ?? [],
+    inventoryPagination: inventoryQuery.data?.pagination,
     isLoading: inventoryQuery.isLoading,
-    categories: categoriesQuery.data,
-    lowStock: lowStockQuery.data,
+
+    lowStock: lowStockQuery.data?.lowStock ?? [],
+    lowStockPagination: lowStockQuery.data?.pagination,
     isLowStockLoading: lowStockQuery.isLoading,
-    refetchLowStock: () =>
-      queryClient.invalidateQueries({ queryKey: ["inventory-low-stock"] }),
+
+    categories: categoriesQuery.data?.categories ?? [],
+    categoriesPagination: categoriesQuery.data?.pagination,
+    isCategoriesLoading: categoriesQuery.isLoading,
+
+    refetchLowStock,
+
     addCategory,
     renameCategory,
     deleteCategory,
     addItem,
     editItem,
     deleteItem,
+
     importCSV,
     importExcel,
     exportCSV,

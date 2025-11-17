@@ -66,7 +66,10 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function DashboardHome() {
   const user = useAuthStore((state) => state.user);
   const { staff, isLoading: staffLoading } = useStaff();
-  const { inventory, isLoading: invLoading } = useInventory();
+  const {
+    inventoryPagination,
+    isLoading: invLoading,
+  } = useInventory();
   const { payroll, isLoading: payrollLoading } = usePayroll();
 
   const role = user?.role ?? "STAFF";
@@ -193,7 +196,7 @@ export default function DashboardHome() {
         <SimpleMetric
           title="Inventory"
           icon={<Boxes size={20} className="text-blue-600" />}
-          count={inventory?.length}
+          count={inventoryPagination?.total}
           loading={invLoading}
           subtitle="Items tracked"
           role={role}
