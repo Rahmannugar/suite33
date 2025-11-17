@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/stores/authStore";
@@ -63,19 +63,14 @@ type DialogType =
 export default function OrganizationPage() {
   const user = useAuthStore((s) => s.user);
   const canMutate = user?.role === "ADMIN";
-  const { departments, createDepartment, editDepartment, deleteDepartment } =
-    useDepartments();
-  const {
-    staff,
-    isLoading: loadingStaff,
-    promoteStaff,
-    demoteStaff,
-    moveStaff,
-    removeStaff,
-    deleteStaff,
-  } = useStaff();
+
+  const staffPerPage = 10;
+  const deptPerPage = 10;
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<any>(null);
+
   const [selectedDept, setSelectedDept] = useState<string>("all");
   const [staffPage, setStaffPage] = useState(1);
   const [deptPage, setDeptPage] = useState(1);
@@ -91,57 +86,71 @@ export default function OrganizationPage() {
     rename: "",
   });
 
-  const staffPerPage = 10;
-  const deptPerPage = 10;
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search.trim().toLowerCase());
+      setStaffPage(1);
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
 
-  useEffect(() => setStaffPage(1), [selectedDept, search]);
-  useEffect(() => setDeptPage(1), [departments?.length]);
+  useEffect(() => setStaffPage(1), [selectedDept]);
 
-  const normalizedSearch = search.trim().toLowerCase();
+  const deptIdParam =
+    selectedDept === "all"
+      ? undefined
+      : selectedDept === "none"
+      ? "none"
+      : selectedDept;
 
-  const filteredStaff = useMemo(() => {
-    if (!staff) return [];
-    let base = staff.slice();
-    if (selectedDept === "none") base = base.filter((s) => !s.departmentId);
-    else if (selectedDept !== "all")
-      base = base.filter((s) => s.departmentId === selectedDept);
-    if (normalizedSearch) {
-      base = base.filter(
-        (s) =>
-          (s.user.fullName || "").toLowerCase().includes(normalizedSearch) ||
-          (s.user.email || "").toLowerCase().includes(normalizedSearch)
-      );
-    }
-    return base.sort((a, b) =>
-      (a.user.fullName || "").localeCompare(b.user.fullName || "")
-    );
-  }, [staff, selectedDept, normalizedSearch]);
+  const {
+    staff: staffList,
+    pagination: staffPagination,
+    isLoading: loadingStaff,
+    promoteStaff,
+    demoteStaff,
+    moveStaff,
+    removeStaff,
+    deleteStaff,
+  } = useStaff({
+    page: staffPage,
+    perPage: staffPerPage,
+    search: debouncedSearch,
+    departmentId: deptIdParam,
+  });
 
-  const totalStaffPages = Math.ceil(filteredStaff.length / staffPerPage);
-  const paginatedStaff = filteredStaff.slice(
-    (staffPage - 1) * staffPerPage,
-    staffPage * staffPerPage
+  const {
+    departments,
+    pagination: departmentsPagination,
+    isLoading: loadingDepts,
+    createDepartment,
+    editDepartment,
+    deleteDepartment,
+  } = useDepartments({ page: deptPage, perPage: deptPerPage });
+
+  const { pagination: noneDeptPagination } = useStaff({
+    page: 1,
+    perPage: 1,
+    search: "",
+    departmentId: "none",
+  });
+
+  const totalStaffPages = Math.max(
+    1,
+    Math.ceil((staffPagination?.total ?? 0) / staffPerPage)
   );
-
-  const sortedDepts = useMemo(() => {
-    return (departments ?? [])
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [departments]);
+  const totalDeptPages = Math.max(
+    1,
+    Math.ceil((departmentsPagination?.total ?? 0) / deptPerPage)
+  );
 
   const deptWithCounts = useMemo(() => {
-    const map: Record<string, number> = {};
-    (staff ?? []).forEach((s) => {
-      if (s.departmentId) map[s.departmentId] = (map[s.departmentId] || 0) + 1;
-    });
-    return sortedDepts.map((d) => ({ ...d, members: map[d.id] || 0 }));
-  }, [sortedDepts, staff]);
-
-  const totalDeptPages = Math.ceil(deptWithCounts.length / deptPerPage);
-  const paginatedDepts = deptWithCounts.slice(
-    (deptPage - 1) * deptPerPage,
-    deptPage * deptPerPage
-  );
+    return (departments ?? []).map((d: any) => ({
+      ...d,
+      members: (d.staff ?? []).length,
+    }));
+  }, [departments]);
 
   function resetDialogState() {
     setDialogType(null);
@@ -160,9 +169,9 @@ export default function OrganizationPage() {
       });
       toast.success("Department created");
       resetDialogState();
-      setSaving(false);
     } catch {
       toast.error("Failed to create department");
+    } finally {
       setSaving(false);
     }
   }
@@ -178,9 +187,9 @@ export default function OrganizationPage() {
       });
       toast.success("Department renamed");
       resetDialogState();
-      setSaving(false);
     } catch {
       toast.error("Failed to rename department");
+    } finally {
       setSaving(false);
     }
   }
@@ -192,7 +201,6 @@ export default function OrganizationPage() {
       await deleteDepartment.mutateAsync(dialogDeptId);
       toast.success("Department deleted");
       resetDialogState();
-      setSaving(false);
     } catch (err: any) {
       if (err?.response?.status === 400) {
         toast.error(
@@ -201,13 +209,14 @@ export default function OrganizationPage() {
       } else {
         toast.error("Failed to delete department");
       }
+    } finally {
       setSaving(false);
     }
   }
 
   function getCurrentDeptIdForStaff(staffId: string | null) {
-    if (!staffId || !staff) return "";
-    return staff.find((s) => s.id === staffId)?.departmentId ?? "";
+    if (!staffId || !staffList) return "";
+    return staffList.find((s) => s.id === staffId)?.departmentId ?? "";
   }
 
   async function handleMoveStaff() {
@@ -227,9 +236,9 @@ export default function OrganizationPage() {
       });
       toast.success("Staff moved");
       resetDialogState();
-      setSaving(false);
     } catch {
       toast.error("Failed to move staff");
+    } finally {
       setSaving(false);
     }
   }
@@ -246,9 +255,9 @@ export default function OrganizationPage() {
       await removeStaff.mutateAsync({ staffId: dialogTargetId });
       toast.success("Staff unassigned");
       resetDialogState();
-      setSaving(false);
     } catch {
       toast.error("Failed to unassign staff");
+    } finally {
       setSaving(false);
     }
   }
@@ -260,9 +269,9 @@ export default function OrganizationPage() {
       await deleteStaff.mutateAsync({ staffId: dialogTargetId });
       toast.success("Staff removed from business");
       resetDialogState();
-      setSaving(false);
     } catch {
       toast.error("Failed to remove staff");
+    } finally {
       setSaving(false);
     }
   }
@@ -274,9 +283,9 @@ export default function OrganizationPage() {
       await promoteStaff.mutateAsync({ staffId: dialogTargetId });
       toast.success("Promoted to Assistant Admin");
       resetDialogState();
-      setSaving(false);
     } catch {
       toast.error("Failed to promote");
+    } finally {
       setSaving(false);
     }
   }
@@ -288,9 +297,9 @@ export default function OrganizationPage() {
       await demoteStaff.mutateAsync({ staffId: dialogTargetId });
       toast.success("Demoted to Staff");
       resetDialogState();
-      setSaving(false);
     } catch {
       toast.error("Failed to demote");
+    } finally {
       setSaving(false);
     }
   }
@@ -312,7 +321,7 @@ export default function OrganizationPage() {
       setForm((f) => ({
         ...f,
         rename: opts?.deptId
-          ? departments?.find((d) => d.id === opts.deptId)?.name ?? ""
+          ? departments?.find((d: any) => d.id === opts.deptId)?.name ?? ""
           : "",
       }));
       setDialogDeptId(opts?.deptId ?? null);
@@ -364,7 +373,7 @@ export default function OrganizationPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
-              {departments?.map((d) => (
+              {departments?.map((d: any) => (
                 <SelectItem key={d.id} value={d.id}>
                   {formatDeptName(d.name)}
                 </SelectItem>
@@ -382,7 +391,8 @@ export default function OrganizationPage() {
                 : selectedDept === "none"
                 ? "Staff Without a Department"
                 : `${formatDeptName(
-                    departments?.find((d) => d.id === selectedDept)?.name ?? ""
+                    departments?.find((d: any) => d.id === selectedDept)
+                      ?.name ?? ""
                   )} Staff`}
             </CardTitle>
           </CardHeader>
@@ -390,7 +400,7 @@ export default function OrganizationPage() {
           <CardContent>
             {loadingStaff ? (
               <p className="text-sm text-muted-foreground">Loading staff...</p>
-            ) : paginatedStaff.length === 0 ? (
+            ) : !staffList || staffList.length === 0 ? (
               <p className="text-sm text-muted-foreground">No staff found.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -405,10 +415,7 @@ export default function OrganizationPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedStaff.map((s, i) => {
-                      const dept =
-                        departments?.find((d) => d.id === s.departmentId) ??
-                        null;
+                    {staffList.map((s: any, i: number) => {
                       const fullName = s.user.fullName || "—";
                       const email = s.user.email || "";
                       return (
@@ -453,10 +460,7 @@ export default function OrganizationPage() {
                                   size="sm"
                                   className="flex-1 min-w-[80px] cursor-pointer"
                                   onClick={() => {
-                                    setForm((f) => ({
-                                      ...f,
-                                      moveDeptId: "",
-                                    }));
+                                    setForm((f) => ({ ...f, moveDeptId: "" }));
                                     openDialogSafely("move-staff", {
                                       staffId: s.id,
                                     });
@@ -594,7 +598,7 @@ export default function OrganizationPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {paginatedDepts.map((d, i) => (
+                          {deptWithCounts.map((d: any, i: number) => (
                             <tr
                               key={d.id}
                               className="border-t hover:bg-muted/50"
@@ -801,7 +805,7 @@ export default function OrganizationPage() {
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments?.map((d) => (
+                    {departments?.map((d: any) => (
                       <SelectItem key={d.id} value={d.id}>
                         {formatDeptName(d.name)}
                       </SelectItem>
@@ -834,12 +838,15 @@ export default function OrganizationPage() {
                   Are you sure you want to remove this staff from{" "}
                   <strong>
                     {(() => {
-                      const name = getCurrentDeptIdForStaff(dialogTargetId)
+                      const name = staffList?.find(
+                        (s: any) => s.id === dialogTargetId
+                      )?.departmentId
                         ? departments?.find(
-                            (d) =>
+                            (d: any) =>
                               d.id ===
-                              staff?.find((s) => s.id === dialogTargetId)
-                                ?.departmentId
+                              staffList?.find(
+                                (s: any) => s.id === dialogTargetId
+                              )?.departmentId
                           )?.name ?? ""
                         : "";
                       return name ? formatDeptName(name) : "the";

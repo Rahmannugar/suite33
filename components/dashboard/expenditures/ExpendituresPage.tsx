@@ -163,12 +163,18 @@ export default function ExpendituresPage() {
   const totalEntries =
     viewMode === "monthly"
       ? monthlyRaw.length
-      : (summary ?? []).reduce((sum, m) => sum + m.count, 0);
+      : (summary ?? []).reduce(
+          (sum: number, m: SummaryMonth) => sum + m.count,
+          0
+        );
 
   const totalAmount =
     viewMode === "monthly"
       ? monthlyRaw.reduce((sum, e) => sum + e.amount, 0)
-      : (summary ?? []).reduce((sum, m) => sum + m.total, 0);
+      : (summary ?? []).reduce(
+          (sum: number, m: SummaryMonth) => sum + m.total,
+          0
+        );
 
   const periodLabel =
     viewMode === "yearly"

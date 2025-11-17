@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -33,7 +34,6 @@ import {
 } from "@/components/ui/table";
 import { getInitials } from "@/lib/utils/getInitials";
 import { useSalesSummary } from "@/lib/hooks/sales/useSalesSummary";
-import { useMemo } from "react";
 import { SummaryMonth } from "@/lib/utils/chart";
 import { useExpendituresSummary } from "@/lib/hooks/expenditures/useExpendituresSummary";
 
@@ -45,9 +45,8 @@ function formatCurrencyShort(value: number): string {
 }
 
 function getEmptyText(feature: string, role: string) {
-  if (role === "ADMIN" || role === "SUB_ADMIN") {
+  if (role === "ADMIN" || role === "SUB_ADMIN")
     return `${feature} is empty, start adding.`;
-  }
   return `${feature} is empty, please contact admin.`;
 }
 
@@ -65,11 +64,9 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export default function DashboardHome() {
   const user = useAuthStore((state) => state.user);
-  const { staff, isLoading: staffLoading } = useStaff();
-  const {
-    inventoryPagination,
-    isLoading: invLoading,
-  } = useInventory();
+
+  const { pagination: staffPagination, isLoading: staffLoading } = useStaff();
+  const { inventoryPagination, isLoading: invLoading } = useInventory();
   const { payroll, isLoading: payrollLoading } = usePayroll();
 
   const role = user?.role ?? "STAFF";
@@ -77,7 +74,6 @@ export default function DashboardHome() {
 
   const { data: salesSummary, isLoading: salesLoading } =
     useSalesSummary(currentYear);
-
   const { data: expSummary, isLoading: expLoading } =
     useExpendituresSummary(currentYear);
 
@@ -103,30 +99,23 @@ export default function DashboardHome() {
 
   const pnlTable = useMemo(() => {
     if (!salesSummary || !expSummary) return [];
-
     return Array.from({ length: 12 }, (_, i) => {
       const salesRow = salesSummary.find(
         (m: SummaryMonth) => m.month === i + 1
       );
-      const salesTotal = salesRow?.total ?? 0;
-
       const expRow = expSummary.find((m: SummaryMonth) => m.month === i + 1);
-      const expTotal = expRow?.total ?? 0;
-
       return {
-        month: new Date(2000, i).toLocaleString("default", {
-          month: "short",
-        }),
-        sales: salesTotal,
-        expenditures: expTotal,
-        pnl: salesTotal - expTotal,
+        month: new Date(2000, i).toLocaleString("default", { month: "short" }),
+        sales: salesRow?.total ?? 0,
+        expenditures: expRow?.total ?? 0,
+        pnl: (salesRow?.total ?? 0) - (expRow?.total ?? 0),
       };
     });
   }, [salesSummary, expSummary]);
 
   const { yearSales, yearExp, yearPnl } = useMemo(() => {
-    const totalSales = pnlTable.reduce((sum, row) => sum + row.sales, 0);
-    const totalExp = pnlTable.reduce((sum, row) => sum + row.expenditures, 0);
+    const totalSales = pnlTable.reduce((s, r) => s + r.sales, 0);
+    const totalExp = pnlTable.reduce((s, r) => s + r.expenditures, 0);
     return {
       yearSales: totalSales,
       yearExp: totalExp,
@@ -136,10 +125,10 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-xl border border-[--border] bg-[--card] p-5 flex flex-col sm:flex-row items-center gap-4 shadow-sm">
+      <div className="rounded-xl border bg-[--card] p-5 flex flex-col sm:flex-row items-center gap-4 shadow-sm">
         {user?.businessLogo ? (
           <Image
-            src={user?.businessLogo}
+            src={user.businessLogo}
             alt="Business Logo"
             width={64}
             height={64}
@@ -188,7 +177,7 @@ export default function DashboardHome() {
         <SimpleMetric
           title="Staff"
           icon={<Users2 size={20} className="text-blue-600" />}
-          count={staff?.length}
+          count={staffPagination?.total ?? 0}
           loading={staffLoading}
           subtitle="Active staff"
           role={role}
@@ -196,14 +185,14 @@ export default function DashboardHome() {
         <SimpleMetric
           title="Inventory"
           icon={<Boxes size={20} className="text-blue-600" />}
-          count={inventoryPagination?.total}
+          count={inventoryPagination?.total ?? 0}
           loading={invLoading}
           subtitle="Items tracked"
           role={role}
         />
       </div>
 
-      <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] cursor-pointer">
+      <Card className="shadow-sm hover:scale-[1.01] transition-transform duration-200 cursor-pointer">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BadgeDollarSign size={20} className="text-blue-600" />
@@ -220,14 +209,14 @@ export default function DashboardHome() {
                 color="text-green-600"
                 amount={payroll
                   .filter((p) => p.paid)
-                  .reduce((sum, p) => sum + p.amount, 0)}
+                  .reduce((s, p) => s + p.amount, 0)}
               />
               <PayrollBlock
                 label="Pending payroll"
                 color="text-amber-600"
                 amount={payroll
                   .filter((p) => !p.paid)
-                  .reduce((sum, p) => sum + p.amount, 0)}
+                  .reduce((s, p) => s + p.amount, 0)}
               />
             </div>
           ) : (
@@ -260,14 +249,17 @@ export default function DashboardHome() {
                     <TableCell>₦{row.sales.toLocaleString()}</TableCell>
                     <TableCell>₦{row.expenditures.toLocaleString()}</TableCell>
                     <TableCell
-                      className={`font-semibold ${
-                        row.pnl < 0 ? "text-red-600" : "text-green-600"
-                      }`}
+                      className={
+                        row.pnl < 0
+                          ? "text-red-600 font-semibold"
+                          : "text-green-600 font-semibold"
+                      }
                     >
                       ₦{row.pnl.toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))}
+
                 <TableRow className="bg-blue-50 dark:bg-blue-900/30 font-semibold">
                   <TableCell>Total</TableCell>
                   <TableCell>₦{yearSales.toLocaleString()}</TableCell>
@@ -298,7 +290,7 @@ function MetricCard({
   role,
 }: any) {
   return (
-    <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] cursor-pointer">
+    <Card className="shadow-sm hover:scale-[1.01] transition-transform duration-200 cursor-pointer">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {icon} {title}
@@ -339,7 +331,7 @@ function MetricCard({
 
 function SimpleMetric({ title, icon, count, loading, subtitle, role }: any) {
   return (
-    <Card className="shadow-sm transition-transform duration-200 ease-out hover:scale-[1.01] cursor-pointer">
+    <Card className="shadow-sm hover:scale-[1.01] transition-transform duration-200 cursor-pointer">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {icon} {title}

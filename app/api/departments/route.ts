@@ -2,14 +2,20 @@ import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/prisma/config";
 import { supabaseServer } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+
+    const page = parseInt(searchParams.get("page") || "1");
+    const perPage = parseInt(searchParams.get("perPage") || "10");
+    const search = searchParams.get("search")?.trim().toLowerCase() || "";
+    const skip = (page - 1) * perPage;
+
     const supabase = await supabaseServer(true);
     const { data, error } = await supabase.auth.getUser();
 
-    if (error || !data?.user) {
+    if (error || !data?.user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const profile = await prisma.user.findUnique({
       where: { id: data.user.id },
@@ -20,25 +26,40 @@ export async function GET() {
     });
 
     const businessId = profile?.business?.id || profile?.Staff?.businessId;
-
-    if (!businessId) {
+    if (!businessId)
       return NextResponse.json({ error: "No business found" }, { status: 403 });
+
+    const where: any = { businessId };
+
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
     }
 
-    const departments = await prisma.department.findMany({
-      where: { businessId },
-      include: {
-        staff: {
-          include: {
-            user: true,
+    const [departments, total] = await Promise.all([
+      prisma.department.findMany({
+        where,
+        include: {
+          staff: {
+            include: { user: true },
           },
         },
+        orderBy: { name: "asc" },
+        skip,
+        take: perPage,
+      }),
+
+      prisma.department.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      departments,
+      pagination: {
+        total,
+        page,
+        perPage,
       },
     });
-
-    return NextResponse.json({ departments });
-  } catch (error) {
-    console.error("Departments fetch error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch departments" },
       { status: 500 }
