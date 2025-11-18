@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useKPIs } from "@/lib/hooks/kpi/useKPIs";
+import { useKPIs } from "@/lib/hooks/kpi/useKPI";
 import { useStaff } from "@/lib/hooks/business/useStaff";
 import { useDepartments } from "@/lib/hooks/business/useDepartments";
 import { useInsightStore } from "@/lib/stores/insightStore";

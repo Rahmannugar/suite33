@@ -3,7 +3,7 @@ import axios from "axios";
 import { z } from "zod";
 import { StaffKPISchema, DepartmentKPISchema } from "@/lib/types/kpi";
 
-export function useKPIs(page = 1, perPage = 10) {
+export function useKPI(page = 1, perPage = 10) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
