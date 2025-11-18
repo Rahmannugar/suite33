@@ -98,7 +98,7 @@ model StaffKPI {
   metric      String
   description String?
   metricType  String    @default("number")
-  status      String    @default("PENDING")
+  status      KPIStatus @default(PENDING)
   target      Float?
   period      DateTime
   notes       String?
@@ -122,7 +122,7 @@ model DepartmentKPI {
   metric       String
   description  String?
   metricType   String     @default("number")
-  status       String     @default("PENDING")
+  status       KPIStatus  @default(PENDING)
   target       Float?
   period       DateTime
   notes        String?
@@ -265,4 +265,11 @@ enum Role {
   ADMIN
   STAFF
   SUB_ADMIN
+}
+
+enum KPIStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
 }
