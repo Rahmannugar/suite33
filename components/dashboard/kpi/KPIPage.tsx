@@ -1,6 +1,8 @@
 "use client";
-
 import { useMemo, useState, useEffect } from "react";
+import ByteDatePicker from "byte-datepicker";
+import "byte-datepicker/styles.css";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { useKPI } from "@/lib/hooks/kpi/useKPI";
 import { useKpiSummary } from "@/lib/hooks/kpi/useKPISummary";
 import { useDepartments } from "@/lib/hooks/business/useDepartments";
@@ -25,7 +27,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Pagination,
   PaginationContent,
@@ -42,8 +44,12 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import ByteDatePicker from "byte-datepicker";
-import "byte-datepicker/styles.css";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 type Mode = "staff" | "dept";
 
@@ -83,6 +89,7 @@ export default function KPIPage() {
 
   const { departments } = useDepartments();
   const { staff } = useStaff();
+
   const {
     getStaffKPIs,
     getDepartmentKPIs,
@@ -136,7 +143,9 @@ export default function KPIPage() {
 
   const summaryQuery = useKpiSummary({
     departmentId:
-      mode === "dept" && departmentFilter ? departmentFilter : undefined,
+      mode === "dept" && departmentFilter !== "all"
+        ? departmentFilter
+        : undefined,
     period: filters.period || undefined,
   });
 
@@ -160,6 +169,7 @@ export default function KPIPage() {
   }
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [formDateOpen, setFormDateOpen] = useState(false);
   const [form, setForm] = useState({
     id: "",
     metric: "",
@@ -324,9 +334,21 @@ export default function KPIPage() {
               <ByteDatePicker
                 value={insightDate}
                 onChange={setInsightDate}
-                hideInput={false}
+                hideInput
                 formatString="mmm yyyy"
-              />
+              >
+                {({ open, formattedValue }) => (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={open}
+                    className="w-48 justify-start font-medium cursor-pointer gap-2"
+                  >
+                    <CalendarIcon size={16} />
+                    {formattedValue || "Select period"}
+                  </Button>
+                )}
+              </ByteDatePicker>
               <Button
                 className="cursor-pointer"
                 onClick={handleGenerateInsight}
@@ -351,7 +373,7 @@ export default function KPIPage() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)]">
         <Card>
           <CardHeader className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-base font-semibold">
                 KPI Overview
               </CardTitle>
@@ -402,9 +424,21 @@ export default function KPIPage() {
               <ByteDatePicker
                 value={period}
                 onChange={setPeriod}
-                hideInput={false}
+                hideInput
                 formatString="mmm yyyy"
-              />
+              >
+                {({ open, formattedValue }) => (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={open}
+                    className="w-48 justify-start font-medium cursor-pointer gap-2"
+                  >
+                    <CalendarIcon size={16} />
+                    {formattedValue || "Select period"}
+                  </Button>
+                )}
+              </ByteDatePicker>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -488,7 +522,6 @@ export default function KPIPage() {
                 </Table>
               </div>
             )}
-
             {totalPages > 1 && (
               <Pagination className="mt-2">
                 <PaginationContent>
@@ -569,7 +602,6 @@ export default function KPIPage() {
               )}
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle className="text-base font-semibold">
@@ -648,7 +680,6 @@ export default function KPIPage() {
                 </SelectContent>
               </Select>
             )}
-
             <Input
               placeholder="Metric"
               value={form.metric}
@@ -656,7 +687,6 @@ export default function KPIPage() {
                 setForm((f) => ({ ...f, metric: e.target.value }))
               }
             />
-
             <Input
               placeholder="Description"
               value={form.description}
@@ -664,7 +694,6 @@ export default function KPIPage() {
                 setForm((f) => ({ ...f, description: e.target.value }))
               }
             />
-
             <Input
               placeholder="Target (optional)"
               type="number"
@@ -673,7 +702,6 @@ export default function KPIPage() {
                 setForm((f) => ({ ...f, target: e.target.value }))
               }
             />
-
             <Select
               value={form.status}
               onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
@@ -688,21 +716,46 @@ export default function KPIPage() {
                 <SelectItem value="EXPIRED">Expired</SelectItem>
               </SelectContent>
             </Select>
-
-            <ByteDatePicker
-              value={form.period ? new Date(form.period) : null}
-              onChange={(v) =>
-                setForm((f) => ({
-                  ...f,
-                  period: v
-                    ? new Date(v.getFullYear(), v.getMonth(), 1).toISOString()
-                    : "",
-                }))
-              }
-              hideInput={false}
-              formatString="mmm yyyy"
-            />
-
+            <Popover open={formDateOpen} onOpenChange={setFormDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="justify-start gap-2 cursor-pointer w-full"
+                >
+                  <CalendarIcon size={16} />
+                  {form.period
+                    ? new Date(form.period).toLocaleString("default", {
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "Select period"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="center"
+                side="bottom"
+                sideOffset={8}
+                className="p-0 w-auto left-1/2 transform -translate-x-1/2"
+              >
+                <Calendar
+                  mode="single"
+                  selected={form.period ? new Date(form.period) : undefined}
+                  onSelect={(d) => {
+                    if (d) {
+                      setForm((f) => ({
+                        ...f,
+                        period: new Date(
+                          d.getFullYear(),
+                          d.getMonth(),
+                          1
+                        ).toISOString(),
+                      }));
+                      setFormDateOpen(false);
+                    }
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
             <Input
               placeholder="Notes (optional)"
               value={form.notes}

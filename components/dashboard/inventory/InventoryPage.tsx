@@ -173,7 +173,7 @@ export default function InventoryPage() {
 
   const [form, setForm] = useState({
     name: "",
-    quantity: 0,
+    quantity: "",
     categoryId: "none",
     newCategory: "",
   });
@@ -185,7 +185,7 @@ export default function InventoryPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetForm = () =>
-    setForm({ name: "", quantity: 0, categoryId: "none", newCategory: "" });
+    setForm({ name: "", quantity: "", categoryId: "none", newCategory: "" });
 
   const truncate = (text: string, max: number) =>
     text.length > max ? text.slice(0, max) + "…" : text;
@@ -195,11 +195,13 @@ export default function InventoryPage() {
 
   async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !user?.businessId || !user?.id) return;
+    if (!file) return;
     const isCSV = file.name.toLowerCase().endsWith(".csv");
+    const isExcel = file.name.toLowerCase().endsWith(".xlsx");
+
     try {
       if (isCSV) await importCSV.mutateAsync({ file });
-      else await importExcel.mutateAsync({ file });
+      else if (isExcel) importExcel.mutateAsync({ file });
       toast.success("Inventory imported successfully");
       refetchLowStock();
     } catch {
@@ -226,7 +228,7 @@ export default function InventoryPage() {
       }
       await addItem.mutateAsync({
         name: form.name,
-        quantity: form.quantity,
+        quantity: parseInt(form.quantity),
         categoryId: catId,
       });
       toast.success("Item added");
@@ -249,7 +251,7 @@ export default function InventoryPage() {
       return toast.error("Select only one category or new.");
     if (
       form.name.trim() === editingItem.name &&
-      form.quantity === editingItem.quantity &&
+      form.quantity === editingItem.quantity.toString() &&
       form.categoryId === editingItem.categoryId
     ) {
       setOpenEdit(false);
@@ -267,7 +269,7 @@ export default function InventoryPage() {
       await editItem.mutateAsync({
         id: editingItem.id,
         name: form.name,
-        quantity: form.quantity,
+        quantity: parseInt(form.quantity),
         categoryId: catId,
       });
       toast.success("Item updated");
@@ -485,7 +487,7 @@ export default function InventoryPage() {
                                 setEditingItem(item);
                                 setForm({
                                   name: item.name,
-                                  quantity: item.quantity,
+                                  quantity: item.quantity.toString(),
                                   categoryId: item.categoryId || "none",
                                   newCategory: "",
                                 });
@@ -760,9 +762,7 @@ export default function InventoryPage() {
               type="number"
               placeholder="Quantity"
               value={form.quantity}
-              onChange={(e) =>
-                setForm({ ...form, quantity: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
             />
             <Input
               placeholder="New category (optional)"
@@ -824,9 +824,7 @@ export default function InventoryPage() {
               type="number"
               placeholder="Quantity"
               value={form.quantity}
-              onChange={(e) =>
-                setForm({ ...form, quantity: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
             />
             <Input
               placeholder="New category"

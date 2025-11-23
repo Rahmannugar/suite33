@@ -2,10 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import {
-  ExportableExpenditure,
-  useExpenditures,
-} from "@/lib/hooks/expenditures/useExpenditures";
+import { useExpenditures } from "@/lib/hooks/expenditures/useExpenditures";
 import { useInsightStore } from "@/lib/stores/insightStore";
 import ByteDatePicker from "byte-datepicker";
 import "byte-datepicker/styles.css";
@@ -203,7 +200,7 @@ export default function ExpendituresPage() {
 
   const [form, setForm] = useState({
     desc: "",
-    amount: 0,
+    amount: "",
     date: new Date(),
   });
 
@@ -222,6 +219,9 @@ export default function ExpendituresPage() {
           : { year: currentYear, month: currentMonth };
       const result = await getInsight.mutateAsync(payload);
       setInsight(result);
+      toast.success("Expenditures insight generated successfully");
+    } catch {
+      toast.error("Failed to generate expenditures insight");
     } finally {
       setInsightLoading(false);
       setTimeout(() => {
@@ -233,10 +233,18 @@ export default function ExpendituresPage() {
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.name.endsWith(".csv")) await importCSV.mutateAsync({ file });
-    else if (file.name.endsWith(".xlsx"))
-      await importExcel.mutateAsync({ file });
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    const isCSV = file.name.toLowerCase().endsWith(".csv");
+    const isExcel = file.name.toLowerCase().endsWith(".xlsx");
+
+    try {
+      if (isCSV) await importCSV.mutateAsync({ file });
+      else if (isExcel) await importExcel.mutateAsync({ file });
+      toast.success("Expenditures imported successfully");
+    } catch {
+      toast.error("Failed to import expenditures");
+    } finally {
+      e.currentTarget.value = "";
+    }
   }
 
   const [insightLoading, setInsightLoading] = useState(false);
@@ -245,12 +253,15 @@ export default function ExpendituresPage() {
     setSaving(true);
     try {
       await addExpenditure.mutateAsync({
-        amount: form.amount,
+        amount: parseInt(form.amount),
         description: form.desc,
         date: form.date,
       });
+      toast.success("Successfully added expenditure record");
       setOpenAdd(false);
-      setForm({ desc: "", amount: 0, date: new Date() });
+      setForm({ desc: "", amount: "", date: new Date() });
+    } catch {
+      toast.error("Failed to add expenditure");
     } finally {
       setSaving(false);
     }
@@ -262,13 +273,16 @@ export default function ExpendituresPage() {
     try {
       await editExpenditure.mutateAsync({
         id: editingExpenditure.id,
-        amount: form.amount,
+        amount: parseInt(form.amount),
         description: form.desc,
         date: form.date,
       });
+      toast.success("Successfully edited expenditure record");
       setOpenEdit(false);
       setEditingExpenditure(null);
-      setForm({ desc: "", amount: 0, date: new Date() });
+      setForm({ desc: "", amount: "", date: new Date() });
+    } catch {
+      toast.error("Failed to edit expenditure record");
     } finally {
       setSaving(false);
     }
@@ -279,6 +293,9 @@ export default function ExpendituresPage() {
     setDeleting(true);
     try {
       await deleteExpenditure.mutateAsync(deletingExpenditure.id);
+      toast.success("Successfully deleted expenditure record");
+    } catch {
+      toast.error("Failed to delete expenditure record");
     } finally {
       setDeleting(false);
       setDeletingExpenditure(null);
@@ -295,7 +312,7 @@ export default function ExpendituresPage() {
             <Button
               onClick={() => {
                 setOpenAdd(true);
-                setForm({ desc: "", amount: 0, date: new Date() });
+                setForm({ desc: "", amount: "", date: new Date() });
               }}
               className="gap-2 cursor-pointer"
             >
@@ -488,7 +505,7 @@ export default function ExpendituresPage() {
                                     setEditingExpenditure(e);
                                     setForm({
                                       desc: e.description,
-                                      amount: e.amount,
+                                      amount: e.amount.toString(),
                                       date: new Date(e.date),
                                     });
                                     setOpenEdit(true);
@@ -588,12 +605,10 @@ export default function ExpendituresPage() {
             />
 
             <Input
-              type="number"
+              type="text"
               placeholder="Amount"
               value={form.amount}
-              onChange={(e) =>
-                setForm({ ...form, amount: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
             />
 
             <Popover open={openAddDate} onOpenChange={setOpenAddDate}>
@@ -631,7 +646,7 @@ export default function ExpendituresPage() {
                 variant="outline"
                 onClick={() => {
                   setOpenAdd(false);
-                  setForm({ desc: "", amount: 0, date: new Date() });
+                  setForm({ desc: "", amount: "", date: new Date() });
                 }}
                 disabled={saving}
                 className="cursor-pointer"
@@ -663,12 +678,10 @@ export default function ExpendituresPage() {
             />
 
             <Input
-              type="number"
+              type="text"
               placeholder="Amount"
               value={form.amount}
-              onChange={(e) =>
-                setForm({ ...form, amount: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
             />
 
             <Popover open={openEditDate} onOpenChange={setOpenEditDate}>
@@ -707,7 +720,7 @@ export default function ExpendituresPage() {
                 onClick={() => {
                   setOpenEdit(false);
                   setEditingExpenditure(null);
-                  setForm({ desc: "", amount: 0, date: new Date() });
+                  setForm({ desc: "", amount: "", date: new Date() });
                 }}
                 disabled={saving}
                 className="cursor-pointer"

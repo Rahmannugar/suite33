@@ -194,7 +194,7 @@ export default function SalesPage() {
   const [openAddDate, setOpenAddDate] = useState(false);
   const [openEditDate, setOpenEditDate] = useState(false);
 
-  const [form, setForm] = useState({ desc: "", amount: 0, date: new Date() });
+  const [form, setForm] = useState({ desc: "", amount: "", date: new Date() });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -210,6 +210,9 @@ export default function SalesPage() {
           : { year: currentYear, month: currentMonth };
       const result = await getInsight.mutateAsync(payload);
       setInsight(result);
+      toast.success("Sales insight generated successfully");
+    } catch {
+      toast.error("Failed to generate sales insight");
     } finally {
       setInsightLoading(false);
       setTimeout(() => {
@@ -221,10 +224,18 @@ export default function SalesPage() {
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.name.endsWith(".csv")) await importCSV.mutateAsync({ file });
-    else if (file.name.endsWith(".xlsx"))
-      await importExcel.mutateAsync({ file });
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    const isCSV = file.name.toLowerCase().endsWith(".csv");
+    const isExcel = file.name.toLowerCase().endsWith(".xlsx");
+
+    try {
+      if (isCSV) await importCSV.mutateAsync({ file });
+      else if (isExcel) await importExcel.mutateAsync({ file });
+      toast.success("Sales imported successfully");
+    } catch {
+      toast.error("Failed to import sales");
+    } finally {
+      e.currentTarget.value = "";
+    }
   }
 
   const [insightLoading, setInsightLoading] = useState(false);
@@ -233,12 +244,15 @@ export default function SalesPage() {
     setSaving(true);
     try {
       await addSale.mutateAsync({
-        amount: form.amount,
+        amount: parseInt(form.amount),
         description: form.desc,
         date: form.date,
       });
+      toast.success("Successfully added sale record");
       setOpenAdd(false);
-      setForm({ desc: "", amount: 0, date: new Date() });
+      setForm({ desc: "", amount: "", date: new Date() });
+    } catch {
+      toast.error("Failed to add sale");
     } finally {
       setSaving(false);
     }
@@ -250,13 +264,16 @@ export default function SalesPage() {
     try {
       await editSale.mutateAsync({
         id: editingSale.id,
-        amount: form.amount,
+        amount: parseInt(form.amount),
         description: form.desc,
         date: form.date,
       });
+      toast.success("Successfully edited sale record");
       setOpenEdit(false);
       setEditingSale(null);
-      setForm({ desc: "", amount: 0, date: new Date() });
+      setForm({ desc: "", amount: "", date: new Date() });
+    } catch {
+      toast.error("Failed to edit sale record");
     } finally {
       setSaving(false);
     }
@@ -267,6 +284,9 @@ export default function SalesPage() {
     setDeleting(true);
     try {
       await deleteSale.mutateAsync(deletingSale.id);
+      toast.success("Successfully deleted sale record");
+    } catch {
+      toast.error("Failed to delete sale record");
     } finally {
       setDeleting(false);
       setDeletingSale(null);
@@ -283,7 +303,7 @@ export default function SalesPage() {
             <Button
               onClick={() => {
                 setOpenAdd(true);
-                setForm({ desc: "", amount: 0, date: new Date() });
+                setForm({ desc: "", amount: "", date: new Date() });
               }}
               className="gap-2 cursor-pointer"
             >
@@ -469,7 +489,7 @@ export default function SalesPage() {
                                     setEditingSale(s);
                                     setForm({
                                       desc: s.description,
-                                      amount: s.amount,
+                                      amount: s.amount.toString(),
                                       date: new Date(s.date),
                                     });
                                     setOpenEdit(true);
@@ -569,12 +589,10 @@ export default function SalesPage() {
             />
 
             <Input
-              type="number"
+              type="text"
               placeholder="Amount"
               value={form.amount}
-              onChange={(e) =>
-                setForm({ ...form, amount: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
             />
 
             <Popover open={openAddDate} onOpenChange={setOpenAddDate}>
@@ -612,7 +630,7 @@ export default function SalesPage() {
                 variant="outline"
                 onClick={() => {
                   setOpenAdd(false);
-                  setForm({ desc: "", amount: 0, date: new Date() });
+                  setForm({ desc: "", amount: "", date: new Date() });
                 }}
                 disabled={saving}
                 className="cursor-pointer"
@@ -644,12 +662,10 @@ export default function SalesPage() {
             />
 
             <Input
-              type="number"
+              type="text"
               placeholder="Amount"
               value={form.amount}
-              onChange={(e) =>
-                setForm({ ...form, amount: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
             />
 
             <Popover open={openEditDate} onOpenChange={setOpenEditDate}>
@@ -688,7 +704,7 @@ export default function SalesPage() {
                 onClick={() => {
                   setOpenEdit(false);
                   setEditingSale(null);
-                  setForm({ desc: "", amount: 0, date: new Date() });
+                  setForm({ desc: "", amount: "", date: new Date() });
                 }}
                 disabled={saving}
                 className="cursor-pointer"
