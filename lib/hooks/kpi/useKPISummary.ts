@@ -7,11 +7,18 @@ interface KpiSummaryParams {
 }
 
 export function useKpiSummary(params: KpiSummaryParams) {
+  const cleaned = {
+    departmentId:
+      params.departmentId === "all" ? undefined : params.departmentId,
+    period: params.period || undefined,
+  };
+
   return useQuery({
-    queryKey: ["kpi-summary", params],
+    queryKey: ["kpi-summary", cleaned],
     queryFn: async () => {
-      const res = await axios.post("/api/kpi/summary", params);
+      const res = await axios.post("/api/kpi/summary", cleaned);
       return res.data.summary;
     },
+    enabled: true,
   });
 }

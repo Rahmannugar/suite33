@@ -8,13 +8,29 @@ import { z } from "zod";
 export function useKPI() {
   const queryClient = useQueryClient();
 
+  // Normalize filter values before request
+  function normalizeParams(params: any) {
+    return {
+      ...params,
+      status: params.status === "all" ? undefined : params.status,
+      departmentId:
+        params.departmentId === "all" ? undefined : params.departmentId,
+    };
+  }
+
   function getStaffKPIs(params: any) {
-    const query = useQuery({
-      queryKey: ["kpi-staff", params],
+    const finalParams = normalizeParams(params);
+
+    return useQuery({
+      queryKey: ["kpi-staff", finalParams],
       queryFn: async () => {
-        const { data } = await axios.get("/api/kpi/staff", { params });
+        const { data } = await axios.get("/api/kpi/staff", {
+          params: finalParams,
+        });
+
         const list = z.array(StaffKPISchema).safeParse(data.data);
         if (!list.success) throw new Error("Invalid KPI data");
+
         return {
           data: list.data,
           total: data.total,
@@ -24,16 +40,21 @@ export function useKPI() {
       },
       enabled: !!params,
     });
-    return query;
   }
 
   function getDepartmentKPIs(params: any) {
-    const query = useQuery({
-      queryKey: ["kpi-dept", params],
+    const finalParams = normalizeParams(params);
+
+    return useQuery({
+      queryKey: ["kpi-dept", finalParams],
       queryFn: async () => {
-        const { data } = await axios.get("/api/kpi/department", { params });
+        const { data } = await axios.get("/api/kpi/department", {
+          params: finalParams,
+        });
+
         const list = z.array(DepartmentKPISchema).safeParse(data.data);
         if (!list.success) throw new Error("Invalid KPI data");
+
         return {
           data: list.data,
           total: data.total,
@@ -43,7 +64,6 @@ export function useKPI() {
       },
       enabled: !!params,
     });
-    return query;
   }
 
   const createStaffKPI = useMutation({
