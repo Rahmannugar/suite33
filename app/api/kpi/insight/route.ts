@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const total = staffKPIs.length + departmentKPIs.length;
 
-    const statusCounts = {
+    const statusCounts: Record<string, number> = {
       PENDING: 0,
       IN_PROGRESS: 0,
       COMPLETED: 0,

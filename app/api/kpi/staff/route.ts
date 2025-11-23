@@ -35,8 +35,8 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const perPage = parseInt(searchParams.get("perPage") || "10");
     const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || "";
-    const departmentId = searchParams.get("departmentId") || "";
+    const statusParam = searchParams.get("status") || "all";
+    const departmentParam = searchParams.get("departmentId") || "all";
     const period = searchParams.get("period") || "";
 
     const where: any = {
@@ -51,14 +51,14 @@ export async function GET(req: NextRequest) {
       where.metric = { contains: search, mode: "insensitive" };
     }
 
-    if (status) {
-      where.status = status;
+    if (statusParam && statusParam !== "all") {
+      where.status = statusParam;
     }
 
-    if (departmentId) {
+    if (departmentParam && departmentParam !== "all") {
       where.staff = {
         ...where.staff,
-        departmentId,
+        departmentId: departmentParam,
       };
     }
 
@@ -146,7 +146,6 @@ export async function POST(req: NextRequest) {
 
     const staff = await prisma.staff.findUnique({
       where: { id: staffId },
-      include: { business: true },
     });
 
     if (!staff || staff.businessId !== businessId) {
@@ -187,9 +186,7 @@ export async function POST(req: NextRequest) {
       },
       include: {
         staff: {
-          include: {
-            user: true,
-          },
+          include: { user: true },
         },
       },
     });

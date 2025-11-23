@@ -35,8 +35,8 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const perPage = parseInt(searchParams.get("perPage") || "10");
     const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || "";
-    const departmentId = searchParams.get("departmentId") || "";
+    const statusParam = searchParams.get("status") || "all";
+    const departmentParam = searchParams.get("departmentId") || "all";
     const period = searchParams.get("period") || "";
 
     const where: any = {
@@ -48,12 +48,12 @@ export async function GET(req: NextRequest) {
       where.metric = { contains: search, mode: "insensitive" };
     }
 
-    if (status) {
-      where.status = status;
+    if (statusParam && statusParam !== "all") {
+      where.status = statusParam;
     }
 
-    if (departmentId) {
-      where.departmentId = departmentId;
+    if (departmentParam && departmentParam !== "all") {
+      where.departmentId = departmentParam;
     }
 
     if (period) {
@@ -168,8 +168,8 @@ export async function POST(req: NextRequest) {
 
     const kpi = await prisma.departmentKPI.create({
       data: {
-        departmentId,
         businessId,
+        departmentId,
         metric,
         description: description || null,
         metricType: metricType || "number",
@@ -184,9 +184,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ kpi });
-  } catch (e) {
+  } catch (err) {
     return NextResponse.json(
-      { error: "Failed to create KPI" },
+      { error: "Failed to create department KPI" },
       { status: 500 }
     );
   }
