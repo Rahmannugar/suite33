@@ -161,7 +161,7 @@ export function useSales(
 
   const getInsight = useMutation({
     mutationFn: async (payload: { year: number; month?: number }) => {
-      const { data } = await axios.post("/api/sales/insight", payload);
+      const { data } = await axios.post("/api/sales/insights", payload);
       return data.insight;
     },
   });

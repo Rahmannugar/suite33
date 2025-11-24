@@ -10,9 +10,11 @@ import { useStaff } from "@/lib/hooks/business/useStaff";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { KPIChart } from "@/components/dashboard/kpi/KPIChart";
 import { toast } from "sonner";
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 import {
   Select,
   SelectTrigger,
@@ -20,6 +22,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+
 import {
   Dialog,
   DialogContent,
@@ -27,7 +30,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import {
   Pagination,
   PaginationContent,
@@ -36,6 +41,7 @@ import {
   PaginationNext,
   PaginationLink,
 } from "@/components/ui/pagination";
+
 import {
   Table,
   TableHeader,
@@ -44,42 +50,53 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
+
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
+
 import { Calendar } from "@/components/ui/calendar";
+
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 type Mode = "staff" | "dept";
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === "COMPLETED") {
+  if (status === "COMPLETED")
     return (
       <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs font-medium">
         Completed
       </span>
     );
-  }
-  if (status === "IN_PROGRESS") {
+  if (status === "IN_PROGRESS")
     return (
       <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-medium">
         In Progress
       </span>
     );
-  }
-  if (status === "EXPIRED") {
+  if (status === "EXPIRED")
     return (
       <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-medium">
         Expired
       </span>
     );
-  }
   return (
     <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs font-medium">
       Pending
     </span>
   );
+}
+
+function truncate(text: string | null | undefined, max: number) {
+  const t = text || "";
+  return t.length > max ? t.slice(0, max) + "…" : t;
 }
 
 export default function KPIPage() {
@@ -142,10 +159,7 @@ export default function KPIPage() {
   }, [search, status, departmentFilter, period, mode]);
 
   const summaryQuery = useKpiSummary({
-    departmentId:
-      mode === "dept" && departmentFilter !== "all"
-        ? departmentFilter
-        : undefined,
+    departmentId: departmentFilter !== "all" ? departmentFilter : undefined,
     period: filters.period || undefined,
   });
 
@@ -157,19 +171,24 @@ export default function KPIPage() {
     if (!insightDate) return;
     const year = insightDate.getFullYear();
     const month = insightDate.getMonth() + 1;
+
     try {
       setInsightLoading(true);
       const text = await generateInsights.mutateAsync({ year, month });
       setInsightText(text);
+      toast.success("KPI insight generated successfully");
     } catch {
-      toast.error("Failed to generate KPI insights");
+      toast.error("Failed to generate KPI insight");
     } finally {
       setInsightLoading(false);
     }
   }
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [formDateOpen, setFormDateOpen] = useState(false);
+
   const [form, setForm] = useState({
     id: "",
     metric: "",
@@ -206,7 +225,7 @@ export default function KPIPage() {
       id: k.id,
       metric: k.metric,
       description: k.description || "",
-      metricType: k.metricType || "number",
+      metricType: k.metricType,
       target: k.target != null ? String(k.target) : "",
       status: k.status,
       period: k.period,
@@ -223,7 +242,7 @@ export default function KPIPage() {
     const body = {
       metric: form.metric,
       description: form.description || null,
-      metricType: form.metricType || "number",
+      metricType: form.metricType,
       target: form.target ? Number(form.target) : null,
       status: form.status,
       period: form.period,
@@ -231,13 +250,18 @@ export default function KPIPage() {
     };
 
     try {
+      setSaving(true);
       if (mode === "staff") {
         if (!form.id) {
           if (!form.staffId) {
             toast.error("Select a staff member");
+            setSaving(false);
             return;
           }
-          await createStaffKPI.mutateAsync({ ...body, staffId: form.staffId });
+          await createStaffKPI.mutateAsync({
+            ...body,
+            staffId: form.staffId,
+          });
           toast.success("Staff KPI created");
         } else {
           await updateStaffKPI.mutateAsync({ ...body, id: form.id });
@@ -247,6 +271,7 @@ export default function KPIPage() {
         if (!form.id) {
           if (!form.departmentId) {
             toast.error("Select a department");
+            setSaving(false);
             return;
           }
           await createDeptKPI.mutateAsync({
@@ -260,8 +285,10 @@ export default function KPIPage() {
         }
       }
       setDialogOpen(false);
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || "Failed to save KPI");
+    } catch {
+      toast.error("Failed to save KPI");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -278,7 +305,9 @@ export default function KPIPage() {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
+
     try {
+      setDeleting(true);
       if (mode === "staff") {
         await deleteStaffKPI.mutateAsync(deleteTarget.id);
       } else {
@@ -287,8 +316,10 @@ export default function KPIPage() {
       toast.success("KPI deleted");
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || "Failed to delete KPI");
+    } catch {
+      toast.error("Failed to delete KPI");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -312,107 +343,461 @@ export default function KPIPage() {
   }, [staffRecord?.departmentId, deptQuery.data]);
 
   return (
-    <div className="px-4 lg:px-6 py-6 space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold">KPIs</h1>
-        {isAdmin && (
-          <div className="flex gap-2">
-            <Button className="cursor-pointer" onClick={openCreate}>
+    <TooltipProvider delayDuration={150}>
+      <div className="px-4 lg:px-6 py-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h1 className="text-xl font-semibold">KPIs</h1>
+          {isAdmin && (
+            <Button
+              className="cursor-pointer w-full sm:w-auto"
+              onClick={openCreate}
+            >
               Add KPI
             </Button>
-          </div>
-        )}
-      </div>
-
-      {isAdmin && (
-        <Card>
-          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base font-semibold">
-              AI KPI Insights
-            </CardTitle>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <ByteDatePicker
-                value={insightDate}
-                onChange={setInsightDate}
-                hideInput
-                formatString="mmm yyyy"
-              >
-                {({ open, formattedValue }) => (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={open}
-                    className="w-48 justify-start font-medium cursor-pointer gap-2"
-                  >
-                    <CalendarIcon size={16} />
-                    {formattedValue || "Select period"}
-                  </Button>
-                )}
-              </ByteDatePicker>
-              <Button
-                className="cursor-pointer"
-                onClick={handleGenerateInsight}
-                disabled={insightLoading || generateInsights.isPending}
-              >
-                {insightLoading || generateInsights.isPending
-                  ? "Generating..."
-                  : "Generate Insights"}
-              </Button>
-            </div>
-          </CardHeader>
-          {insightText && (
-            <CardContent>
-              <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/40 p-4 text-sm whitespace-pre-line">
-                {insightText}
-              </div>
-            </CardContent>
           )}
-        </Card>
-      )}
+        </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)]">
-        <Card>
-          <CardHeader className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {/* AI Insights */}
+        {isAdmin && (
+          <Card>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <CardTitle className="text-base font-semibold">
-                KPI Overview
+                Suite 33 AI Insights
               </CardTitle>
-              <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
-                <TabsList>
-                  <TabsTrigger value="staff">Staff</TabsTrigger>
-                  <TabsTrigger value="dept">Department</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Input
-                placeholder="Search KPI metric..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full sm:max-w-xs"
-              />
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="EXPIRED">Expired</SelectItem>
-                </SelectContent>
-              </Select>
-              {mode === "dept" && (
-                <Select
-                  value={departmentFilter}
-                  onValueChange={setDepartmentFilter}
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                <ByteDatePicker
+                  value={insightDate}
+                  onChange={setInsightDate}
+                  hideInput
+                  formatString="mmm yyyy"
                 >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Department" />
+                  {({ open, formattedValue }) => (
+                    <Button
+                      variant="outline"
+                      onClick={open}
+                      className="w-full sm:w-48 justify-start gap-2 cursor-pointer"
+                    >
+                      <CalendarIcon size={16} />
+                      {formattedValue || "Select period"}
+                    </Button>
+                  )}
+                </ByteDatePicker>
+
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer w-full sm:w-auto"
+                  onClick={handleGenerateInsight}
+                  disabled={insightLoading || generateInsights.isPending}
+                >
+                  {insightLoading || generateInsights.isPending
+                    ? "Generating..."
+                    : "Generate Insights"}
+                </Button>
+              </div>
+            </CardHeader>
+
+            {insightText && (
+              <CardContent>
+                <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/40 p-4 text-sm whitespace-pre-line">
+                  {insightText}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
+
+        {/* KPI Overview + Chart */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)]">
+          {/* KPI Table */}
+          <Card>
+            <CardHeader className="flex flex-col gap-3">
+              {/* Overview header */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <CardTitle className="text-base font-semibold">
+                  KPI Overview
+                </CardTitle>
+                <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+                  <TabsList>
+                    <TabsTrigger value="staff">Staff</TabsTrigger>
+                    <TabsTrigger value="dept">Department</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  placeholder="Search KPI metric..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full sm:max-w-xs"
+                />
+
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All departments</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                    <SelectItem value="EXPIRED">Expired</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {mode === "dept" && (
+                  <Select
+                    value={departmentFilter}
+                    onValueChange={setDepartmentFilter}
+                  >
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder="Department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All departments</SelectItem>
+                      {departments?.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                <ByteDatePicker
+                  value={period}
+                  onChange={setPeriod}
+                  hideInput
+                  formatString="mmm yyyy"
+                >
+                  {({ open, formattedValue }) => (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={open}
+                      className="w-40 justify-start font-medium cursor-pointer gap-2"
+                    >
+                      <CalendarIcon size={16} />
+                      {formattedValue || "Select period"}
+                    </Button>
+                  )}
+                </ByteDatePicker>
+              </div>
+            </CardHeader>
+
+            {/* Table Content */}
+            <CardContent className="space-y-4">
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading KPIs...</p>
+              ) : !activeList?.data?.length ? (
+                <p className="text-sm text-muted-foreground">No KPIs found.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Metric</TableHead>
+                        {mode === "staff" && <TableHead>Assignee</TableHead>}
+                        {mode === "dept" && <TableHead>Department</TableHead>}
+                        <TableHead>Status</TableHead>
+                        <TableHead>Target</TableHead>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Notes</TableHead>
+                        {isAdmin && (
+                          <TableHead className="w-40">Actions</TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+                      {activeList.data.map((k: any) => (
+                        <TableRow key={k.id} className="hover:bg-muted/40">
+                          {/* Metric */}
+                          <TableCell>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block max-w-[160px] truncate">
+                                  {truncate(k.metric, 20)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{k.metric}</TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+
+                          {/* Assignee / Dept */}
+                          {mode === "staff" && (
+                            <TableCell>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-block max-w-[160px] truncate">
+                                    {truncate(
+                                      k.staff?.user?.fullName ||
+                                        k.staff?.user?.email ||
+                                        "-",
+                                      20
+                                    )}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {k.staff?.user?.fullName ||
+                                    k.staff?.user?.email ||
+                                    "-"}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TableCell>
+                          )}
+
+                          {mode === "dept" && (
+                            <TableCell>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-block max-w-[160px] truncate">
+                                    {truncate(k.department?.name || "-", 20)}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {k.department?.name || "-"}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TableCell>
+                          )}
+
+                          <TableCell>
+                            <StatusBadge status={k.status} />
+                          </TableCell>
+
+                          <TableCell>
+                            {k.target != null ? k.target : "—"}
+                          </TableCell>
+
+                          <TableCell>
+                            {new Date(k.period).toLocaleString("default", {
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </TableCell>
+
+                          <TableCell>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block max-w-[160px] truncate">
+                                  {truncate(k.notes || "—", 20)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{k.notes || "—"}</TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+
+                          {/* Actions */}
+                          {isAdmin && (
+                            <TableCell>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openEdit(k)}
+                                  disabled={saving}
+                                  className="cursor-pointer"
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => openDelete(k)}
+                                  disabled={deleting}
+                                  className="cursor-pointer"
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <Pagination className="mt-2">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        className="cursor-pointer"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      />
+                    </PaginationItem>
+
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          isActive={page === i + 1}
+                          className="cursor-pointer"
+                          onClick={() => setPage(i + 1)}
+                        >
+                          {i + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        className="cursor-pointer"
+                        onClick={() =>
+                          setPage((p) => Math.min(totalPages, p + 1))
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Chart */}
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">
+                KPI Status Distribution
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <KPIChart summary={summaryQuery.data} mode={mode} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Staff Dashboards */}
+        {isStaffRole && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* My KPIs */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">
+                  My KPIs
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {myStaffKPIs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No KPIs assigned to you.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {myStaffKPIs.map((k: any) => (
+                      <div
+                        key={k.id}
+                        className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {truncate(k.metric, 24)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(k.period).toLocaleString("default", {
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                        <StatusBadge status={k.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* My Department KPIs */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">
+                  My Department KPIs
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {myDeptKPIs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No KPIs for your department.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {myDeptKPIs.map((k: any) => (
+                      <div
+                        key={k.id}
+                        className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {truncate(k.metric, 24)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(k.period).toLocaleString("default", {
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                        <StatusBadge status={k.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Create + Edit Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{form.id ? "Edit KPI" : "Create KPI"}</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              {/* Staff or Department Select */}
+              {mode === "staff" ? (
+                <Select
+                  value={form.staffId}
+                  onValueChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      staffId: v,
+                      departmentId: "",
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select staff" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staff?.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.user?.fullName || s.user?.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select
+                  value={form.departmentId}
+                  onValueChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      departmentId: v,
+                      staffId: "",
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
                     {departments?.map((d) => (
                       <SelectItem key={d.id} value={d.id}>
                         {d.name}
@@ -421,394 +806,155 @@ export default function KPIPage() {
                   </SelectContent>
                 </Select>
               )}
-              <ByteDatePicker
-                value={period}
-                onChange={setPeriod}
-                hideInput
-                formatString="mmm yyyy"
+
+              <Input
+                placeholder="Metric"
+                value={form.metric}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, metric: e.target.value }))
+                }
+              />
+
+              <Input
+                placeholder="Description"
+                value={form.description}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, description: e.target.value }))
+                }
+              />
+
+              <Input
+                placeholder="Target (optional)"
+                type="text"
+                value={form.target}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, target: e.target.value }))
+                }
+              />
+
+              <Select
+                value={form.status}
+                onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
               >
-                {({ open, formattedValue }) => (
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="EXPIRED">Expired</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Period Picker */}
+              <Popover open={formDateOpen} onOpenChange={setFormDateOpen}>
+                <PopoverTrigger asChild>
                   <Button
-                    type="button"
                     variant="outline"
-                    onClick={open}
-                    className="w-48 justify-start font-medium cursor-pointer gap-2"
+                    className="justify-start gap-2 cursor-pointer w-full"
                   >
                     <CalendarIcon size={16} />
-                    {formattedValue || "Select period"}
+                    {form.period
+                      ? new Date(form.period).toLocaleString("default", {
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "Select period"}
                   </Button>
-                )}
-              </ByteDatePicker>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading KPIs...</p>
-            ) : !activeList?.data?.length ? (
-              <p className="text-sm text-muted-foreground">No KPIs found.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Metric</TableHead>
-                      {mode === "staff" && <TableHead>Assignee</TableHead>}
-                      {mode === "dept" && <TableHead>Department</TableHead>}
-                      <TableHead>Status</TableHead>
-                      <TableHead>Target</TableHead>
-                      <TableHead>Period</TableHead>
-                      <TableHead>Notes</TableHead>
-                      {isAdmin && (
-                        <TableHead className="w-40">Actions</TableHead>
-                      )}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {activeList.data.map((k: any) => (
-                      <TableRow key={k.id} className="hover:bg-muted/40">
-                        <TableCell className="font-medium">
-                          {k.metric}
-                        </TableCell>
-                        {mode === "staff" && (
-                          <TableCell>
-                            {k.staff?.user?.fullName ||
-                              k.staff?.user?.email ||
-                              "-"}
-                          </TableCell>
-                        )}
-                        {mode === "dept" && (
-                          <TableCell>{k.department?.name || "-"}</TableCell>
-                        )}
-                        <TableCell>
-                          <StatusBadge status={k.status} />
-                        </TableCell>
-                        <TableCell>
-                          {k.target != null ? k.target : "—"}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(k.period).toLocaleString("default", {
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {k.notes || "—"}
-                        </TableCell>
-                        {isAdmin && (
-                          <TableCell>
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="cursor-pointer"
-                                onClick={() => openEdit(k)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="cursor-pointer"
-                                onClick={() => openDelete(k)}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-            {totalPages > 1 && (
-              <Pagination className="mt-2">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      className="cursor-pointer"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    />
-                  </PaginationItem>
-                  {Array.from({ length: totalPages }, (_, i) => (
-                    <PaginationItem key={i}>
-                      <PaginationLink
-                        className="cursor-pointer"
-                        isActive={page === i + 1}
-                        onClick={() => setPage(i + 1)}
-                      >
-                        {i + 1}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  <PaginationItem>
-                    <PaginationNext
-                      className="cursor-pointer"
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages, p + 1))
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            )}
-          </CardContent>
-        </Card>
+                </PopoverTrigger>
 
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">
-              KPI Status Distribution
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <KPIChart summary={summaryQuery.data} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {isStaffRole && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">My KPIs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!myStaffKPIs.length ? (
-                <p className="text-sm text-muted-foreground">
-                  No KPIs assigned to you.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {myStaffKPIs.map((k: any) => (
-                    <div
-                      key={k.id}
-                      className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm"
-                    >
-                      <div>
-                        <p className="font-medium">{k.metric}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(k.period).toLocaleString("default", {
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </p>
-                      </div>
-                      <StatusBadge status={k.status} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">
-                My Department KPIs
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!myDeptKPIs.length ? (
-                <p className="text-sm text-muted-foreground">
-                  No KPIs for your department.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {myDeptKPIs.map((k: any) => (
-                    <div
-                      key={k.id}
-                      className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm"
-                    >
-                      <div>
-                        <p className="font-medium">{k.metric}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(k.period).toLocaleString("default", {
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </p>
-                      </div>
-                      <StatusBadge status={k.status} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{form.id ? "Edit KPI" : "Create KPI"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            {mode === "staff" ? (
-              <Select
-                value={form.staffId}
-                onValueChange={(v) => setForm((f) => ({ ...f, staffId: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select staff" />
-                </SelectTrigger>
-                <SelectContent>
-                  {staff?.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.user?.fullName || s.user?.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Select
-                value={form.departmentId}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, departmentId: v }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments?.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <Input
-              placeholder="Metric"
-              value={form.metric}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, metric: e.target.value }))
-              }
-            />
-            <Input
-              placeholder="Description"
-              value={form.description}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, description: e.target.value }))
-              }
-            />
-            <Input
-              placeholder="Target (optional)"
-              type="number"
-              value={form.target}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, target: e.target.value }))
-              }
-            />
-            <Select
-              value={form.status}
-              onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                <SelectItem value="COMPLETED">Completed</SelectItem>
-                <SelectItem value="EXPIRED">Expired</SelectItem>
-              </SelectContent>
-            </Select>
-            <Popover open={formDateOpen} onOpenChange={setFormDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="justify-start gap-2 cursor-pointer w-full"
+                <PopoverContent
+                  align="center"
+                  side="bottom"
+                  sideOffset={8}
+                  className="p-0 w-auto left-1/2 transform -translate-x-1/2"
                 >
-                  <CalendarIcon size={16} />
-                  {form.period
-                    ? new Date(form.period).toLocaleString("default", {
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "Select period"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                align="center"
-                side="bottom"
-                sideOffset={8}
-                className="p-0 w-auto left-1/2 transform -translate-x-1/2"
-              >
-                <Calendar
-                  mode="single"
-                  selected={form.period ? new Date(form.period) : undefined}
-                  onSelect={(d) => {
-                    if (d) {
-                      setForm((f) => ({
-                        ...f,
-                        period: new Date(
-                          d.getFullYear(),
-                          d.getMonth(),
-                          1
-                        ).toISOString(),
-                      }));
-                      setFormDateOpen(false);
-                    }
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
-            <Input
-              placeholder="Notes (optional)"
-              value={form.notes}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, notes: e.target.value }))
-              }
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => setDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button className="cursor-pointer" onClick={handleSave}>
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                  <Calendar
+                    mode="single"
+                    selected={form.period ? new Date(form.period) : undefined}
+                    onSelect={(d) => {
+                      if (d) {
+                        setForm((f) => ({
+                          ...f,
+                          period: new Date(
+                            d.getFullYear(),
+                            d.getMonth(),
+                            1
+                          ).toISOString(),
+                        }));
+                        setFormDateOpen(false);
+                      }
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete KPI</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete{" "}
-            <span className="font-semibold">
-              {deleteTarget?.metric || "this KPI"}
-            </span>
-            ? This action cannot be undone.
-          </p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              className="cursor-pointer"
-              onClick={confirmDelete}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+              <Input
+                placeholder="Notes (optional)"
+                value={form.notes}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, notes: e.target.value }))
+                }
+              />
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => setDialogOpen(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="cursor-pointer"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete KPI</DialogTitle>
+            </DialogHeader>
+
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold">
+                {deleteTarget?.metric || "this KPI"}
+              </span>
+              ? This action cannot be undone.
+            </p>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="cursor-pointer"
+                onClick={confirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </TooltipProvider>
   );
 }

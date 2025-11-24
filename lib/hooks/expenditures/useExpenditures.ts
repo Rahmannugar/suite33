@@ -165,7 +165,7 @@ export function useExpenditures(
 
   const getInsight = useMutation({
     mutationFn: async (payload: { year: number; month?: number }) => {
-      const { data } = await axios.post("/api/expenditures/insight", payload);
+      const { data } = await axios.post("/api/expenditures/insights", payload);
       return data.insight;
     },
   });

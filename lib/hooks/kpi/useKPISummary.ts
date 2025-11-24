@@ -1,3 +1,4 @@
+"use client";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
@@ -6,19 +7,24 @@ interface KpiSummaryParams {
   period?: string;
 }
 
-export function useKpiSummary(params: KpiSummaryParams) {
-  const cleaned = {
-    departmentId:
-      params.departmentId === "all" ? undefined : params.departmentId,
-    period: params.period || undefined,
-  };
+export interface KpiSummarySide {
+  pending: number;
+  inProgress: number;
+  completed: number;
+  expired: number;
+}
 
+export interface KpiSummary {
+  staff: KpiSummarySide;
+  dept: KpiSummarySide;
+}
+
+export function useKpiSummary(params: KpiSummaryParams) {
   return useQuery({
-    queryKey: ["kpi-summary", cleaned],
+    queryKey: ["kpi-summary", params],
     queryFn: async () => {
-      const res = await axios.post("/api/kpi/summary", cleaned);
-      return res.data.summary;
+      const res = await axios.post("/api/kpi/summary", params);
+      return res.data.summary as KpiSummary;
     },
-    enabled: true,
   });
 }
