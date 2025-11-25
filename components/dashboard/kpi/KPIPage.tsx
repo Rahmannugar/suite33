@@ -604,7 +604,6 @@ export default function KPIPage() {
                               <div className="flex flex-col sm:flex-row gap-2 w-full">
                                 <Button
                                   variant="outline"
-                                  size="sm"
                                   onClick={() => openEdit(k)}
                                   className="cursor-pointer flex-1 sm:flex-none min-w-[90px]"
                                 >
@@ -612,7 +611,6 @@ export default function KPIPage() {
                                 </Button>
                                 <Button
                                   variant="destructive"
-                                  size="sm"
                                   onClick={() => openDelete(k)}
                                   className="cursor-pointer flex-1 sm:flex-none min-w-[90px]"
                                 >

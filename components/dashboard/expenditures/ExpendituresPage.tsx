@@ -499,7 +499,6 @@ export default function ExpendituresPage() {
                               <TableCell className="flex items-center gap-2">
                                 <Button
                                   variant="outline"
-                                  size="sm"
                                   className="gap-1 cursor-pointer"
                                   onClick={() => {
                                     setEditingExpenditure(e);
@@ -516,7 +515,6 @@ export default function ExpendituresPage() {
 
                                 <Button
                                   variant="destructive"
-                                  size="sm"
                                   className="gap-1 cursor-pointer"
                                   onClick={() => {
                                     setDeletingExpenditure(e);

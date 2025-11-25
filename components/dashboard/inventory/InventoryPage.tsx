@@ -480,7 +480,6 @@ export default function InventoryPage() {
                         {canMutate && (
                           <td className="p-3 flex gap-2">
                             <Button
-                              size="sm"
                               variant="outline"
                               className="gap-1 cursor-pointer"
                               onClick={() => {
@@ -497,7 +496,6 @@ export default function InventoryPage() {
                               <Edit size={14} /> Edit
                             </Button>
                             <Button
-                              size="sm"
                               variant="destructive"
                               className="gap-1 cursor-pointer"
                               onClick={() => {
@@ -672,7 +670,6 @@ export default function InventoryPage() {
                               {canMutate && (
                                 <td className="p-3 flex gap-2">
                                   <Button
-                                    size="sm"
                                     variant="outline"
                                     className="cursor-pointer"
                                     onClick={() => {
@@ -684,7 +681,6 @@ export default function InventoryPage() {
                                     Rename
                                   </Button>
                                   <Button
-                                    size="sm"
                                     variant="destructive"
                                     className="cursor-pointer"
                                     onClick={() => {

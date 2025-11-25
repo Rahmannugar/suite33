@@ -483,7 +483,6 @@ export default function SalesPage() {
                               <TableCell className="flex items-center gap-2">
                                 <Button
                                   variant="outline"
-                                  size="sm"
                                   className="gap-1 cursor-pointer"
                                   onClick={() => {
                                     setEditingSale(s);
@@ -500,7 +499,6 @@ export default function SalesPage() {
 
                                 <Button
                                   variant="destructive"
-                                  size="sm"
                                   className="gap-1 cursor-pointer"
                                   onClick={() => {
                                     setDeletingSale(s);
