@@ -1,43 +1,48 @@
 import { z } from "zod";
 
-export const PayrollItemSchema = z.object({
+export const PayrollBatchItemSchema = z.object({
   id: z.string(),
+  batchId: z.string(),
   staffId: z.string(),
   amount: z.number(),
   paid: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  deletedAt: z.string().nullable(),
+
   staff: z
     .object({
       id: z.string(),
       user: z.object({
         id: z.string(),
-        fullName: z.string().nullable().optional(),
+        fullName: z.string().nullable(),
         email: z.string(),
       }),
-      department: z
-        .object({
-          id: z.string(),
-          name: z.string(),
-        })
-        .nullable()
-        .optional(),
     })
-    .nullable()
     .optional(),
 });
 
-export type PayrollItem = z.infer<typeof PayrollItemSchema>;
+export type PayrollBatchItem = z.infer<typeof PayrollBatchItemSchema>;
 
 export const PayrollBatchSchema = z.object({
   id: z.string(),
   businessId: z.string(),
   period: z.string(),
   locked: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  deletedAt: z.string().nullable(),
+
+  items: z.array(PayrollBatchItemSchema).optional(),
 });
 
 export type PayrollBatch = z.infer<typeof PayrollBatchSchema>;
 
-export const PayrollBatchWithItemsSchema = PayrollBatchSchema.extend({
-  items: z.array(PayrollItemSchema),
+export const PayrollSelfViewSchema = z.object({
+  id: z.string(),
+  period: z.string(),
+  locked: z.boolean(),
+  item: PayrollBatchItemSchema.nullable(),
 });
 
-export type PayrollBatchWithItems = z.infer<typeof PayrollBatchWithItemsSchema>;
+export type PayrollSelfView = z.infer<typeof PayrollSelfViewSchema>;

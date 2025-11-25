@@ -24,37 +24,35 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const businessId = profile.business?.id || profile.Staff?.businessId || "";
+    const businessId = profile.business?.id || profile.Staff?.businessId;
 
     if (!businessId) {
       return NextResponse.json(
-        { error: "Invalid business context" },
+        { error: "Business not found" },
         { status: 400 }
       );
     }
 
     if (profile.role === "ADMIN") {
       const batches = await prisma.payrollBatch.findMany({
-        where: { businessId },
+        where: { businessId, deletedAt: null },
         orderBy: { period: "desc" },
       });
+
       return NextResponse.json(batches);
     }
 
-    if (profile.role === "SUB_ADMIN" || profile.role === "STAFF") {
-      const batches = await prisma.payrollBatch.findMany({
-        where: { businessId },
-        orderBy: { period: "desc" },
-        select: {
-          id: true,
-          period: true,
-          locked: true,
-        },
-      });
-      return NextResponse.json(batches);
-    }
+    const batches = await prisma.payrollBatch.findMany({
+      where: { businessId, deletedAt: null },
+      orderBy: { period: "desc" },
+      select: {
+        id: true,
+        period: true,
+        locked: true,
+      },
+    });
 
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(batches);
   } catch {
     return NextResponse.json(
       { error: "Failed to fetch payroll batches" },
@@ -96,21 +94,25 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (profile?.role !== "ADMIN") {
+    if (!profile) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (profile.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const businessId = profile.business?.id || profile.Staff?.businessId || "";
+    const businessId = profile.business?.id || profile.Staff?.businessId;
 
     if (!businessId) {
       return NextResponse.json(
-        { error: "Invalid business context" },
+        { error: "Business not found" },
         { status: 400 }
       );
     }
 
     const exists = await prisma.payrollBatch.findFirst({
-      where: { businessId, period: normalized },
+      where: { businessId, period: normalized, deletedAt: null },
     });
 
     if (exists) {
@@ -121,13 +123,12 @@ export async function POST(request: NextRequest) {
     }
 
     const staffList = await prisma.staff.findMany({
-      where: { businessId },
-      select: { id: true },
+      where: { businessId, deletedAt: null },
     });
 
     const batch = await prisma.payrollBatch.create({
       data: {
-        businessId: businessId as string,
+        businessId,
         period: normalized,
         items: {
           create: staffList.map((s) => ({
