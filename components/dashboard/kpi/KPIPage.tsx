@@ -1,5 +1,4 @@
 "use client";
-
 import { useMemo, useState, useEffect, useRef } from "react";
 import ByteDatePicker from "byte-datepicker";
 import "byte-datepicker/styles.css";
@@ -170,11 +169,13 @@ export default function KPIPage() {
     if (!insightDate) return;
     const year = insightDate.getFullYear();
     const month = insightDate.getMonth() + 1;
+
     try {
       setInsightLoading(true);
       const text = await generateInsights.mutateAsync({ year, month });
       setInsightText(text);
       toast.success("KPI insight generated successfully");
+
       setTimeout(() => {
         insightRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -192,6 +193,7 @@ export default function KPIPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [formDateOpen, setFormDateOpen] = useState(false);
+
   const [form, setForm] = useState({
     id: "",
     metric: "",
@@ -354,6 +356,42 @@ export default function KPIPage() {
     setDetailsOpen(true);
   }
 
+  const [staffKpiPage, setStaffKpiPage] = useState(1);
+  const [deptKpiPage, setDeptKpiPage] = useState(1);
+  const cardPerPage = 4;
+
+  useEffect(() => {
+    setStaffKpiPage(1);
+  }, [myStaffKPIs.length]);
+
+  useEffect(() => {
+    setDeptKpiPage(1);
+  }, [myDeptKPIs.length]);
+
+  const staffKpiTotalPages =
+    myStaffKPIs.length > 0 ? Math.ceil(myStaffKPIs.length / cardPerPage) : 1;
+
+  const deptKpiTotalPages =
+    myDeptKPIs.length > 0 ? Math.ceil(myDeptKPIs.length / cardPerPage) : 1;
+
+  const paginatedMyStaffKPIs = useMemo(
+    () =>
+      myStaffKPIs.slice(
+        (staffKpiPage - 1) * cardPerPage,
+        staffKpiPage * cardPerPage
+      ),
+    [myStaffKPIs, staffKpiPage]
+  );
+
+  const paginatedMyDeptKPIs = useMemo(
+    () =>
+      myDeptKPIs.slice(
+        (deptKpiPage - 1) * cardPerPage,
+        deptKpiPage * cardPerPage
+      ),
+    [myDeptKPIs, deptKpiPage]
+  );
+
   return (
     <TooltipProvider delayDuration={150}>
       <div className="px-4 lg:px-6 py-6 space-y-6">
@@ -439,7 +477,6 @@ export default function KPIPage() {
                   </TabsList>
                 </Tabs>
               </div>
-
               <div className="flex flex-wrap gap-2">
                 <Input
                   placeholder="Search KPI metric..."
@@ -497,7 +534,6 @@ export default function KPIPage() {
                 </ByteDatePicker>
               </div>
             </CardHeader>
-
             <CardContent className="space-y-4">
               {isLoading ? (
                 <Skeleton className="h-40 w-full rounded-md" />
@@ -533,7 +569,6 @@ export default function KPIPage() {
                               <TooltipContent>{k.metric}</TooltipContent>
                             </Tooltip>
                           </TableCell>
-
                           {mode === "staff" && (
                             <TableCell>
                               <Tooltip>
@@ -555,7 +590,6 @@ export default function KPIPage() {
                               </Tooltip>
                             </TableCell>
                           )}
-
                           {mode === "dept" && (
                             <TableCell>
                               <Tooltip>
@@ -570,22 +604,18 @@ export default function KPIPage() {
                               </Tooltip>
                             </TableCell>
                           )}
-
                           <TableCell>
                             <StatusBadge status={k.status} />
                           </TableCell>
-
                           <TableCell>
                             {k.target != null ? k.target : "—"}
                           </TableCell>
-
                           <TableCell>
                             {new Date(k.period).toLocaleString("default", {
                               month: "short",
                               year: "numeric",
                             })}
                           </TableCell>
-
                           <TableCell>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -598,7 +628,6 @@ export default function KPIPage() {
                               </TooltipContent>
                             </Tooltip>
                           </TableCell>
-
                           {isAdmin && (
                             <TableCell>
                               <div className="flex flex-col sm:flex-row gap-2 w-full">
@@ -625,7 +654,6 @@ export default function KPIPage() {
                   </Table>
                 </div>
               )}
-
               {totalPages > 1 && (
                 <Pagination className="mt-2">
                   <PaginationContent>
@@ -692,42 +720,82 @@ export default function KPIPage() {
                     No KPIs assigned to you.
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {myStaffKPIs.map((k: any) => (
-                      <div
-                        key={k.id}
-                        className="rounded-lg border bg-card px-3 py-2 text-sm space-y-2"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium">
-                              {truncate(k.metric, 24)}
-                            </p>
-                            {k.target != null && (
-                              <p className="text-xs text-muted-foreground">
-                                Target: {k.target}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(k.period).toLocaleString("default", {
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </p>
-                          </div>
-                          <StatusBadge status={k.status} />
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="cursor-pointer"
-                          onClick={() => openDetails(k)}
+                  <>
+                    <div className="space-y-2">
+                      {paginatedMyStaffKPIs.map((k: any) => (
+                        <div
+                          key={k.id}
+                          className="rounded-lg border bg-card px-3 py-2 text-sm space-y-2"
                         >
-                          View KPI details
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-medium">
+                                {truncate(k.metric, 24)}
+                              </p>
+                              {k.target != null && (
+                                <p className="text-xs text-muted-foreground">
+                                  Target: {k.target}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(k.period).toLocaleString("default", {
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </p>
+                            </div>
+                            <StatusBadge status={k.status} />
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="cursor-pointer"
+                            onClick={() => openDetails(k)}
+                          >
+                            View KPI details
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    {staffKpiTotalPages > 1 && (
+                      <Pagination className="mt-3">
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              className="cursor-pointer"
+                              onClick={() =>
+                                setStaffKpiPage((p) => Math.max(1, p - 1))
+                              }
+                            />
+                          </PaginationItem>
+                          {Array.from(
+                            { length: staffKpiTotalPages },
+                            (_, i) => (
+                              <PaginationItem key={i}>
+                                <PaginationLink
+                                  isActive={staffKpiPage === i + 1}
+                                  className="cursor-pointer"
+                                  onClick={() => setStaffKpiPage(i + 1)}
+                                >
+                                  {i + 1}
+                                </PaginationLink>
+                              </PaginationItem>
+                            )
+                          )}
+                          <PaginationItem>
+                            <PaginationNext
+                              className="cursor-pointer"
+                              onClick={() =>
+                                setStaffKpiPage((p) =>
+                                  Math.min(staffKpiTotalPages, p + 1)
+                                )
+                              }
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -746,42 +814,79 @@ export default function KPIPage() {
                     No KPIs for your department.
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {myDeptKPIs.map((k: any) => (
-                      <div
-                        key={k.id}
-                        className="rounded-lg border bg-card px-3 py-2 text-sm space-y-2"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium">
-                              {truncate(k.metric, 24)}
-                            </p>
-                            {k.target != null && (
-                              <p className="text-xs text-muted-foreground">
-                                Target: {k.target}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(k.period).toLocaleString("default", {
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </p>
-                          </div>
-                          <StatusBadge status={k.status} />
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="cursor-pointer"
-                          onClick={() => openDetails(k)}
+                  <>
+                    <div className="space-y-2">
+                      {paginatedMyDeptKPIs.map((k: any) => (
+                        <div
+                          key={k.id}
+                          className="rounded-lg border bg-card px-3 py-2 text-sm space-y-2"
                         >
-                          View KPI details
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-medium">
+                                {truncate(k.metric, 24)}
+                              </p>
+                              {k.target != null && (
+                                <p className="text-xs text-muted-foreground">
+                                  Target: {k.target}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(k.period).toLocaleString("default", {
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </p>
+                            </div>
+                            <StatusBadge status={k.status} />
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="cursor-pointer"
+                            onClick={() => openDetails(k)}
+                          >
+                            View KPI details
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    {deptKpiTotalPages > 1 && (
+                      <Pagination className="mt-3">
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              className="cursor-pointer"
+                              onClick={() =>
+                                setDeptKpiPage((p) => Math.max(1, p - 1))
+                              }
+                            />
+                          </PaginationItem>
+                          {Array.from({ length: deptKpiTotalPages }, (_, i) => (
+                            <PaginationItem key={i}>
+                              <PaginationLink
+                                isActive={deptKpiPage === i + 1}
+                                className="cursor-pointer"
+                                onClick={() => setDeptKpiPage(i + 1)}
+                              >
+                                {i + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              className="cursor-pointer"
+                              onClick={() =>
+                                setDeptKpiPage((p) =>
+                                  Math.min(deptKpiTotalPages, p + 1)
+                                )
+                              }
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -839,7 +944,6 @@ export default function KPIPage() {
                   </SelectContent>
                 </Select>
               )}
-
               <Input
                 placeholder="Metric"
                 value={form.metric}
@@ -847,15 +951,16 @@ export default function KPIPage() {
                   setForm((f) => ({ ...f, metric: e.target.value }))
                 }
               />
-
               <Input
                 placeholder="Description"
                 value={form.description}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
+                  setForm((f) => ({
+                    ...f,
+                    description: e.target.value,
+                  }))
                 }
               />
-
               <Input
                 placeholder="Target (optional)"
                 type="text"
@@ -864,7 +969,6 @@ export default function KPIPage() {
                   setForm((f) => ({ ...f, target: e.target.value }))
                 }
               />
-
               <Select
                 value={form.status}
                 onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
@@ -879,7 +983,6 @@ export default function KPIPage() {
                   <SelectItem value="EXPIRED">Expired</SelectItem>
                 </SelectContent>
               </Select>
-
               <Popover open={formDateOpen} onOpenChange={setFormDateOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -920,7 +1023,6 @@ export default function KPIPage() {
                   />
                 </PopoverContent>
               </Popover>
-
               <Textarea
                 placeholder="Notes (optional)"
                 value={form.notes}
