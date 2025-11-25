@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { syncUser } from "@/lib/auth/syncUser";
+import { prisma } from "@/prisma/config";
 import { slackNotify } from "@/lib/utils/slackService";
 
 export async function POST(request: NextRequest) {
@@ -23,9 +24,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const syncedUser = await syncUser(user.id, user.email, role ?? "ADMIN");
+    const existing = await prisma.user.findUnique({
+      where: { id: user.id },
+    });
 
-    await slackNotify("signups", `${user.email} just signed up to Suite33 `);
+    let syncedUser;
+    if (existing) {
+      syncedUser = existing;
+    } else {
+      syncedUser = await syncUser(user.id, user.email, role ?? "ADMIN");
+
+      await slackNotify("signups", `${user.email} just signed up to Suite33`);
+    }
 
     return NextResponse.json(syncedUser, { status: 200 });
   } catch (err) {
