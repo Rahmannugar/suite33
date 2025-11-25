@@ -1,11 +1,9 @@
 import { z } from "zod";
 
-export const PayrollSchema = z.object({
+export const PayrollItemSchema = z.object({
   id: z.string(),
   staffId: z.string(),
-  businessId: z.string(),
   amount: z.number(),
-  period: z.string(),
   paid: z.boolean(),
   staff: z
     .object({
@@ -23,7 +21,23 @@ export const PayrollSchema = z.object({
         .nullable()
         .optional(),
     })
+    .nullable()
     .optional(),
 });
 
-export type Payroll = z.infer<typeof PayrollSchema>;
+export type PayrollItem = z.infer<typeof PayrollItemSchema>;
+
+export const PayrollBatchSchema = z.object({
+  id: z.string(),
+  businessId: z.string(),
+  period: z.string(),
+  locked: z.boolean(),
+});
+
+export type PayrollBatch = z.infer<typeof PayrollBatchSchema>;
+
+export const PayrollBatchWithItemsSchema = PayrollBatchSchema.extend({
+  items: z.array(PayrollItemSchema),
+});
+
+export type PayrollBatchWithItems = z.infer<typeof PayrollBatchWithItemsSchema>;
