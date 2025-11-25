@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { supabaseServer } from "@/lib/supabase/server";
+import { slackNotify } from "@/lib/utils/slackService";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +23,13 @@ export async function POST(request: NextRequest) {
 
     const profile = await prisma.user.findUnique({
       where: { id: data.user.id },
+      include: {
+        Staff: {
+          include: {
+            business: true,
+          },
+        },
+      },
     });
 
     if (profile?.role !== "STAFF" && profile?.role !== "SUB_ADMIN") {
@@ -32,6 +40,12 @@ export async function POST(request: NextRequest) {
       where: { id: data.user.id },
       data: { fullName, avatarUrl },
     });
+
+    const businessName = profile?.Staff?.business?.name ?? "";
+    await slackNotify(
+      "onboarding-staff",
+      `${fullName}, ${user.email} just joined ${businessName} - Staff onboarding`
+    );
 
     return NextResponse.json({ user });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { supabaseServer } from "@/lib/supabase/server";
+import { slackNotify } from "@/lib/utils/slackService";
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,6 +50,10 @@ export async function POST(request: NextRequest) {
       },
       include: { business: true },
     });
+    await slackNotify(
+      "onboarding-admin",
+      `${fullName}, ${user.email} just created ${businessName} - Admin onboarding`
+    );
 
     return NextResponse.json({ user });
   } catch (error) {

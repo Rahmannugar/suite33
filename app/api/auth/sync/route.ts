@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { syncUser } from "@/lib/auth/syncUser";
+import { slackNotify } from "@/lib/utils/slackService";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,9 +25,14 @@ export async function POST(request: NextRequest) {
 
     const syncedUser = await syncUser(user.id, user.email, role ?? "ADMIN");
 
+    await slackNotify("signups", `${user.email} just signed up to Suite33 `);
+
     return NextResponse.json(syncedUser, { status: 200 });
   } catch (err) {
     console.error("Sync error:", err);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Something went wrong" },
+      { status: 500 }
+    );
   }
 }

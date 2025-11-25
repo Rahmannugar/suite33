@@ -1,36 +1,60 @@
 import { PrismaClient } from "../lib/generated/prisma/index.js";
-
 const prisma = new PrismaClient();
 
 async function main() {
-  const businesses = await prisma.business.findMany({ select: { id: true } });
   const now = new Date();
   const year = now.getFullYear();
-  const month = now.getMonth() + 1;
+  const month = now.getMonth();
+
+  const period = new Date(year, month, 1);
+
+  const businesses = await prisma.business.findMany({
+    select: { id: true },
+    where: { deletedAt: null },
+  });
 
   for (const business of businesses) {
-    const staffList = await prisma.staff.findMany({
-      where: { businessId: business.id },
+    const existingBatch = await prisma.payrollBatch.findFirst({
+      where: { businessId: business.id, period },
     });
-    const period = new Date(year, month - 1, 1);
+
+    let batchId = existingBatch?.id;
+
+    if (!batchId) {
+      const batch = await prisma.payrollBatch.create({
+        data: {
+          businessId: business.id,
+          period,
+          locked: false,
+        },
+        select: { id: true },
+      });
+      batchId = batch.id;
+    }
+
+    const staffList = await prisma.staff.findMany({
+      where: { businessId: business.id, deletedAt: null },
+      select: { id: true },
+    });
 
     for (const staff of staffList) {
-      const exists = await prisma.payroll.findFirst({
-        where: { staffId: staff.id, period },
+      const exists = await prisma.payrollBatchItem.findFirst({
+        where: { batchId, staffId: staff.id },
       });
+
       if (!exists) {
-        await prisma.payroll.create({
+        await prisma.payrollBatchItem.create({
           data: {
+            batchId,
             staffId: staff.id,
-            businessId: business.id,
             amount: 0,
-            period,
             paid: false,
           },
         });
       }
     }
   }
+
   await prisma.$disconnect();
 }
 
