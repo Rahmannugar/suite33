@@ -2,31 +2,63 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { supabaseServer } from "@/lib/supabase/server";
 
-export async function PUT(req: NextRequest) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: { id: string } }
+) {
   try {
-    const {
-      id,
-      metric,
-      description,
-      metricType,
-      target,
-      status,
-      period,
-      notes,
-    } = await req.json();
+    const { id } = context.params;
+    const body = await request.json();
 
-    if (!id) {
-      return NextResponse.json({ error: "Missing KPI id" }, { status: 400 });
-    }
+    const supabase = await supabaseServer(true);
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const profile = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      select: {
+        role: true,
+        business: { select: { id: true } },
+        Staff: { select: { businessId: true } },
+      },
+    });
+
+    if (profile?.role !== "ADMIN")
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const businessId = profile.business?.id || profile.Staff?.businessId;
+
+    const existing = await prisma.staffKPI.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        staff: {
+          select: {
+            businessId: true,
+          },
+        },
+      },
+    });
+
+    if (!existing || existing.staff.businessId !== businessId)
+      return NextResponse.json({ error: "KPI not found" }, { status: 404 });
 
     const updated = await prisma.staffKPI.update({
       where: { id },
-      data: { metric, description, metricType, target, status, period, notes },
+      data: {
+        metric: body.metric,
+        description: body.description || null,
+        metricType: body.metricType,
+        target: body.target ?? null,
+        status: body.status,
+        period: body.period,
+        notes: body.notes || null,
+      },
     });
 
     return NextResponse.json({ success: true, data: updated });
-  } catch (err) {
-    console.error("STAFF KPI UPDATE ERROR:", err);
+  } catch {
     return NextResponse.json(
       { error: "Failed to update KPI" },
       { status: 500 }
@@ -34,14 +66,44 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-export async function DELETE(req: NextRequest) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: { id: string } }
+) {
   try {
-    const url = new URL(req.url);
-    const id = url.searchParams.get("id");
+    const { id } = context.params;
 
-    if (!id) {
-      return NextResponse.json({ error: "Missing KPI id" }, { status: 400 });
-    }
+    const supabase = await supabaseServer(true);
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const profile = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      select: {
+        role: true,
+        business: { select: { id: true } },
+        Staff: { select: { businessId: true } },
+      },
+    });
+
+    if (profile?.role !== "ADMIN")
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const businessId = profile.business?.id || profile.Staff?.businessId;
+
+    const existing = await prisma.staffKPI.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        staff: {
+          select: { businessId: true },
+        },
+      },
+    });
+
+    if (!existing || existing.staff.businessId !== businessId)
+      return NextResponse.json({ error: "KPI not found" }, { status: 404 });
 
     await prisma.staffKPI.update({
       where: { id },
@@ -49,8 +111,7 @@ export async function DELETE(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("STAFF KPI DELETE ERROR:", err);
+  } catch {
     return NextResponse.json(
       { error: "Failed to delete KPI" },
       { status: 500 }

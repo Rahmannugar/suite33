@@ -1,7 +1,9 @@
 "use client";
-import { useMemo, useState, useEffect } from "react";
+
+import { useMemo, useState, useEffect, useRef } from "react";
 import ByteDatePicker from "byte-datepicker";
 import "byte-datepicker/styles.css";
+import { AnimatePresence, motion } from "framer-motion";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { useKPI } from "@/lib/hooks/kpi/useKPI";
 import { useKpiSummary } from "@/lib/hooks/kpi/useKPISummary";
@@ -10,11 +12,9 @@ import { useStaff } from "@/lib/hooks/business/useStaff";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { KPIChart } from "@/components/dashboard/kpi/KPIChart";
 import { toast } from "sonner";
-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
 import {
   Select,
   SelectTrigger,
@@ -22,7 +22,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-
 import {
   Dialog,
   DialogContent,
@@ -30,9 +29,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
 import {
   Pagination,
   PaginationContent,
@@ -41,7 +38,6 @@ import {
   PaginationNext,
   PaginationLink,
 } from "@/components/ui/pagination";
-
 import {
   Table,
   TableHeader,
@@ -50,21 +46,20 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-
 import { Calendar } from "@/components/ui/calendar";
-
 import {
   TooltipProvider,
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 
 type Mode = "staff" | "dept";
 
@@ -159,24 +154,33 @@ export default function KPIPage() {
   }, [search, status, departmentFilter, period, mode]);
 
   const summaryQuery = useKpiSummary({
-    departmentId: departmentFilter !== "all" ? departmentFilter : undefined,
+    departmentId:
+      mode === "dept" && departmentFilter !== "all"
+        ? departmentFilter
+        : undefined,
     period: filters.period || undefined,
   });
 
   const [insightDate, setInsightDate] = useState<Date | null>(new Date());
   const [insightText, setInsightText] = useState("");
   const [insightLoading, setInsightLoading] = useState(false);
+  const insightRef = useRef<HTMLDivElement | null>(null);
 
   async function handleGenerateInsight() {
     if (!insightDate) return;
     const year = insightDate.getFullYear();
     const month = insightDate.getMonth() + 1;
-
     try {
       setInsightLoading(true);
       const text = await generateInsights.mutateAsync({ year, month });
       setInsightText(text);
       toast.success("KPI insight generated successfully");
+      setTimeout(() => {
+        insightRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 150);
     } catch {
       toast.error("Failed to generate KPI insight");
     } finally {
@@ -188,7 +192,6 @@ export default function KPIPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [formDateOpen, setFormDateOpen] = useState(false);
-
   const [form, setForm] = useState({
     id: "",
     metric: "",
@@ -251,6 +254,7 @@ export default function KPIPage() {
 
     try {
       setSaving(true);
+
       if (mode === "staff") {
         if (!form.id) {
           if (!form.staffId) {
@@ -284,6 +288,7 @@ export default function KPIPage() {
           toast.success("Department KPI updated");
         }
       }
+
       setDialogOpen(false);
     } catch {
       toast.error("Failed to save KPI");
@@ -305,7 +310,6 @@ export default function KPIPage() {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
-
     try {
       setDeleting(true);
       if (mode === "staff") {
@@ -342,6 +346,14 @@ export default function KPIPage() {
     );
   }, [staffRecord?.departmentId, deptQuery.data]);
 
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsKpi, setDetailsKpi] = useState<any | null>(null);
+
+  function openDetails(k: any) {
+    setDetailsKpi(k);
+    setDetailsOpen(true);
+  }
+
   return (
     <TooltipProvider delayDuration={150}>
       <div className="px-4 lg:px-6 py-6 space-y-6">
@@ -357,14 +369,12 @@ export default function KPIPage() {
           )}
         </div>
 
-        {/* AI Insights */}
         {isAdmin && (
           <Card>
             <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <CardTitle className="text-base font-semibold">
                 Suite 33 AI Insights
               </CardTitle>
-
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
                 <ByteDatePicker
                   value={insightDate}
@@ -383,7 +393,6 @@ export default function KPIPage() {
                     </Button>
                   )}
                 </ByteDatePicker>
-
                 <Button
                   className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer w-full sm:w-auto"
                   onClick={handleGenerateInsight}
@@ -395,23 +404,30 @@ export default function KPIPage() {
                 </Button>
               </div>
             </CardHeader>
-
-            {insightText && (
-              <CardContent>
-                <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/40 p-4 text-sm whitespace-pre-line">
-                  {insightText}
-                </div>
-              </CardContent>
-            )}
+            <AnimatePresence>
+              {insightText && (
+                <motion.div
+                  key="kpi-insight"
+                  ref={insightRef}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  <CardContent>
+                    <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/40 p-4 text-sm whitespace-pre-line">
+                      {insightText}
+                    </div>
+                  </CardContent>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Card>
         )}
 
-        {/* KPI Overview + Chart */}
         <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)]">
-          {/* KPI Table */}
           <Card>
             <CardHeader className="flex flex-col gap-3">
-              {/* Overview header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <CardTitle className="text-base font-semibold">
                   KPI Overview
@@ -424,7 +440,6 @@ export default function KPIPage() {
                 </Tabs>
               </div>
 
-              {/* Filters */}
               <div className="flex flex-wrap gap-2">
                 <Input
                   placeholder="Search KPI metric..."
@@ -432,7 +447,6 @@ export default function KPIPage() {
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full sm:max-w-xs"
                 />
-
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger className="w-32">
                     <SelectValue placeholder="Status" />
@@ -445,7 +459,6 @@ export default function KPIPage() {
                     <SelectItem value="EXPIRED">Expired</SelectItem>
                   </SelectContent>
                 </Select>
-
                 {mode === "dept" && (
                   <Select
                     value={departmentFilter}
@@ -464,7 +477,6 @@ export default function KPIPage() {
                     </SelectContent>
                   </Select>
                 )}
-
                 <ByteDatePicker
                   value={period}
                   onChange={setPeriod}
@@ -486,10 +498,9 @@ export default function KPIPage() {
               </div>
             </CardHeader>
 
-            {/* Table Content */}
             <CardContent className="space-y-4">
               {isLoading ? (
-                <p className="text-sm text-muted-foreground">Loading KPIs...</p>
+                <Skeleton className="h-40 w-full rounded-md" />
               ) : !activeList?.data?.length ? (
                 <p className="text-sm text-muted-foreground">No KPIs found.</p>
               ) : (
@@ -503,17 +514,15 @@ export default function KPIPage() {
                         <TableHead>Status</TableHead>
                         <TableHead>Target</TableHead>
                         <TableHead>Period</TableHead>
-                        <TableHead>Notes</TableHead>
+                        <TableHead>Description</TableHead>
                         {isAdmin && (
                           <TableHead className="w-40">Actions</TableHead>
                         )}
                       </TableRow>
                     </TableHeader>
-
                     <TableBody>
                       {activeList.data.map((k: any) => (
                         <TableRow key={k.id} className="hover:bg-muted/40">
-                          {/* Metric */}
                           <TableCell>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -525,7 +534,6 @@ export default function KPIPage() {
                             </Tooltip>
                           </TableCell>
 
-                          {/* Assignee / Dept */}
                           {mode === "staff" && (
                             <TableCell>
                               <Tooltip>
@@ -582,23 +590,23 @@ export default function KPIPage() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-block max-w-[160px] truncate">
-                                  {truncate(k.notes || "—", 20)}
+                                  {truncate(k.description || "—", 20)}
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent>{k.notes || "—"}</TooltipContent>
+                              <TooltipContent>
+                                {k.description || "—"}
+                              </TooltipContent>
                             </Tooltip>
                           </TableCell>
 
-                          {/* Actions */}
                           {isAdmin && (
                             <TableCell>
-                              <div className="flex flex-wrap gap-2">
+                              <div className="flex flex-col sm:flex-row gap-2 w-full">
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => openEdit(k)}
-                                  disabled={saving}
-                                  className="cursor-pointer"
+                                  className="cursor-pointer flex-1 sm:flex-none min-w-[90px]"
                                 >
                                   Edit
                                 </Button>
@@ -606,8 +614,7 @@ export default function KPIPage() {
                                   variant="destructive"
                                   size="sm"
                                   onClick={() => openDelete(k)}
-                                  disabled={deleting}
-                                  className="cursor-pointer"
+                                  className="cursor-pointer flex-1 sm:flex-none min-w-[90px]"
                                 >
                                   Delete
                                 </Button>
@@ -621,7 +628,6 @@ export default function KPIPage() {
                 </div>
               )}
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <Pagination className="mt-2">
                   <PaginationContent>
@@ -631,7 +637,6 @@ export default function KPIPage() {
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                       />
                     </PaginationItem>
-
                     {Array.from({ length: totalPages }, (_, i) => (
                       <PaginationItem key={i}>
                         <PaginationLink
@@ -643,7 +648,6 @@ export default function KPIPage() {
                         </PaginationLink>
                       </PaginationItem>
                     ))}
-
                     <PaginationItem>
                       <PaginationNext
                         className="cursor-pointer"
@@ -658,7 +662,6 @@ export default function KPIPage() {
             </CardContent>
           </Card>
 
-          {/* Chart */}
           <Card className="overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold">
@@ -666,15 +669,17 @@ export default function KPIPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <KPIChart summary={summaryQuery.data} mode={mode} />
+              {summaryQuery.isLoading ? (
+                <Skeleton className="w-full h-[280px] rounded-lg" />
+              ) : (
+                <KPIChart summary={summaryQuery.data} mode={mode} />
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Staff Dashboards */}
         {isStaffRole && (
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* My KPIs */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base font-semibold">
@@ -682,7 +687,9 @@ export default function KPIPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {myStaffKPIs.length === 0 ? (
+                {isLoading ? (
+                  <Skeleton className="h-24 w-full rounded-md" />
+                ) : myStaffKPIs.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No KPIs assigned to you.
                   </p>
@@ -691,20 +698,35 @@ export default function KPIPage() {
                     {myStaffKPIs.map((k: any) => (
                       <div
                         key={k.id}
-                        className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm"
+                        className="rounded-lg border bg-card px-3 py-2 text-sm space-y-2"
                       >
-                        <div>
-                          <p className="font-medium">
-                            {truncate(k.metric, 24)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(k.period).toLocaleString("default", {
-                              month: "short",
-                              year: "numeric",
-                            })}
-                          </p>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium">
+                              {truncate(k.metric, 24)}
+                            </p>
+                            {k.target != null && (
+                              <p className="text-xs text-muted-foreground">
+                                Target: {k.target}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(k.period).toLocaleString("default", {
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </p>
+                          </div>
+                          <StatusBadge status={k.status} />
                         </div>
-                        <StatusBadge status={k.status} />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="cursor-pointer"
+                          onClick={() => openDetails(k)}
+                        >
+                          View KPI details
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -712,7 +734,6 @@ export default function KPIPage() {
               </CardContent>
             </Card>
 
-            {/* My Department KPIs */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base font-semibold">
@@ -720,7 +741,9 @@ export default function KPIPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {myDeptKPIs.length === 0 ? (
+                {isLoading ? (
+                  <Skeleton className="h-24 w-full rounded-md" />
+                ) : myDeptKPIs.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No KPIs for your department.
                   </p>
@@ -729,20 +752,35 @@ export default function KPIPage() {
                     {myDeptKPIs.map((k: any) => (
                       <div
                         key={k.id}
-                        className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm"
+                        className="rounded-lg border bg-card px-3 py-2 text-sm space-y-2"
                       >
-                        <div>
-                          <p className="font-medium">
-                            {truncate(k.metric, 24)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(k.period).toLocaleString("default", {
-                              month: "short",
-                              year: "numeric",
-                            })}
-                          </p>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium">
+                              {truncate(k.metric, 24)}
+                            </p>
+                            {k.target != null && (
+                              <p className="text-xs text-muted-foreground">
+                                Target: {k.target}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(k.period).toLocaleString("default", {
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </p>
+                          </div>
+                          <StatusBadge status={k.status} />
                         </div>
-                        <StatusBadge status={k.status} />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="cursor-pointer"
+                          onClick={() => openDetails(k)}
+                        >
+                          View KPI details
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -752,15 +790,12 @@ export default function KPIPage() {
           </div>
         )}
 
-        {/* Create + Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{form.id ? "Edit KPI" : "Create KPI"}</DialogTitle>
             </DialogHeader>
-
             <div className="space-y-3">
-              {/* Staff or Department Select */}
               {mode === "staff" ? (
                 <Select
                   value={form.staffId}
@@ -847,7 +882,6 @@ export default function KPIPage() {
                 </SelectContent>
               </Select>
 
-              {/* Period Picker */}
               <Popover open={formDateOpen} onOpenChange={setFormDateOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -863,7 +897,6 @@ export default function KPIPage() {
                       : "Select period"}
                   </Button>
                 </PopoverTrigger>
-
                 <PopoverContent
                   align="center"
                   side="bottom"
@@ -890,15 +923,15 @@ export default function KPIPage() {
                 </PopoverContent>
               </Popover>
 
-              <Input
+              <Textarea
                 placeholder="Notes (optional)"
                 value={form.notes}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, notes: e.target.value }))
                 }
+                rows={3}
               />
             </div>
-
             <DialogFooter>
               <Button
                 variant="outline"
@@ -919,13 +952,11 @@ export default function KPIPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Dialog */}
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Delete KPI</DialogTitle>
             </DialogHeader>
-
             <p className="text-sm text-muted-foreground">
               Are you sure you want to delete{" "}
               <span className="font-semibold">
@@ -933,7 +964,6 @@ export default function KPIPage() {
               </span>
               ? This action cannot be undone.
             </p>
-
             <DialogFooter>
               <Button
                 variant="outline"
@@ -952,6 +982,68 @@ export default function KPIPage() {
                 {deleting ? "Deleting..." : "Delete"}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>KPI details</DialogTitle>
+            </DialogHeader>
+            {detailsKpi && (
+              <div className="space-y-2 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Metric</p>
+                  <p className="font-medium">{detailsKpi.metric}</p>
+                </div>
+                {detailsKpi.staff?.user && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Assignee</p>
+                    <p>
+                      {detailsKpi.staff.user.fullName ||
+                        detailsKpi.staff.user.email}
+                    </p>
+                  </div>
+                )}
+                {detailsKpi.department && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Department</p>
+                    <p>{detailsKpi.department.name}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <StatusBadge status={detailsKpi.status} />
+                </div>
+                {detailsKpi.target != null && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Target</p>
+                    <p>{detailsKpi.target}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-muted-foreground">Period</p>
+                  <p>
+                    {new Date(detailsKpi.period).toLocaleString("default", {
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+                {detailsKpi.description && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Description</p>
+                    <p>{detailsKpi.description}</p>
+                  </div>
+                )}
+                {detailsKpi.notes && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Notes</p>
+                    <p>{detailsKpi.notes}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>
