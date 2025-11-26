@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const { amount, description, date } = await request.json();
@@ -29,7 +29,7 @@ export async function PUT(
       },
     });
 
-    // ✅ Check permission
+    //  Check permission
     if (profile?.role !== "ADMIN" && profile?.role !== "SUB_ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -37,7 +37,7 @@ export async function PUT(
     const businessId = profile?.business?.id || profile?.Staff?.businessId;
 
     const existingSale = await prisma.sale.findUnique({
-      where: { id: context.params.id },
+      where: { id: params.id },
     });
 
     if (!existingSale || existingSale.businessId !== businessId) {
@@ -45,7 +45,7 @@ export async function PUT(
     }
 
     const sale = await prisma.sale.update({
-      where: { id: context.params.id },
+      where: { id: params.id },
       data: { amount, description, date: date ? new Date(date) : undefined },
     });
 
@@ -61,7 +61,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const supabase = await supabaseServer(true);
@@ -87,14 +87,14 @@ export async function DELETE(
     const businessId = profile?.business?.id || profile?.Staff?.businessId;
 
     const existingSale = await prisma.sale.findUnique({
-      where: { id: context.params.id },
+      where: { id: params.id },
     });
 
     if (!existingSale || existingSale.businessId !== businessId) {
       return NextResponse.json({ error: "Sale not found" }, { status: 404 });
     }
 
-    await prisma.sale.delete({ where: { id: context.params.id } });
+    await prisma.sale.delete({ where: { id: params.id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

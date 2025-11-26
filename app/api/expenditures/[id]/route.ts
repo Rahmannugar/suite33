@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const { amount, description, date } = await request.json();
@@ -36,7 +36,7 @@ export async function PUT(
     const businessId = profile?.business?.id || profile?.Staff?.businessId;
 
     const existingExpenditure = await prisma.expenditure.findUnique({
-      where: { id: context.params.id },
+      where: { id: params.id },
     });
 
     if (!existingExpenditure || existingExpenditure.businessId !== businessId) {
@@ -47,7 +47,7 @@ export async function PUT(
     }
 
     const expenditure = await prisma.expenditure.update({
-      where: { id: context.params.id },
+      where: { id: params.id },
       data: { amount, description, date: date ? new Date(date) : undefined },
     });
 
@@ -63,7 +63,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const supabase = await supabaseServer(true);
@@ -89,7 +89,7 @@ export async function DELETE(
     const businessId = profile?.business?.id || profile?.Staff?.businessId;
 
     const existingExpenditure = await prisma.expenditure.findUnique({
-      where: { id: context.params.id },
+      where: { id: params.id },
     });
 
     if (!existingExpenditure || existingExpenditure.businessId !== businessId) {
@@ -99,7 +99,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.expenditure.delete({ where: { id: context.params.id } });
+    await prisma.expenditure.delete({ where: { id: params.id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

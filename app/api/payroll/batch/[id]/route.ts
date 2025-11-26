@@ -4,10 +4,10 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
 
     const supabase = await supabaseServer(true);
     const { data, error } = await supabase.auth.getUser();
@@ -88,10 +88,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const body = await request.json();
 
     const supabase = await supabaseServer(true);

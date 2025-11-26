@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const { name, quantity, categoryId } = await request.json();
@@ -36,7 +36,7 @@ export async function PUT(
     const businessId = profile?.business?.id || profile?.Staff?.businessId;
 
     const existingItem = await prisma.inventory.findUnique({
-      where: { id: context.params.id },
+      where: { id: params.id },
     });
 
     if (!existingItem || existingItem.businessId !== businessId) {
@@ -47,7 +47,7 @@ export async function PUT(
     }
 
     const item = await prisma.inventory.update({
-      where: { id: context.params.id },
+      where: { id: params.id },
       data: { name, quantity, categoryId },
     });
 
@@ -63,7 +63,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const supabase = await supabaseServer(true);
@@ -89,7 +89,7 @@ export async function DELETE(
     const businessId = profile?.business?.id || profile?.Staff?.businessId;
 
     const existingItem = await prisma.inventory.findUnique({
-      where: { id: context.params.id },
+      where: { id: params.id },
     });
 
     if (!existingItem || existingItem.businessId !== businessId) {
@@ -99,7 +99,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.inventory.delete({ where: { id: context.params.id } });
+    await prisma.inventory.delete({ where: { id: params.id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {
