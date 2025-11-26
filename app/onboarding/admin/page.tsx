@@ -14,6 +14,7 @@ import {
   MapPin,
   Briefcase,
   User,
+  RefreshCw,
   Upload,
   Loader2,
 } from "lucide-react";
@@ -50,7 +51,7 @@ export default function AdminOnboardingPage() {
       if (logoFile && user?.id) {
         try {
           logoUrl = await uploadAvatar(logoFile, user.id);
-        } catch (err) {
+        } catch {
           toast.error("Failed to upload logo.");
         }
       }
@@ -84,7 +85,7 @@ export default function AdminOnboardingPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background">
+    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-7 lg:px-8 bg-background">
       <div className="w-full max-w-lg rounded-xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-lg p-8 relative">
         <ThemeToggle />
         <div className="flex justify-center mb-6">
@@ -179,26 +180,45 @@ export default function AdminOnboardingPage() {
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[--muted-foreground]">
-              <Upload className="inline mr-2" size={16} />
-              Business Logo (optional)
+              Business Logo{" "}
+              <span className="text-[--muted-foreground]">(optional)</span>
             </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleLogoChange}
-              className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-            />
-            {logoPreview && (
-              <div className="mt-2">
+
+            <div className="flex items-center gap-3">
+              <input
+                id="admin-logo-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  document.getElementById("admin-logo-upload")?.click()
+                }
+                className="p-2 rounded-full border border-[--input] cursor-pointer bg-[--card] hover:bg-[--muted] transition"
+                aria-label={
+                  logoPreview ? "Replace business logo" : "Upload business logo"
+                }
+              >
+                {logoPreview ? <RefreshCw size={20} /> : <Upload size={20} />}
+              </button>
+
+              {logoPreview && (
                 <Image
                   src={logoPreview}
-                  alt="Logo Preview"
-                  width={80}
-                  height={80}
-                  className="rounded-lg object-cover border border-[--border]"
+                  alt="Business Logo Preview"
+                  width={48}
+                  height={48}
+                  className="rounded-full object-cover border border-[--border]"
+                  style={{ width: "48px", height: "48px" }}
+                  unoptimized
+                  priority
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           <button
