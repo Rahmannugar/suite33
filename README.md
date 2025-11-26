@@ -148,18 +148,22 @@ A unified dashboard for smart business insights:
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 /app
 /dashboard
 /api
 /components
-/lib
+/lib:
+/auth
 /hooks
+/providers
 /stores
+/types
 /utils
+
 /prisma
-/styles
+
 
 ---
 
@@ -192,27 +196,36 @@ Ensure the Supabase project is connected to the same Postgres database used by P
 ```bash
 git clone https://github.com/Rahmannugar/suite33.git
 cd suite33
+```
 
-2. Install dependencies
+### 2. Install dependencies
+
+```bash
 npm install
+```
 
-3. Generate and sync Prisma schema
-npx prisma generate
-npx prisma db push
+### 3. Generate and sync Prisma schema
 
-4. Start development server
-npm run dev
+```bash
+   npx prisma generate
+   npx prisma db push
+```
 
+### 4. Start development server
+
+```bash
+   npm run dev
+```
 
 App will be available at:
 
+```bash
 http://localhost:3000
-
+```
 
 Contributions
 Pull requests are welcome. Suite33 can always be improved upon.
 
- License
+### License
 
 MIT License © 2025 Suite33
-```
