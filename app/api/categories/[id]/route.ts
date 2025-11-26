@@ -33,25 +33,25 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const businessId = profile?.business?.id || profile?.Staff?.businessId;
+    const businessId = profile.business?.id || profile.Staff?.businessId;
 
-    const existingCategory = await prisma.category.findUnique({
+    const category = await prisma.category.findUnique({
       where: { id: context.params.id },
     });
 
-    if (!existingCategory || existingCategory.businessId !== businessId) {
+    if (!category || category.businessId !== businessId) {
       return NextResponse.json(
         { error: "Category not found" },
         { status: 404 }
       );
     }
 
-    const category = await prisma.category.update({
+    const updated = await prisma.category.update({
       where: { id: context.params.id },
       data: { name: name.trim().toLowerCase() },
     });
 
-    return NextResponse.json({ category });
+    return NextResponse.json({ category: updated });
   } catch (error) {
     console.error("Category update error:", error);
     return NextResponse.json(
@@ -86,13 +86,13 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const businessId = profile?.business?.id || profile?.Staff?.businessId;
+    const businessId = profile.business?.id || profile.Staff?.businessId;
 
-    const existingCategory = await prisma.category.findUnique({
+    const category = await prisma.category.findUnique({
       where: { id: context.params.id },
     });
 
-    if (!existingCategory || existingCategory.businessId !== businessId) {
+    if (!category || category.businessId !== businessId) {
       return NextResponse.json(
         { error: "Category not found" },
         { status: 404 }
@@ -111,7 +111,9 @@ export async function DELETE(
       );
     }
 
-    await prisma.category.delete({ where: { id: context.params.id } });
+    await prisma.category.delete({
+      where: { id: context.params.id },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
