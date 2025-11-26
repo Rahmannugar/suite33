@@ -9,6 +9,7 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import { useAuth } from "@/lib/hooks/auth/useAuth";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import Logo from "../Logo";
 
 const navLinks = [
   { href: "/#features", label: "Features" },
@@ -40,22 +41,7 @@ export default function Navbar() {
     <nav className="sticky top-0 z-40 w-full backdrop-blur">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center border-b border-[--border] justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/images/suite33-black.png"
-            alt="Suite33 Logo"
-            width={90}
-            height={90}
-            className="dark:hidden rounded-lg"
-            priority
-          />
-          <Image
-            src="/images/suite33-white.png"
-            alt="Suite33 Logo Dark"
-            width={70}
-            height={70}
-            className="hidden dark:block rounded-lg"
-            priority
-          />
+          <Logo />
         </Link>
 
         {/* Desktop Navigation */}

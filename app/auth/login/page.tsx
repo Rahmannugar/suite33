@@ -9,6 +9,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/Toggler";
 import { Eye, EyeOff } from "lucide-react";
+import Logo from "@/components/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -61,22 +62,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-sm p-8">
         <ThemeToggle />
         <div className="flex justify-center mb-6">
-          <Image
-            src="/images/suite33-black.png"
-            alt="Suite33 Logo"
-            width={75}
-            height={75}
-            className="dark:hidden"
-            priority
-          />
-          <Image
-            src="/images/suite33-white.png"
-            alt="Suite33 Dark Logo"
-            width={75}
-            height={75}
-            className="hidden dark:block"
-            priority
-          />
+          <Logo />
         </div>
 
         <h1 className="text-2xl font-semibold text-center mb-1">

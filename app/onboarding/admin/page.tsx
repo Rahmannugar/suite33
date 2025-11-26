@@ -18,6 +18,7 @@ import {
   Upload,
   Loader2,
 } from "lucide-react";
+import Logo from "@/components/Logo";
 
 export default function AdminOnboardingPage() {
   const router = useRouter();
@@ -89,22 +90,7 @@ export default function AdminOnboardingPage() {
       <div className="w-full max-w-lg rounded-xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-lg p-8 relative">
         <ThemeToggle />
         <div className="flex justify-center mb-6">
-          <Image
-            src="/images/suite33-black.png"
-            alt="Suite33 Logo"
-            width={60}
-            height={60}
-            className="dark:hidden"
-            priority
-          />
-          <Image
-            src="/images/suite33-white.png"
-            alt="Suite33 Dark Logo"
-            width={60}
-            height={60}
-            className="hidden dark:block"
-            priority
-          />
+          <Logo />
         </div>
         <h1 className="text-2xl font-bold text-center mb-2">
           Welcome, <span className="text-[--primary]">{user?.email}</span>

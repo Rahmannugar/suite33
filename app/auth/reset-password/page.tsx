@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/Toggler";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/hooks/auth/useAuth";
 import { useRouter } from "next/navigation";
+import Logo from "@/components/Logo";
 
 export default function ResetPasswordPage() {
   const { getResetSession, resetPassword } = useAuth();
@@ -76,22 +77,7 @@ export default function ResetPasswordPage() {
         <ThemeToggle />
 
         <div className="flex justify-center mb-6">
-          <Image
-            src="/images/suite33-black.png"
-            alt="Suite33 Logo"
-            width={75}
-            height={75}
-            className="dark:hidden"
-            priority
-          />
-          <Image
-            src="/images/suite33-white.png"
-            alt="Suite33 Dark Logo"
-            width={75}
-            height={75}
-            className="hidden dark:block"
-            priority
-          />
+          <Logo />
         </div>
 
         <h1 className="text-2xl font-semibold text-center mb-1">

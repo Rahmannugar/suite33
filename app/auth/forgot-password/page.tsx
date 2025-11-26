@@ -9,6 +9,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/Toggler";
 import { ArrowLeft } from "lucide-react";
 import axios from "axios";
+import Logo from "@/components/Logo";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -80,22 +81,7 @@ export default function ForgotPasswordPage() {
           Back to login
         </Link>
         <div className="flex justify-center mb-6">
-          <Image
-            src="/images/suite33-black.png"
-            alt="Suite33 Logo"
-            width={75}
-            height={75}
-            className="dark:hidden"
-            priority
-          />
-          <Image
-            src="/images/suite33-white.png"
-            alt="Suite33 Dark Logo"
-            width={75}
-            height={75}
-            className="hidden dark:block"
-            priority
-          />
+          <Logo />
         </div>
 
         {emailSent ? (

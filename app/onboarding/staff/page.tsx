@@ -10,6 +10,7 @@ import axios from "axios";
 import { Upload, RefreshCw, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import Logo from "@/components/Logo";
 
 export default function StaffOnboardingPage() {
   const router = useRouter();
@@ -57,22 +58,7 @@ export default function StaffOnboardingPage() {
       <div className="w-full max-w-md rounded-2xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-sm p-8">
         <ThemeToggle />
         <div className="flex justify-center mb-6">
-          <Image
-            src="/images/suite33-black.png"
-            alt="Suite33 Logo"
-            width={60}
-            height={60}
-            className="dark:hidden"
-            priority
-          />
-          <Image
-            src="/images/suite33-white.png"
-            alt="Suite33 Dark Logo"
-            width={60}
-            height={60}
-            className="hidden dark:block"
-            priority
-          />
+          <Logo />
         </div>
         <h1 className="text-2xl font-semibold text-center mb-1">
           Welcome to <span className="text-[--primary]">Suite33</span>
