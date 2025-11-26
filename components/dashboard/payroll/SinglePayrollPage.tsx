@@ -50,6 +50,7 @@ export default function SinglePayrollPage({ id }: { id: string }) {
   }
 
   const data: any = query.data;
+  const isLocked = data.locked;
   const isSelfView = !Array.isArray(data.items);
 
   const periodLabel = new Date(data.period).toLocaleString("default", {
@@ -180,7 +181,9 @@ export default function SinglePayrollPage({ id }: { id: string }) {
                 <div className="space-y-2 text-sm">
                   <p>
                     <span className="text-muted-foreground">Amount: </span>
-                    <span className="font-medium">{data.item.amount}</span>
+                    <span className="font-medium">
+                      ₦{data.item.amount.toLocaleString()}
+                    </span>
                   </p>
                   <p>
                     <span className="text-muted-foreground">Status: </span>
@@ -241,6 +244,7 @@ export default function SinglePayrollPage({ id }: { id: string }) {
                                 size="sm"
                                 className="cursor-pointer"
                                 onClick={() => openEdit(i)}
+                                disabled={isLocked}
                               >
                                 Edit
                               </Button>

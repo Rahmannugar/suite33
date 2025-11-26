@@ -16,7 +16,7 @@ export async function DELETE() {
       include: { business: true },
     });
 
-    if (profile?.role !== "ADMIN") {
+    if (!profile || profile.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -27,7 +27,7 @@ export async function DELETE() {
       );
     }
 
-    if (profile.business?.deletedAt) {
+    if (profile.business.deletedAt) {
       return NextResponse.json(
         { error: "Business is already deleted" },
         { status: 410 }
@@ -47,11 +47,6 @@ export async function DELETE() {
       data: { deletedAt: now },
     });
 
-    await prisma.payroll.updateMany({
-      where: { businessId },
-      data: { deletedAt: now },
-    });
-
     await prisma.inventory.updateMany({
       where: { businessId },
       data: { deletedAt: now },
@@ -62,13 +57,28 @@ export async function DELETE() {
       data: { deletedAt: now },
     });
 
+    await prisma.department.updateMany({
+      where: { businessId },
+      data: { deletedAt: now },
+    });
+
     await prisma.invite.deleteMany({
       where: { businessId },
     });
 
+    await prisma.payrollBatch.updateMany({
+      where: { businessId },
+      data: { deletedAt: now },
+    });
+
+    await prisma.payrollBatchItem.updateMany({
+      where: { batch: { businessId } },
+      data: { deletedAt: now },
+    });
+
     const staffList = await prisma.staff.findMany({
       where: { businessId },
-      select: { userId: true, id: true },
+      select: { id: true, userId: true },
     });
 
     for (const staff of staffList) {
@@ -82,11 +92,6 @@ export async function DELETE() {
         data: { deletedAt: now },
       });
     }
-
-    await prisma.department.updateMany({
-      where: { businessId },
-      data: { deletedAt: now },
-    });
 
     await prisma.business.update({
       where: { id: businessId },

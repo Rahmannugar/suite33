@@ -17,11 +17,16 @@ import {
   Users2,
   Boxes,
   BadgeDollarSign,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useStaff } from "@/lib/hooks/business/useStaff";
 import { useInventory } from "@/lib/hooks/inventory/useInventory";
-import { usePayroll } from "@/lib/hooks/payroll/usePayroll";
+import { useSalesSummary } from "@/lib/hooks/sales/useSalesSummary";
+import { useExpendituresSummary } from "@/lib/hooks/expenditures/useExpendituresSummary";
+import { usePayrollSummary } from "@/lib/hooks/payroll/usePayrollSummary";
+import { SummaryMonth } from "@/lib/utils/chart";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -32,10 +37,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Link from "next/link";
 import { getInitials } from "@/lib/utils/getInitials";
-import { useSalesSummary } from "@/lib/hooks/sales/useSalesSummary";
-import { SummaryMonth } from "@/lib/utils/chart";
-import { useExpendituresSummary } from "@/lib/hooks/expenditures/useExpendituresSummary";
 
 function formatCurrencyShort(value: number): string {
   if (value >= 1_000_000_000) return `₦${(value / 1_000_000_000).toFixed(1)}B`;
@@ -64,18 +67,17 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export default function DashboardHome() {
   const user = useAuthStore((state) => state.user);
-
-  const { pagination: staffPagination, isLoading: staffLoading } = useStaff();
-  const { inventoryPagination, isLoading: invLoading } = useInventory();
-  const { payroll, isLoading: payrollLoading } = usePayroll();
-
   const role = user?.role ?? "STAFF";
   const currentYear = new Date().getFullYear();
 
+  const { pagination: staffPagination, isLoading: staffLoading } = useStaff();
+  const { inventoryPagination, isLoading: invLoading } = useInventory();
   const { data: salesSummary, isLoading: salesLoading } =
     useSalesSummary(currentYear);
   const { data: expSummary, isLoading: expLoading } =
     useExpendituresSummary(currentYear);
+  const { data: payrollSummary, isLoading: payrollLoading } =
+    usePayrollSummary();
 
   const salesChartData = useMemo(() => {
     if (!salesSummary) return [];
@@ -105,7 +107,9 @@ export default function DashboardHome() {
       );
       const expRow = expSummary.find((m: SummaryMonth) => m.month === i + 1);
       return {
-        month: new Date(2000, i).toLocaleString("default", { month: "short" }),
+        month: new Date(2000, i).toLocaleString("default", {
+          month: "short",
+        }),
         sales: salesRow?.total ?? 0,
         expenditures: expRow?.total ?? 0,
         pnl: (salesRow?.total ?? 0) - (expRow?.total ?? 0),
@@ -141,7 +145,7 @@ export default function DashboardHome() {
         )}
         <div>
           <div className="font-bold text-lg">
-            {user?.businessName?.toUpperCase() ?? "Business"}
+            {user?.businessName?.toUpperCase() ?? "BUSINESS"}
           </div>
           <div className="text-sm text-[--muted-foreground]">
             {role === "ADMIN"
@@ -192,7 +196,7 @@ export default function DashboardHome() {
         />
       </div>
 
-      <Card className="shadow-sm hover:scale-[1.01] transition-transform duration-200 cursor-pointer">
+      <Card className="shadow-sm hover:scale-[1.01] transition-transform duration-200">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BadgeDollarSign size={20} className="text-blue-600" />
@@ -202,27 +206,76 @@ export default function DashboardHome() {
         <CardContent>
           {payrollLoading ? (
             <LoadingPlaceholder />
-          ) : payroll?.length ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <PayrollBlock
-                label="Total paid this month"
-                color="text-green-600"
-                amount={payroll
-                  .filter((p) => p.paid)
-                  .reduce((s, p) => s + p.amount, 0)}
-              />
-              <PayrollBlock
-                label="Pending payroll"
-                color="text-amber-600"
-                amount={payroll
-                  .filter((p) => !p.paid)
-                  .reduce((s, p) => s + p.amount, 0)}
-              />
-            </div>
-          ) : (
+          ) : !payrollSummary?.latestPeriod ? (
             <p className="text-sm text-[--muted-foreground]">
               {getEmptyText("Payroll", role)}
             </p>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 mb-4">
+                {payrollSummary.locked ? (
+                  <>
+                    <Lock size={18} className="text-red-600" />
+                    <span className="text-sm font-medium text-red-600">
+                      Latest Batch Locked
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Unlock size={18} className="text-green-600" />
+                    <span className="text-sm font-medium text-green-600">
+                      Latest Batch Unlocked
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {role === "ADMIN" ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-4">
+                    <PayrollBlock
+                      label="Total paid this month"
+                      color="text-green-600"
+                      amount={payrollSummary.totalPaid}
+                    />
+                    <PayrollBlock
+                      label="Pending payroll"
+                      color="text-amber-600"
+                      amount={payrollSummary.totalPending}
+                    />
+                  </div>
+                  <Link
+                    href="/dashboard/admin/payroll"
+                    className="text-blue-600 hover:underline text-sm"
+                  >
+                    View Payroll →
+                  </Link>
+                </>
+              ) : (
+                <>
+                  {payrollSummary.self ? (
+                    <div className="mb-3">
+                      <p className="text-xl font-bold">
+                        ₦{payrollSummary.self.amount.toLocaleString()}
+                      </p>
+                      <p className="text-sm text-[--muted-foreground]">
+                        {payrollSummary.self.paid ? "Paid" : "Not paid"}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[--muted-foreground]">
+                      No payroll record for this month.
+                    </p>
+                  )}
+                  <Link
+                    href="/dashboard/staff/payroll"
+                    className="text-blue-600 hover:underline text-sm"
+                  >
+                    My Payslip →
+                  </Link>
+                </>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -259,7 +312,6 @@ export default function DashboardHome() {
                     </TableCell>
                   </TableRow>
                 ))}
-
                 <TableRow className="bg-blue-50 dark:bg-blue-900/30 font-semibold">
                   <TableCell>Total</TableCell>
                   <TableCell>₦{yearSales.toLocaleString()}</TableCell>
@@ -290,7 +342,7 @@ function MetricCard({
   role,
 }: any) {
   return (
-    <Card className="shadow-sm hover:scale-[1.01] transition-transform duration-200 cursor-pointer">
+    <Card className="shadow-sm hover:scale-[1.01] transition-transform duration-200">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {icon} {title}
@@ -331,7 +383,7 @@ function MetricCard({
 
 function SimpleMetric({ title, icon, count, loading, subtitle, role }: any) {
   return (
-    <Card className="shadow-sm hover:scale-[1.01] transition-transform duration-200 cursor-pointer">
+    <Card className="shadow-sm hover:scale-[1.01] transition-transform duration-200">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {icon} {title}
