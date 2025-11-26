@@ -1,67 +1,54 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import {
   PayrollBatch,
-  PayrollBatchItem,
   PayrollSelfView,
+  ExportablePayroll,
 } from "@/lib/types/payroll";
-import axios from "axios";
 
 export function usePayroll() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
 
-  function getBatches() {
-    return useQuery({
-      queryKey: ["payroll", "batches"],
-      queryFn: async () => {
-        const res = await axios.get("/api/payroll/batch");
-        return res.data as
-          | PayrollBatch[]
-          | { id: string; period: string; locked: boolean }[];
-      },
-    });
-  }
+  const batches = useQuery({
+    queryKey: ["payroll", "batches"],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/payroll/batch");
+      return data as
+        | PayrollBatch[]
+        | { id: string; period: string; locked: boolean }[];
+    },
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+  });
 
-  function getBatch(id: string) {
+  function batch(id: string) {
     return useQuery({
       queryKey: ["payroll", "batch", id],
       queryFn: async () => {
-        const res = await axios.get(`/api/payroll/batch/${id}`);
-        return res.data as PayrollBatch | PayrollSelfView;
+        const { data } = await axios.get(`/api/payroll/batch/${id}`);
+        return data as PayrollBatch | PayrollSelfView;
       },
-      enabled: Boolean(id),
+      staleTime: 1000 * 60 * 10,
+      refetchOnWindowFocus: false,
     });
   }
 
   const createBatch = useMutation({
-    mutationFn: async (payload: { period: string }) => {
-      const res = await axios.post("/api/payroll/batch", payload);
-      return res.data as PayrollBatch;
-    },
+    mutationFn: async (payload: { period: string }) =>
+      axios.post("/api/payroll/batch", payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["payroll", "batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll", "batches"] });
     },
   });
 
   const updateBatch = useMutation({
-    mutationFn: async (payload: { id: string; locked: boolean }) => {
-      const res = await axios.put(`/api/payroll/batch/${payload.id}`, {
-        locked: payload.locked,
-      });
-      return res.data as PayrollBatch;
-    },
+    mutationFn: async (payload: { id: string; locked: boolean }) =>
+      axios.put(`/api/payroll/batch/${payload.id}`, { locked: payload.locked }),
     onSuccess: (_, payload) => {
-      qc.invalidateQueries({ queryKey: ["payroll", "batch", payload.id] });
-      qc.invalidateQueries({ queryKey: ["payroll", "batches"] });
-    },
-  });
-
-  const deleteBatch = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await axios.delete(`/api/payroll/batch/${id}`);
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["payroll", "batches"] });
+      queryClient.invalidateQueries({
+        queryKey: ["payroll", "batch", payload.id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["payroll", "batches"] });
     },
   });
 
@@ -71,37 +58,57 @@ export function usePayroll() {
       itemId: string;
       amount: number;
       paid: boolean;
-    }) => {
-      const res = await axios.put(
+    }) =>
+      axios.put(
         `/api/payroll/batch/${payload.batchId}/item/${payload.itemId}`,
         { amount: payload.amount, paid: payload.paid }
-      );
-      return res.data as PayrollBatchItem;
-    },
+      ),
     onSuccess: (_, payload) => {
-      qc.invalidateQueries({ queryKey: ["payroll", "batch", payload.batchId] });
+      queryClient.invalidateQueries({
+        queryKey: ["payroll", "batch", payload.batchId],
+      });
     },
   });
 
-  const deleteItem = useMutation({
-    mutationFn: async (payload: { batchId: string; itemId: string }) => {
-      const res = await axios.delete(
-        `/api/payroll/batch/${payload.batchId}/item/${payload.itemId}`
-      );
-      return res.data;
-    },
-    onSuccess: (_, payload) => {
-      qc.invalidateQueries({ queryKey: ["payroll", "batch", payload.batchId] });
-    },
-  });
+  function exportCSV(rows: ExportablePayroll[], label: string) {
+    if (!rows.length) return;
+    const Papa = require("papaparse");
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${label}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function exportExcel(rows: ExportablePayroll[], label: string) {
+    if (!rows.length) return;
+    const ExcelJS = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(label);
+    sheet.addRow(["Name", "Email", "Amount", "Paid"]);
+    rows.forEach((r) =>
+      sheet.addRow([r.Name, r.Email, r.Amount, r.Paid ? "Yes" : "No"])
+    );
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer]);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${label}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return {
-    getBatches,
-    getBatch,
+    batches,
+    batch,
     createBatch,
     updateBatch,
-    deleteBatch,
     updateItem,
-    deleteItem,
+    exportCSV,
+    exportExcel,
   };
 }

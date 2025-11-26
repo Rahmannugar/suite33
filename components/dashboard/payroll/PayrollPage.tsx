@@ -1,284 +1,225 @@
 "use client";
-
-import { useState, useMemo } from "react";
-import { useAuthStore } from "@/lib/stores/authStore";
+import { useState } from "react";
 import { usePayroll } from "@/lib/hooks/payroll/usePayroll";
-import { useStaff } from "@/lib/hooks/business/useStaff";
-import { useDepartments } from "@/lib/hooks/business/useDepartments";
-import { toast } from "sonner";
-import ByteDatePicker from "byte-datepicker";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationLink,
+} from "@/components/ui/pagination";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import ByteDatePicker from "byte-datepicker";
+import "byte-datepicker/styles.css";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { toast } from "sonner";
+import Link from "next/link";
+
+const PAGE_SIZE = 20;
 
 export default function PayrollPage() {
-  const user = useAuthStore((state) => state.user);
-  const {
-    payroll,
-    isLoading,
-    markPaid,
-    editSalary,
-    generatePayroll,
-    bulkMarkPaid,
-  } = usePayroll();
-  const { staff } = useStaff();
-  const { departments } = useDepartments();
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === "ADMIN";
+  const isStaff = user?.role === "STAFF" || user?.role === "SUB_ADMIN";
 
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  const year = selectedDate
-    ? selectedDate.getFullYear()
-    : new Date().getFullYear();
-  const month = selectedDate
-    ? selectedDate.getMonth() + 1
-    : new Date().getMonth() + 1;
+  const basePath = isAdmin
+    ? "/dashboard/admin/payroll"
+    : "/dashboard/staff/payroll";
 
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState("");
-  const [editing, setEditing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [period, setPeriod] = useState<Date | null>(new Date());
+  const [saving, setSaving] = useState(false);
 
-  const [bulkDeptId, setBulkDeptId] = useState<string>("all");
+  const { batches, createBatch } = usePayroll();
+  const list = batches.data ?? [];
+  const totalPages = Math.ceil(list.length / PAGE_SIZE) || 1;
+  const paginated = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const filteredPayroll = useMemo(() => {
-    if (!payroll) return [];
-    if (user?.role === "ADMIN") {
-      return (payroll as any[]).filter(
-        (p) =>
-          new Date(p.period).getFullYear() === year &&
-          new Date(p.period).getMonth() + 1 === month
-      );
-    }
-    if (user?.role === "SUB_ADMIN" && user?.departmentId) {
-      const deptStaffIds = staff
-        ?.filter((s) => s.departmentId === user.departmentId)
-        .map((s) => s.id);
-      return (payroll as any[]).filter(
-        (p) =>
-          deptStaffIds?.includes(p.staffId) &&
-          new Date(p.period).getFullYear() === year &&
-          new Date(p.period).getMonth() + 1 === month
-      );
-    }
-    if (user?.role === "STAFF") {
-      return (payroll as any[]).filter(
-        (p) =>
-          p.staffId === user.id &&
-          new Date(p.period).getFullYear() === year &&
-          new Date(p.period).getMonth() + 1 === month
-      );
-    }
-    return [];
-  }, [payroll, user, staff, year, month]);
-
-  const totalPayroll = filteredPayroll.reduce(
-    (sum: number, p: any) => sum + p.amount,
-    0
-  );
-
-  async function handleBulkMarkPaid() {
-    if (user?.role !== "ADMIN") return;
-    if (bulkDeptId === "all") {
-      for (const dept of departments ?? []) {
-        await bulkMarkPaid.mutateAsync({
-          departmentId: dept.id,
-          year,
-          month,
-        });
-      }
-      toast.success("Bulk marked as paid for all departments!");
-    } else {
-      await bulkMarkPaid.mutateAsync({
-        departmentId: bulkDeptId,
-        year,
-        month,
+  async function handleCreate() {
+    if (!period) return;
+    try {
+      setSaving(true);
+      await createBatch.mutateAsync({
+        period: new Date(
+          period.getFullYear(),
+          period.getMonth(),
+          1
+        ).toISOString(),
       });
-      toast.success("Bulk marked as paid for selected department!");
+      toast.success("Payroll batch created");
+      setCreateOpen(false);
+    } catch {
+      toast.error("Failed to create payroll batch");
+    } finally {
+      setSaving(false);
     }
-  }
-
-  async function handleGeneratePayroll() {
-    if (user?.role !== "ADMIN" || !user?.businessId) return;
-    await generatePayroll.mutateAsync({
-      year,
-      month,
-    });
-    toast.success("Payroll generated!");
-  }
-
-  async function handleMarkPaid(id: string) {
-    if (user?.role !== "ADMIN") return;
-    await markPaid.mutateAsync(id);
-    toast.success("Marked as paid!");
-  }
-
-  async function handleEditSalary(e: React.FormEvent) {
-    e.preventDefault();
-    if (user?.role !== "ADMIN" || !editId || !editAmount) return;
-    setEditing(true);
-    await editSalary.mutateAsync({
-      id: editId,
-      amount: parseFloat(editAmount),
-    });
-    toast.success("Salary updated!");
-    setEditId(null);
-    setEditAmount("");
-    setEditing(false);
   }
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Payroll</h2>
-      <div className="flex gap-2 mb-4 items-center">
-        <ByteDatePicker
-          value={selectedDate}
-          onChange={setSelectedDate}
-          formatString="mmm yyyy"
-          hideInput={false}
-        />
-        {user?.role === "ADMIN" && (
-          <>
-            <button
-              onClick={handleGeneratePayroll}
-              className="bg-blue-600 text-white px-4 py-2 rounded"
-              disabled={generatePayroll.isPending}
+    <>
+      <div className="px-4 lg:px-6 py-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h1 className="text-xl font-semibold">Payroll</h1>
+          {isAdmin && (
+            <Button
+              className="cursor-pointer w-full sm:w-auto"
+              onClick={() => setCreateOpen(true)}
             >
-              {generatePayroll.isPending ? "Generating..." : "Generate Payroll"}
-            </button>
-            <Select value={bulkDeptId} onValueChange={setBulkDeptId}>
-              <SelectTrigger className="max-w-xs w-full rounded-lg border border-[--input] bg-transparent p-3 font-medium">
-                <SelectValue>
-                  {bulkDeptId === "all"
-                    ? "All Departments"
-                    : departments
-                        ?.find((d) => d.id === bulkDeptId)
-                        ?.name.toUpperCase() ?? ""}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                {departments?.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name.toUpperCase()}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <button
-              onClick={handleBulkMarkPaid}
-              className="bg-green-600 text-white px-4 py-2 rounded"
-              disabled={bulkMarkPaid.isPending}
-            >
-              {bulkMarkPaid.isPending ? "Marking..." : "Bulk Mark Paid"}
-            </button>
-          </>
-        )}
-      </div>
-      <div className="mb-2 font-semibold">
-        Total Payroll: ₦{totalPayroll.toLocaleString()}
-      </div>
-      {isLoading ? (
-        <div>Loading payroll...</div>
-      ) : filteredPayroll.length ? (
-        <table className="w-full border rounded">
-          <thead>
-            <tr>
-              <th>Staff</th>
-              <th>Amount</th>
-              <th>Paid</th>
-              <th>Period</th>
-              {user?.role === "ADMIN" && <th>Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPayroll.map((p: any) => (
-              <tr key={p.id}>
-                <td>
-                  {p.staff?.user?.fullName || p.staff?.user?.email || "-"}
-                </td>
-                <td>₦{p.amount.toLocaleString()}</td>
-                <td>
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      p.paid
-                        ? "bg-green-100 text-green-700"
-                        : "bg-amber-100 text-amber-700"
-                    }`}
-                  >
-                    {p.paid ? "Paid" : "Pending"}
-                  </span>
-                </td>
-                <td>
-                  {new Date(p.period).toLocaleString("default", {
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </td>
-                {user?.role === "ADMIN" && (
-                  <td>
-                    {!p.paid && (
-                      <button
-                        className="text-green-600 hover:underline mr-2"
-                        onClick={() => handleMarkPaid(p.id)}
-                        disabled={markPaid.isPending}
-                      >
-                        Mark Paid
-                      </button>
-                    )}
-                    <button
-                      className="text-blue-600 hover:underline"
-                      onClick={() => {
-                        setEditId(p.id);
-                        setEditAmount(p.amount.toString());
-                      }}
-                    >
-                      Edit Salary
-                    </button>
-                  </td>
+              Create Payroll Batch
+            </Button>
+          )}
+        </div>
+
+        <Card>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base font-semibold">
+              Payroll Batches
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {batches.isLoading ? (
+              <Skeleton className="h-40 w-full rounded-md" />
+            ) : !list.length ? (
+              <p className="text-sm text-muted-foreground">
+                No payroll batches found.
+              </p>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Locked</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginated.map((b: any) => (
+                        <TableRow key={b.id} className="hover:bg-muted/40">
+                          <TableCell>
+                            {new Date(b.period).toLocaleString("default", {
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </TableCell>
+                          <TableCell>{b.locked ? "Yes" : "No"}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="cursor-pointer"
+                              asChild
+                            >
+                              <Link href={`${basePath}/${b.id}`}>View</Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {totalPages > 1 && (
+                  <Pagination className="mt-4">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          className="cursor-pointer"
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: totalPages }, (_, i) => (
+                        <PaginationItem key={i}>
+                          <PaginationLink
+                            isActive={page === i + 1}
+                            className="cursor-pointer"
+                            onClick={() => setPage(i + 1)}
+                          >
+                            {i + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          className="cursor-pointer"
+                          onClick={() =>
+                            setPage((p) => Math.min(totalPages, p + 1))
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
                 )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <div className="text-sm text-[--muted-foreground] mt-4">
-          No payroll records for this period.
-        </div>
-      )}
-      {editId && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-blue-900/40 rounded-lg p-6 shadow-lg w-full max-w-sm">
-            <form onSubmit={handleEditSalary} className="space-y-4">
-              <input
-                type="number"
-                placeholder="Salary amount"
-                value={editAmount}
-                onChange={(e) => setEditAmount(e.target.value)}
-                className="block w-full rounded-lg border border-[--input] bg-transparent p-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                required
-              />
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition"
-                  disabled={editing}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Payroll Batch</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <ByteDatePicker
+              value={period}
+              onChange={setPeriod}
+              hideInput
+              formatString="mmm yyyy"
+            >
+              {({ open, formattedValue }) => (
+                <Button
+                  variant="outline"
+                  onClick={open}
+                  className="w-full justify-start gap-2 cursor-pointer"
                 >
-                  {editing ? "Saving..." : "Save"}
-                </button>
-                <button
-                  type="button"
-                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition"
-                  onClick={() => setEditId(null)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+                  <CalendarIcon size={16} />
+                  {formattedValue || "Select period"}
+                </Button>
+              )}
+            </ByteDatePicker>
           </div>
-        </div>
-      )}
-    </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => setCreateOpen(false)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="cursor-pointer"
+              onClick={handleCreate}
+              disabled={saving}
+            >
+              {saving ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -46,3 +46,10 @@ export const PayrollSelfViewSchema = z.object({
 });
 
 export type PayrollSelfView = z.infer<typeof PayrollSelfViewSchema>;
+
+export type ExportablePayroll = {
+  Name: string;
+  Email: string;
+  Amount: string;
+  Paid: string;
+};
