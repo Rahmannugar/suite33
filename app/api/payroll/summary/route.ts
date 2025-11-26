@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { supabaseServer } from "@/lib/supabase/server";
 
@@ -26,30 +26,19 @@ export async function GET() {
 
     const businessId = profile.business?.id || profile.Staff?.businessId || "";
 
-    // Fetch latest payroll batch
     const latestBatch = await prisma.payrollBatch.findFirst({
-      where: {
-        businessId,
-        deletedAt: null,
-      },
-      orderBy: {
-        period: "desc",
-      },
+      where: { businessId, deletedAt: null },
+      orderBy: { period: "desc" },
       include: {
         items: {
           where: { deletedAt: null },
           include: {
-            staff: {
-              include: {
-                user: true,
-              },
-            },
+            staff: { include: { user: true } },
           },
         },
       },
     });
 
-    // empty summary if no batch exists
     if (!latestBatch) {
       return NextResponse.json(
         {
@@ -66,16 +55,16 @@ export async function GET() {
     }
 
     const latestPeriod = latestBatch.period.toISOString();
+    type Item = (typeof latestBatch.items)[number];
 
-    // ADMIN VIEW
     if (profile.role === "ADMIN") {
       const totalPaid = latestBatch.items
-        .filter((i) => i.paid)
-        .reduce((s, i) => s + i.amount, 0);
+        .filter((i: Item) => i.paid)
+        .reduce((s: number, i: Item) => s + i.amount, 0);
 
       const totalPending = latestBatch.items
-        .filter((i) => !i.paid)
-        .reduce((s, i) => s + i.amount, 0);
+        .filter((i: Item) => !i.paid)
+        .reduce((s: number, i: Item) => s + i.amount, 0);
 
       return NextResponse.json({
         summary: {
@@ -88,10 +77,8 @@ export async function GET() {
       });
     }
 
-    // STAFF + SUB_ADMIN VIEW
     const staffId = profile.Staff?.id;
-
-    const ownItem = latestBatch.items.find((i) => i.staffId === staffId);
+    const ownItem = latestBatch.items.find((i: Item) => i.staffId === staffId);
 
     return NextResponse.json({
       summary: {
@@ -107,7 +94,7 @@ export async function GET() {
           : null,
       },
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       {
         summary: {

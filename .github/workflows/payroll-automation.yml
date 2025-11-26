@@ -2,8 +2,7 @@ name: Payroll Automation
 
 on:
   schedule:
-    # Runs at 00:10 on the 1st of every month
-    - cron: '10 0 1 * *'
+    - cron: "10 0 1 * *"
   workflow_dispatch:
 
 jobs:
@@ -12,6 +11,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -22,6 +22,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
 
       - name: Run payroll automation script
         run: node --loader ts-node/esm scripts/auto-generate-payroll.ts

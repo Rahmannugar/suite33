@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
           },
         },
       });
+
       return NextResponse.json({ summary: expenditures });
     } else {
       const expenditures = await prisma.expenditure.findMany({
@@ -55,20 +56,26 @@ export async function GET(request: NextRequest) {
         },
       });
 
+      type Exp = (typeof expenditures)[number];
+
       const summary = Array.from({ length: 12 }, (_, i) => {
         const monthExpenditures = expenditures.filter(
-          (e) => new Date(e.date).getMonth() === i
+          (e: Exp) => new Date(e.date).getMonth() === i
         );
+
         return {
           month: i + 1,
-          total: monthExpenditures.reduce((sum, e) => sum + e.amount, 0),
+          total: monthExpenditures.reduce(
+            (sum: number, e: Exp) => sum + e.amount,
+            0
+          ),
           count: monthExpenditures.length,
         };
       });
 
       return NextResponse.json({ summary });
     }
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch expenditures summary" },
       { status: 500 }

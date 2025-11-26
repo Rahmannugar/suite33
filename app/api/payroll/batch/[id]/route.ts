@@ -24,8 +24,9 @@ export async function GET(
       },
     });
 
-    if (!profile)
+    if (!profile) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const businessId = profile.business?.id || profile.Staff?.businessId;
 
@@ -50,9 +51,7 @@ export async function GET(
               select: {
                 id: true,
                 user: { select: { fullName: true, email: true, role: true } },
-                department: {
-                  select: { id: true, name: true },
-                },
+                department: { select: { id: true, name: true } },
               },
             },
           },
@@ -65,10 +64,17 @@ export async function GET(
       return NextResponse.json({ error: "Batch not found" }, { status: 404 });
     }
 
-    if (profile.role === "ADMIN") return NextResponse.json(batch);
+    type Item = (typeof batch.items)[number];
+
+    if (profile.role === "ADMIN") {
+      return NextResponse.json(batch);
+    }
 
     if (profile.role === "SUB_ADMIN" || profile.role === "STAFF") {
-      const ownItem = batch.items.find((i) => i.staffId === profile.Staff?.id);
+      const ownItem = batch.items.find(
+        (i: Item) => i.staffId === profile.Staff?.id
+      );
+
       return NextResponse.json({
         id: batch.id,
         period: batch.period,
@@ -96,8 +102,9 @@ export async function PUT(
 
     const supabase = await supabaseServer(true);
     const { data, error } = await supabase.auth.getUser();
-    if (error || !data?.user)
+    if (error || !data?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const profile = await prisma.user.findUnique({
       where: { id: data.user.id },

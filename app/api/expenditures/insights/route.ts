@@ -44,7 +44,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const total = expenditures.reduce((sum, e) => sum + e.amount, 0);
+    type Expenditure = (typeof expenditures)[number];
+
+    const total = expenditures.reduce(
+      (sum: number, e: Expenditure) => sum + e.amount,
+      0
+    );
+
     const avg = expenditures.length ? total / expenditures.length : 0;
 
     const periodLabel = month

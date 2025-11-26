@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/prisma/config";
 import { supabaseServer } from "@/lib/supabase/server";
+import { slackNotify } from "@/lib/utils/slackService";
 
 export async function DELETE() {
   try {
@@ -105,6 +106,12 @@ export async function DELETE() {
 
     const res = NextResponse.json({ success: true });
     res.cookies.delete("user_role");
+    await slackNotify(
+      "business-deletion",
+      `${(profile.fullName, profile.email)} just deleted business ${
+        profile.business.name
+      }`
+    );
     return res;
   } catch (error) {
     console.error("Business deletion error:", error);

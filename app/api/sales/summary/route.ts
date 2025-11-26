@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
           },
         },
       });
+
       return NextResponse.json({ summary: sales });
     } else {
       const sales = await prisma.sale.findMany({
@@ -55,21 +56,23 @@ export async function GET(request: NextRequest) {
         },
       });
 
+      type Sale = (typeof sales)[number];
+
       const summary = Array.from({ length: 12 }, (_, i) => {
         const monthSales = sales.filter(
-          (s) => new Date(s.date).getMonth() === i
+          (s: Sale) => new Date(s.date).getMonth() === i
         );
+
         return {
           month: i + 1,
-          total: monthSales.reduce((sum, s) => sum + s.amount, 0),
+          total: monthSales.reduce((sum: number, s: Sale) => sum + s.amount, 0),
           count: monthSales.length,
         };
       });
 
       return NextResponse.json({ summary });
     }
-  } catch (error) {
-    console.error("Sales summary error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch sales summary" },
       { status: 500 }

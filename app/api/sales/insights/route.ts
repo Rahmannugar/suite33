@@ -44,7 +44,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const total = sales.reduce((sum, s) => sum + s.amount, 0);
+    type Sale = (typeof sales)[number];
+
+    const total = sales.reduce((sum: number, s: Sale) => sum + s.amount, 0);
+
     const avg = sales.length ? total / sales.length : 0;
 
     const periodLabel = month

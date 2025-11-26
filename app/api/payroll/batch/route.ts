@@ -126,12 +126,14 @@ export async function POST(request: NextRequest) {
       where: { businessId, deletedAt: null },
     });
 
+    type Staff = (typeof staffList)[number];
+
     const batch = await prisma.payrollBatch.create({
       data: {
         businessId,
         period: normalized,
         items: {
-          create: staffList.map((s) => ({
+          create: staffList.map((s: Staff) => ({
             staffId: s.id,
             amount: 0,
             paid: false,

@@ -150,40 +150,39 @@ A unified dashboard for smart business insights:
 
 ## Project Structure
 
-/app
-/dashboard
-/api
-/components
-/lib:
-/auth
-/hooks
-/providers
-/stores
-/types
-/utils
+- /app
+- /dashboard
+- /api
+- /components
+- /lib:
+- /auth
+- /hooks
+- /providers
+- /stores
+- /types
+- /utils
 
-/prisma
-
+- /prisma
 
 ---
 
 ## Environment Variables
 
-Create `.env`:
-NEXT_PUBLIC_SUPABASE_URL=""
-NEXT_PUBLIC_SUPABASE_ANON_KEY=""
-SUPABASE_SERVICE_ROLE_KEY=""
-DATABASE_URL=""
-DIRECT_URL=""
-NEXT_PUBLIC_SITE_URL=""
-NEXT_PUBLIC_EMAILJS_SERVICE_ID=""
-NEXT_PUBLIC_EMAILJS_TEMPLATE_ID=""
-NEXT_PUBLIC_EMAILJS_PUBLIC_KEY=""
-GEMINI_API_KEY=""
-SLACK_SIGNUP_WEBHOOK_URL=""
-SLACK_ONBOARDING_ADMIN_WEBHOOK_URL=""
-SLACK_ONBOARDING_STAFF_WEBHOOK_URL=""
-SLACK_BUSINESS_DELETION_WEBHOOK_URL=""
+- Create `.env`:
+- NEXT_PUBLIC_SUPABASE_URL=""
+- NEXT_PUBLIC_SUPABASE_ANON_KEY=""
+- SUPABASE_SERVICE_ROLE_KEY=""
+- DATABASE_URL=""
+- DIRECT_URL=""
+- NEXT_PUBLIC_SITE_URL=""
+- NEXT_PUBLIC_EMAILJS_SERVICE_ID=""
+- NEXT_PUBLIC_EMAILJS_TEMPLATE_ID=""
+- NEXT_PUBLIC_EMAILJS_PUBLIC_KEY=""
+- GEMINI_API_KEY=""
+- SLACK_SIGNUP_WEBHOOK_URL=""
+- SLACK_ONBOARDING_ADMIN_WEBHOOK_URL=""
+- SLACK_ONBOARDING_STAFF_WEBHOOK_URL=""
+- SLACK_BUSINESS_DELETION_WEBHOOK_URL=""
 
 Ensure the Supabase project is connected to the same Postgres database used by Prisma.
 
