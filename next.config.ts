@@ -6,19 +6,19 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "euacyohjjhbyixgajxdn.supabase.co",
-        port: "",
       },
     ],
   },
+
   typescript: {
     ignoreBuildErrors: true,
   },
+
   eslint: {
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    serverComponentsExternalPackages: ["@prisma/client", "prisma"],
-  },
+
+  serverExternalPackages: ["@prisma/client", "prisma"],
 };
 
 export default nextConfig;
