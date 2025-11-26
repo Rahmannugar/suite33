@@ -28,6 +28,7 @@ type DialogType =
 export default function SettingsPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+
   const { profile, isLoading } = useProfile();
   const { updateName, updateIndustry, updateLocation, deleteBusiness } =
     useBusiness();
@@ -36,6 +37,9 @@ export default function SettingsPage() {
   const [dialog, setDialog] = useState<DialogType>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const [showDeletingScreen, setShowDeletingScreen] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -49,12 +53,16 @@ export default function SettingsPage() {
 
   const openDialog = (type: DialogType) => {
     setDialog(type);
+
     if (type === "update-name")
       setForm((f) => ({ ...f, name: profile.businessName || "" }));
+
     if (type === "update-industry")
       setForm((f) => ({ ...f, industry: profile.industry || "" }));
+
     if (type === "update-location")
       setForm((f) => ({ ...f, location: profile.location || "" }));
+
     if (type === "delete-business") setForm((f) => ({ ...f, confirm: "" }));
   };
 
@@ -123,230 +131,272 @@ export default function SettingsPage() {
       toast.error("Business name does not match");
       return;
     }
+
     setDeleting(true);
+    setShowDeletingScreen(true);
+
     try {
       await deleteBusiness.mutateAsync();
       await signOut.mutateAsync();
-      toast.success("Business deleted");
-      router.push("/");
+
+      setDeleteSuccess(true);
+
+      setTimeout(() => {
+        router.push("/");
+      }, 1200);
     } catch (e: any) {
       toast.error(e?.response?.data?.error || "Failed to delete business");
       setDeleting(false);
+      setShowDeletingScreen(false);
     }
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl font-semibold">
-            Business Settings
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent className="space-y-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Business Name</p>
-              <p className="text-sm text-muted-foreground">
-                {profile.businessName}
+    <>
+      {showDeletingScreen && (
+        <div className="fixed inset-0 z-[9999] bg-white/90 dark:bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center">
+          {!deleteSuccess ? (
+            <>
+              <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-blue-600 border-t-transparent" />
+              <p className="text-blue-700 dark:text-blue-400 mt-4 text-sm font-medium">
+                Deleting business…
+              </p>
+            </>
+          ) : (
+            <div className="flex flex-col items-center animate-fadeIn">
+              <svg
+                className="text-green-600 h-12 w-12 mb-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="2.5"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4.5 12.75l6 6 9-13.5"
+                />
+              </svg>
+              <p className="text-green-700 dark:text-green-400 text-sm font-medium">
+                Business deleted successfully
               </p>
             </div>
-            <Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => openDialog("update-name")}
-            >
-              Update
-            </Button>
-          </div>
+          )}
+        </div>
+      )}
 
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Industry</p>
-              <p className="text-sm text-muted-foreground">
-                {profile.industry || "Not set"}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => openDialog("update-industry")}
-            >
-              Update
-            </Button>
-          </div>
+      <div className="max-w-3xl mx-auto">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xl font-semibold">
+              Business Settings
+            </CardTitle>
+          </CardHeader>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Location</p>
-              <p className="text-sm text-muted-foreground">
-                {profile.location || "Not set"}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => openDialog("update-location")}
-            >
-              Update
-            </Button>
-          </div>
-
-          <div className="pt-6 border-t">
+          <CardContent className="space-y-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-red-600">Delete Business</p>
+                <p className="font-medium">Business Name</p>
                 <p className="text-sm text-muted-foreground">
-                  Permanently remove all business data
+                  {profile.businessName}
                 </p>
               </div>
               <Button
-                variant="destructive"
+                variant="outline"
                 className="cursor-pointer"
-                onClick={() => openDialog("delete-business")}
+                onClick={() => openDialog("update-name")}
               >
-                Delete
+                Update
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      <Dialog open={dialog !== null} onOpenChange={closeDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {dialog === "update-name" && "Update Business Name"}
-              {dialog === "update-industry" && "Update Industry"}
-              {dialog === "update-location" && "Update Location"}
-              {dialog === "delete-business" && "Delete Business"}
-            </DialogTitle>
-          </DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Industry</p>
+                <p className="text-sm text-muted-foreground">
+                  {profile.industry || "Not set"}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => openDialog("update-industry")}
+              >
+                Update
+              </Button>
+            </div>
 
-          {dialog === "update-name" && (
-            <>
-              <Input
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-                placeholder="Business name"
-              />
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={closeDialog}
-                  disabled={saving}
-                  className="cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleUpdateName}
-                  disabled={saving}
-                  className="cursor-pointer"
-                >
-                  {saving ? "Updating..." : "Update"}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Location</p>
+                <p className="text-sm text-muted-foreground">
+                  {profile.location || "Not set"}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => openDialog("update-location")}
+              >
+                Update
+              </Button>
+            </div>
 
-          {dialog === "update-industry" && (
-            <>
-              <Input
-                value={form.industry}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, industry: e.target.value }))
-                }
-                placeholder="Industry"
-              />
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={closeDialog}
-                  disabled={saving}
-                  className="cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleUpdateIndustry}
-                  disabled={saving}
-                  className="cursor-pointer"
-                >
-                  {saving ? "Updating..." : "Update"}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-
-          {dialog === "update-location" && (
-            <>
-              <Input
-                value={form.location}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, location: e.target.value }))
-                }
-                placeholder="Location"
-              />
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={closeDialog}
-                  disabled={saving}
-                  className="cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleUpdateLocation}
-                  disabled={saving}
-                  className="cursor-pointer"
-                >
-                  {saving ? "Updating..." : "Update"}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-
-          {dialog === "delete-business" && (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Enter your business name to confirm deletion:
-              </p>
-
-              <Input
-                value={form.confirm}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, confirm: e.target.value }))
-                }
-                placeholder={profile?.businessName ?? ""}
-              />
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={closeDialog}
-                  disabled={deleting}
-                  className="cursor-pointer"
-                >
-                  Cancel
-                </Button>
+            <div className="pt-6 border-t">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-red-600">Delete Business</p>
+                  <p className="text-sm text-muted-foreground">
+                    Permanently remove all business data
+                  </p>
+                </div>
                 <Button
                   variant="destructive"
-                  onClick={handleDeleteBusiness}
-                  disabled={deleting}
                   className="cursor-pointer"
+                  onClick={() => openDialog("delete-business")}
                 >
-                  {deleting ? "Deleting..." : "Delete"}
+                  Delete
                 </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Dialog open={dialog !== null} onOpenChange={closeDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {dialog === "update-name" && "Update Business Name"}
+                {dialog === "update-industry" && "Update Industry"}
+                {dialog === "update-location" && "Update Location"}
+                {dialog === "delete-business" && "Delete Business"}
+              </DialogTitle>
+            </DialogHeader>
+
+            {dialog === "update-name" && (
+              <>
+                <Input
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                  placeholder="Business name"
+                />
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={closeDialog}
+                    disabled={saving}
+                    className="cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleUpdateName}
+                    disabled={saving}
+                    className="cursor-pointer"
+                  >
+                    {saving ? "Updating..." : "Update"}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+
+            {dialog === "update-industry" && (
+              <>
+                <Input
+                  value={form.industry}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, industry: e.target.value }))
+                  }
+                  placeholder="Industry"
+                />
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={closeDialog}
+                    disabled={saving}
+                    className="cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleUpdateIndustry}
+                    disabled={saving}
+                    className="cursor-pointer"
+                  >
+                    {saving ? "Updating..." : "Update"}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+
+            {dialog === "update-location" && (
+              <>
+                <Input
+                  value={form.location}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, location: e.target.value }))
+                  }
+                  placeholder="Location"
+                />
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={closeDialog}
+                    disabled={saving}
+                    className="cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleUpdateLocation}
+                    disabled={saving}
+                    className="cursor-pointer"
+                  >
+                    {saving ? "Updating..." : "Update"}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+
+            {dialog === "delete-business" && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Enter your business name to confirm deletion:
+                </p>
+                <Input
+                  value={form.confirm}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, confirm: e.target.value }))
+                  }
+                  placeholder={profile?.businessName ?? ""}
+                />
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={closeDialog}
+                    disabled={deleting}
+                    className="cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteBusiness}
+                    disabled={deleting}
+                    className="cursor-pointer"
+                  >
+                    {deleting ? "Deleting..." : "Delete"}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </>
   );
 }
