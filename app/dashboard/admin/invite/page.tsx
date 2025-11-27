@@ -92,7 +92,7 @@ export default function StaffInvitePage() {
             </SelectTrigger>
             <SelectContent position="popper" className="z-50">
               <SelectItem value="STAFF">Staff</SelectItem>
-              <SelectItem value="SUB_ADMIN">Sub-admin</SelectItem>
+              <SelectItem value="SUB_ADMIN">Assistant Admin</SelectItem>
             </SelectContent>
           </Select>
 
