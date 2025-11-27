@@ -7,6 +7,7 @@ import { useBusiness } from "@/lib/hooks/business/useBusiness";
 import { useAuth } from "@/lib/hooks/auth/useAuth";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { toast } from "sonner";
+
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +81,7 @@ export default function SettingsPage() {
       closeDialog();
       return;
     }
+
     setSaving(true);
     try {
       await updateName.mutateAsync({ name: trimmed });
@@ -97,6 +100,7 @@ export default function SettingsPage() {
       closeDialog();
       return;
     }
+
     setSaving(true);
     try {
       await updateIndustry.mutateAsync({ industry: trimmed });
@@ -115,6 +119,7 @@ export default function SettingsPage() {
       closeDialog();
       return;
     }
+
     setSaving(true);
     try {
       await updateLocation.mutateAsync({ location: trimmed });
@@ -153,6 +158,7 @@ export default function SettingsPage() {
 
   return (
     <>
+      {/* FULLSCREEN DELETION OVERLAY */}
       {showDeletingScreen && (
         <div className="fixed inset-0 z-[9999] bg-white/90 dark:bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center">
           {!deleteSuccess ? (
@@ -160,6 +166,9 @@ export default function SettingsPage() {
               <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-blue-600 border-t-transparent" />
               <p className="text-blue-700 dark:text-blue-400 mt-4 text-sm font-medium">
                 Deleting business…
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                You will be signed out once deletion is successful
               </p>
             </>
           ) : (
@@ -185,6 +194,7 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* MAIN SETTINGS PAGE */}
       <div className="max-w-3xl mx-auto">
         <Card>
           <CardHeader className="pb-2">
@@ -194,6 +204,7 @@ export default function SettingsPage() {
           </CardHeader>
 
           <CardContent className="space-y-8">
+            {/* NAME */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Business Name</p>
@@ -210,6 +221,7 @@ export default function SettingsPage() {
               </Button>
             </div>
 
+            {/* INDUSTRY */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Industry</p>
@@ -226,6 +238,7 @@ export default function SettingsPage() {
               </Button>
             </div>
 
+            {/* LOCATION */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Location</p>
@@ -242,6 +255,7 @@ export default function SettingsPage() {
               </Button>
             </div>
 
+            {/* DELETE BUSINESS */}
             <div className="pt-6 border-t">
               <div className="flex items-center justify-between">
                 <div>
@@ -262,6 +276,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* DIALOGS */}
         <Dialog open={dialog !== null} onOpenChange={closeDialog}>
           <DialogContent>
             <DialogHeader>
@@ -273,6 +288,7 @@ export default function SettingsPage() {
               </DialogTitle>
             </DialogHeader>
 
+            {/* UPDATE NAME */}
             {dialog === "update-name" && (
               <>
                 <Input
@@ -282,6 +298,7 @@ export default function SettingsPage() {
                   }
                   placeholder="Business name"
                 />
+
                 <DialogFooter>
                   <Button
                     variant="outline"
@@ -302,6 +319,7 @@ export default function SettingsPage() {
               </>
             )}
 
+            {/* UPDATE INDUSTRY */}
             {dialog === "update-industry" && (
               <>
                 <Input
@@ -311,6 +329,7 @@ export default function SettingsPage() {
                   }
                   placeholder="Industry"
                 />
+
                 <DialogFooter>
                   <Button
                     variant="outline"
@@ -331,6 +350,7 @@ export default function SettingsPage() {
               </>
             )}
 
+            {/* UPDATE LOCATION */}
             {dialog === "update-location" && (
               <>
                 <Input
@@ -340,6 +360,7 @@ export default function SettingsPage() {
                   }
                   placeholder="Location"
                 />
+
                 <DialogFooter>
                   <Button
                     variant="outline"
@@ -360,11 +381,13 @@ export default function SettingsPage() {
               </>
             )}
 
+            {/* DELETE */}
             {dialog === "delete-business" && (
               <>
                 <p className="text-sm text-muted-foreground">
                   Enter your business name to confirm deletion:
                 </p>
+
                 <Input
                   value={form.confirm}
                   onChange={(e) =>
