@@ -29,10 +29,19 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { useSidebarStore } from "@/lib/stores/sidebarStore";
+import { ArrowLeft } from "lucide-react";
 
 export default function SinglePayrollPage({ id }: { id: string }) {
   const user = useAuthStore((s) => s.user);
+  const collapsed = useSidebarStore((state) => state.collapsed);
   const isAdmin = user?.role === "ADMIN";
+
+  const router = useRouter();
+  const basePath = isAdmin
+    ? "/dashboard/admin/payroll"
+    : "/dashboard/staff/payroll";
 
   const { batch, updateBatch, updateItem, exportCSV, exportExcel } =
     usePayroll();
@@ -121,9 +130,22 @@ export default function SinglePayrollPage({ id }: { id: string }) {
       setSavingItem(false);
     }
   }
+  const leftClass = collapsed ? "md:left-24" : "md:left-[272px]";
+
+  const navigateFn = () => {
+    router.push(basePath);
+  };
 
   return (
     <>
+      <button
+        type="button"
+        onClick={navigateFn}
+        className={`fixed top-20 left-7 ${leftClass} p-2 rounded-full border border-[--border] hover:bg-[--muted] transition-all hover:scale-95 cursor-pointer z-30`}
+        aria-label="Go back"
+      >
+        <ArrowLeft size={20} />
+      </button>
       <div className="px-4 lg:px-6 py-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h1 className="text-xl font-semibold">Payroll • {periodLabel}</h1>

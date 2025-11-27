@@ -59,7 +59,7 @@ export default function Navbar() {
           {user ? (
             <button
               onClick={handleLogout}
-              className="rounded-md bg-red-600 text-white px-4 py-2 font-semibold shadow hover:bg-red-700 active:scale-95 transition"
+              className="rounded-md bg-red-600 cursor-pointer text-white px-4 py-2 font-semibold shadow hover:bg-red-700 active:scale-95 transition"
             >
               Logout
             </button>
@@ -73,7 +73,7 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/auth/signup"
-                className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold shadow hover:bg-blue-700 active:scale-95 transition"
+                className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold cursor-pointer shadow hover:bg-blue-700 active:scale-95 transition"
               >
                 Join
               </Link>

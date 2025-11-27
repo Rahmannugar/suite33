@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import { usePayroll } from "@/lib/hooks/payroll/usePayroll";
 import { useAuthStore } from "@/lib/stores/authStore";
@@ -28,9 +29,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import ByteDatePicker from "byte-datepicker";
-import "byte-datepicker/styles.css";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -39,7 +44,6 @@ const PAGE_SIZE = 20;
 export default function PayrollPage() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "ADMIN";
-  const isStaff = user?.role === "STAFF" || user?.role === "SUB_ADMIN";
 
   const basePath = isAdmin
     ? "/dashboard/admin/payroll"
@@ -47,7 +51,8 @@ export default function PayrollPage() {
 
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
-  const [period, setPeriod] = useState<Date | null>(new Date());
+  const [openPicker, setOpenPicker] = useState(false);
+  const [period, setPeriod] = useState(new Date());
   const [saving, setSaving] = useState(false);
 
   const { batches, createBatch } = usePayroll();
@@ -56,16 +61,17 @@ export default function PayrollPage() {
   const paginated = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   async function handleCreate() {
-    if (!period) return;
     try {
       setSaving(true);
+
+      const finalDate = new Date(
+        Date.UTC(period.getFullYear(), period.getMonth(), 1)
+      );
+
       await createBatch.mutateAsync({
-        period: new Date(
-          period.getFullYear(),
-          period.getMonth(),
-          1
-        ).toISOString(),
+        period: finalDate.toISOString(),
       });
+
       toast.success("Payroll batch created");
       setCreateOpen(false);
     } catch {
@@ -80,6 +86,7 @@ export default function PayrollPage() {
       <div className="px-4 lg:px-6 py-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h1 className="text-xl font-semibold">Payroll</h1>
+
           {isAdmin && (
             <Button
               className="cursor-pointer w-full sm:w-auto"
@@ -96,6 +103,7 @@ export default function PayrollPage() {
               Payroll Batches
             </CardTitle>
           </CardHeader>
+
           <CardContent>
             {batches.isLoading ? (
               <Skeleton className="h-40 w-full rounded-md" />
@@ -149,6 +157,7 @@ export default function PayrollPage() {
                           onClick={() => setPage((p) => Math.max(1, p - 1))}
                         />
                       </PaginationItem>
+
                       {Array.from({ length: totalPages }, (_, i) => (
                         <PaginationItem key={i}>
                           <PaginationLink
@@ -160,6 +169,7 @@ export default function PayrollPage() {
                           </PaginationLink>
                         </PaginationItem>
                       ))}
+
                       <PaginationItem>
                         <PaginationNext
                           className="cursor-pointer"
@@ -182,25 +192,43 @@ export default function PayrollPage() {
           <DialogHeader>
             <DialogTitle>Create Payroll Batch</DialogTitle>
           </DialogHeader>
+
           <div className="space-y-3">
-            <ByteDatePicker
-              value={period}
-              onChange={setPeriod}
-              hideInput
-              formatString="mmm yyyy"
-            >
-              {({ open, formattedValue }) => (
+            <Popover open={openPicker} onOpenChange={setOpenPicker}>
+              <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  onClick={open}
                   className="w-full justify-start gap-2 cursor-pointer"
                 >
                   <CalendarIcon size={16} />
-                  {formattedValue || "Select period"}
+                  {period
+                    ? period.toLocaleString("default", {
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "Select period"}
                 </Button>
-              )}
-            </ByteDatePicker>
+              </PopoverTrigger>
+
+              <PopoverContent
+                align="center"
+                side="bottom"
+                sideOffset={8}
+                className="p-0 w-auto left-1/2 transform -translate-x-1/2"
+              >
+                <Calendar
+                  mode="single"
+                  selected={period}
+                  onSelect={(d) => {
+                    if (d) setPeriod(d);
+                    setOpenPicker(false);
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
+
           <DialogFooter>
             <Button
               variant="outline"
@@ -210,6 +238,7 @@ export default function PayrollPage() {
             >
               Cancel
             </Button>
+
             <Button
               className="cursor-pointer"
               onClick={handleCreate}

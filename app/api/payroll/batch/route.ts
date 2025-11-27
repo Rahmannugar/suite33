@@ -45,11 +45,7 @@ export async function GET() {
     const batches = await prisma.payrollBatch.findMany({
       where: { businessId, deletedAt: null },
       orderBy: { period: "desc" },
-      select: {
-        id: true,
-        period: true,
-        locked: true,
-      },
+      select: { id: true, period: true, locked: true },
     });
 
     return NextResponse.json(batches);
@@ -72,11 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const normalized = new Date(
-      new Date(period).getFullYear(),
-      new Date(period).getMonth(),
-      1
-    );
+    const normalized = new Date(period);
 
     const supabase = await supabaseServer(true);
     const { data, error } = await supabase.auth.getUser();
@@ -122,22 +114,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const previous = await prisma.payrollBatch.findFirst({
+      where: {
+        businessId,
+        deletedAt: null,
+        period: { lt: normalized },
+      },
+      orderBy: { period: "desc" },
+      include: { items: true },
+    });
+
     const staffList = await prisma.staff.findMany({
       where: { businessId, deletedAt: null },
     });
 
     type Staff = (typeof staffList)[number];
+    type PrevItem = { staffId: string; amount: number };
 
     const batch = await prisma.payrollBatch.create({
       data: {
         businessId,
         period: normalized,
         items: {
-          create: staffList.map((s: Staff) => ({
-            staffId: s.id,
-            amount: 0,
-            paid: false,
-          })),
+          create: staffList.map((s: Staff) => {
+            const last = previous?.items.find(
+              (i: PrevItem) => i.staffId === s.id
+            );
+            return {
+              staffId: s.id,
+              amount: last ? last.amount : 0,
+              paid: false,
+            };
+          }),
         },
       },
     });
