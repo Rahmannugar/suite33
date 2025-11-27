@@ -6,6 +6,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useInvite } from "@/lib/hooks/invite/useInvite";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Logo from "@/components/Logo";
 
 export default function AcceptInvitePage() {
   const {
@@ -83,22 +84,7 @@ export default function AcceptInvitePage() {
       <div className="w-full max-w-md rounded-2xl border border-[--border] bg-[--card] text-[--card-foreground] shadow-sm p-8">
         <ThemeToggle />
         <div className="flex justify-center mb-6">
-          <Image
-            src="/images/suite33-black.png"
-            alt="Suite33 Logo"
-            width={60}
-            height={60}
-            className="dark:hidden"
-            priority
-          />
-          <Image
-            src="/images/suite33-white.png"
-            alt="Suite33 Dark Logo"
-            width={60}
-            height={60}
-            className="hidden dark:block"
-            priority
-          />
+          <Logo />
         </div>
         <h1 className="text-2xl font-semibold text-center mb-1">
           Join <span className="text-[--primary]">{invite.business.name}</span>

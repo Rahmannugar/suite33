@@ -390,7 +390,7 @@ export default function ExpendituresPage() {
                     toast.success("CSV exported successfully");
                   }}
                 >
-                  <FileDown size={16} /> CSV
+                  <FileDown size={16} /> Export CSV
                 </Button>
 
                 <Button
@@ -408,7 +408,7 @@ export default function ExpendituresPage() {
                     toast.success("Excel exported successfully");
                   }}
                 >
-                  <FileDown size={16} /> Excel
+                  <FileDown size={16} /> Export Excel
                 </Button>
 
                 <Button

@@ -8,8 +8,8 @@ export default function Logo() {
 
   const logo =
     resolvedTheme === "dark"
-      ? "/images/suite33-white.png"
-      : "/images/suite33-black.png";
+      ? "/images/suite33-white-image.png"
+      : "/images/suite33-black-image.png";
 
   return (
     <Image

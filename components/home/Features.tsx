@@ -1,13 +1,12 @@
 import {
-  BarChart3,
   Wallet,
   Users2,
   TrendingUp,
   FileDown,
-  Upload,
   BrainCircuit,
   Mail,
   Boxes,
+  BadgeDollarSign,
 } from "lucide-react";
 
 const items = [
@@ -33,13 +32,13 @@ const items = [
   },
   {
     icon: FileDown,
-    title: "CSV/Excel Import",
-    desc: "Bring your data from spreadsheets in seconds.",
+    title: "Data Import and Export",
+    desc: "Import and export your data from in seconds.",
   },
   {
-    icon: Upload,
-    title: "Data Export",
-    desc: "Export your records as CSV and Excel for sharing and backups.",
+    icon: BadgeDollarSign,
+    title: "Payroll",
+    desc: "Automate monthly payroll, manage payments, and export payslips.",
   },
   {
     icon: BrainCircuit,
